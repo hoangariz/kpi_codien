@@ -37,6 +37,7 @@ class TaskListItem(BaseModel):
     ma_cong_viec_cha: Optional[str] = None
     loai_cong_viec: Optional[str] = None
     noi_dung_cong_viec: Optional[str] = None
+    ghi_chu: Optional[str] = None
     trang_thai: Optional[str] = None
     trang_thai_hoan_thanh: Optional[str] = None
     thoi_diem_tao: Optional[datetime] = None
@@ -49,6 +50,8 @@ class TaskListItem(BaseModel):
     loi: Optional[str] = None
     
     # Resolved names from dimensions
+    assigned_to_id: Optional[int] = None
+    group_id: Optional[int] = None
     employee_assigned_name: Optional[str] = None
     employee_created_name: Optional[str] = None
     group_name: Optional[str] = None
@@ -56,9 +59,10 @@ class TaskListItem(BaseModel):
     unit_name: Optional[str] = None
     station_code: Optional[str] = None
     
-    # Counts
+    # Counts & notes
     note_count: int = 0
     history_count: int = 0
+    latest_note: Optional[str] = None
 
 
 class TaskDetailResponse(BaseModel):

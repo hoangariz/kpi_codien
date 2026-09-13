@@ -46,6 +46,36 @@ def get_kpi_overview(db: Session) -> Dict[str, Any]:
         ).label("maintenance_total"),
         func.count(func.distinct(Task.group_id)).label("total_groups"),
         func.count(func.distinct(Task.assigned_to_id)).label("total_employees"),
+        func.sum(
+            case((Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]), 1), else_=0)
+        ).label("tu_choi"),
+        func.sum(
+            case((Task.trang_thai == "FT từ chối", 1), else_=0)
+        ).label("ft_tu_choi"),
+        func.sum(
+            case((Task.trang_thai.in_(["CD từ chối", "CĐ từ chối"]), 1), else_=0)
+        ).label("cd_tu_choi"),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                        or_(
+                            Task.thoi_gian_con_lai < 0,
+                            and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                        )
+                    ),
+                    1
+                ),
+                else_=0
+            )
+        ).label("overdue_tu_choi"),
+        func.sum(
+            case((Task.trang_thai.ilike("%ft hoàn thành%"), 1), else_=0)
+        ).label("ft_hoan_thanh"),
+        func.sum(
+            case((Task.trang_thai.ilike("%chờ%tiếp nhận%"), 1), else_=0)
+        ).label("cho_cd_tiep_nhan"),
     ).first()
 
     total = res.total or 0
@@ -67,6 +97,12 @@ def get_kpi_overview(db: Session) -> Dict[str, Any]:
         "total_groups": groups_count,
         "total_employees": emp_count,
         "maintenance_total": maint_total,
+        "tu_choi_count": res.tu_choi or 0,
+        "ft_tu_choi_count": res.ft_tu_choi or 0,
+        "cd_tu_choi_count": res.cd_tu_choi or 0,
+        "overdue_tu_choi_count": res.overdue_tu_choi or 0,
+        "ft_hoan_thanh_count": res.ft_hoan_thanh or 0,
+        "cho_cd_tiep_nhan_count": res.cho_cd_tiep_nhan or 0,
     }
 
 
@@ -212,7 +248,8 @@ def get_stats_by_employee(
 def get_special_maintenance_stats(
     db: Session,
     target_type: str = MAINTENANCE_TASK_TYPE,
-    target_month: Optional[str] = None
+    target_month: Optional[str] = None,
+    board_id: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Dedicated statistics for user request:
@@ -220,11 +257,21 @@ def get_special_maintenance_stats(
     Rule: Bỏ đi những công việc đã đóng của tháng trước (nếu thời điểm yêu cầu kết thúc < tháng hiện tại và đã đóng).
     Tính toán: Tổng, Đóng, Tồn, Quá hạn, Đóng hôm nay, Đóng 7 ngày qua.
     Gộp nhân viên trống / cụm trống vào dòng 'Khác'.
+    Hỗ trợ lọc theo custom tracking board_id.
     """
     from backend.services.settings_service import get_current_month_setting
 
     active_month = target_month or get_current_month_setting(db)
     
+    board_obj = None
+    if board_id:
+        from backend.models.tracking import TrackingBoard
+        board_obj = db.query(TrackingBoard).filter(TrackingBoard.id == board_id).first()
+        if board_obj and board_obj.loai_cong_viec:
+            target_type = board_obj.loai_cong_viec
+        elif board_obj and not board_obj.loai_cong_viec:
+            target_type = None
+
     # Parse month start date
     try:
         y_str, m_str = active_month.split("-")
@@ -238,306 +285,528 @@ def get_special_maintenance_stats(
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
     seven_days_ago = today_start - timedelta(days=7)
 
-    # 1. Calculate count of excluded records (Đã đóng của tháng trước)
-    excluded_count = db.query(func.count(Task.ma_cong_viec)).filter(
-        Task.loai_cong_viec == target_type,
-        Task.trang_thai == "Đóng",
-        Task.thoi_diem_yeu_cau_ket_thuc != None,
-        Task.thoi_diem_yeu_cau_ket_thuc < month_start
-    ).scalar() or 0
+    from backend.models.report_category import ReportCategory, ReportSubCategory
 
-    # 2. Filter condition for valid records
-    # Giữ lại:
-    # - Công việc có thời điểm yêu cầu kết thúc >= month_start
-    # - HOẶC chưa có ngày kết thúc
-    # - HOẶC ngày kết thúc < month_start NHƯNG chưa đóng (việc tồn từ tháng trước mang sang)
-    valid_condition = and_(
-        Task.loai_cong_viec == target_type,
-        or_(
-            Task.thoi_diem_yeu_cau_ket_thuc == None,
-            Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
-            Task.trang_thai != "Đóng"
+    cat_obj = None
+    if target_type:
+        clean_target = target_type.strip().lower()
+        cat_obj = db.query(ReportCategory).filter(
+            func.lower(func.trim(ReportCategory.loai_cong_viec)) == clean_target
+        ).first()
+        if not cat_obj:
+            cat_obj = db.query(ReportCategory).filter(
+                func.lower(ReportCategory.name).ilike(f"%{clean_target[:20]}%")
+            ).first()
+    if not cat_obj:
+        cat_obj = db.query(ReportCategory).filter(ReportCategory.is_default == True).first()
+        if not cat_obj:
+            cat_obj = db.query(ReportCategory).first()
+
+    exclude_closed = cat_obj.exclude_closed_prior_months if (cat_obj and hasattr(cat_obj, 'exclude_closed_prior_months') and cat_obj.exclude_closed_prior_months is not None) else True
+
+    type_condition = [Task.loai_cong_viec == target_type] if target_type else []
+
+    # 1. Calculate count of excluded records (Đã đóng của tháng trước)
+    if exclude_closed:
+        excluded_query = db.query(func.count(Task.ma_cong_viec)).filter(
+            *type_condition,
+            Task.trang_thai == "Đóng",
+            Task.thoi_diem_yeu_cau_ket_thuc != None,
+            Task.thoi_diem_yeu_cau_ket_thuc < month_start
         )
-    )
+        if board_id:
+            from backend.models.tracking import TrackingBoardTask
+            excluded_query = excluded_query.filter(
+                Task.ma_cong_viec.in_(db.query(TrackingBoardTask.ma_cong_viec).filter(TrackingBoardTask.board_id == board_id))
+            )
+        excluded_count = excluded_query.scalar() or 0
+
+        # 2. Filter condition for valid records
+        base_conditions = [
+            *type_condition,
+            or_(
+                Task.thoi_diem_yeu_cau_ket_thuc == None,
+                Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
+                Task.trang_thai != "Đóng"
+            )
+        ]
+    else:
+        excluded_count = 0
+        base_conditions = [
+            *type_condition
+        ]
+
+    if board_id:
+        from backend.models.tracking import TrackingBoardTask
+        base_conditions.append(
+            Task.ma_cong_viec.in_(db.query(TrackingBoardTask.ma_cong_viec).filter(TrackingBoardTask.board_id == board_id))
+        )
+    valid_condition = and_(*base_conditions)
 
     total_valid = db.query(func.count(Task.ma_cong_viec)).filter(valid_condition).scalar() or 0
 
-    # 3. Breakdown by Employee
-    emp_res = db.query(
-        Employee.id.label("id"),
-        func.coalesce(Employee.name, "Khác (Chưa gán NV)").label("key_name"),
-        func.count(Task.ma_cong_viec).label("total"),
-        func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-        func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Task.trang_thai != "Đóng",
+    # Reusable breakdown computer for any condition
+    def compute_breakdown_for_condition(condition):
+        emp_res = db.query(
+            Employee.id.label("id"),
+            func.coalesce(Employee.name, "Khác (Chưa gán NV)").label("key_name"),
+            func.count(Task.ma_cong_viec).label("total"),
+            func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
+            func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai != "Đóng",
+                            or_(
+                                Task.thoi_gian_con_lai < 0,
+                                and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                            )
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("overdue"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai == "Đóng",
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("closed_today"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai == "Đóng",
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("closed_last_7_days"),
+            func.sum(
+                case(
+                    (
                         or_(
-                            Task.thoi_gian_con_lai < 0,
-                            and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
-                        )
+                            Task.trang_thai == "Chờ CD tiếp nhận",
+                            Task.trang_thai == "Chờ CĐ tiếp nhận",
+                            Task.trang_thai.ilike("%chờ%tiếp nhận%")
+                        ),
+                        1
                     ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("overdue"),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Task.trang_thai == "Đóng",
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("closed_today"),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Task.trang_thai == "Đóng",
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("closed_last_7_days"),
-        func.sum(
-            case(
-                (
-                    or_(
-                        Task.trang_thai == "Chờ CD tiếp nhận",
-                        Task.trang_thai == "Chờ CĐ tiếp nhận",
-                        Task.trang_thai.ilike("%chờ%tiếp nhận%")
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("cho_cd_tiep_nhan"),
-        func.sum(
-            case(
-                (
-                    or_(
-                        Task.trang_thai == "FT hoàn thành",
-                        Task.trang_thai.ilike("%FT hoàn thành%")
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("ft_hoan_thanh"),
-        func.sum(case((Task.trang_thai == "Đã giao FT", 1), else_=0)).label("da_giao_ft"),
-        func.sum(case((Task.trang_thai == "FT Đang thực hiện", 1), else_=0)).label("ft_dang_thuc_hien"),
-    ).outerjoin(Employee, Task.assigned_to_id == Employee.id)\
-     .filter(valid_condition)\
-     .group_by(Employee.id, Employee.name)\
-     .all()
-
-    by_employee = []
-    other_emp = None
-
-    for r in emp_res:
-        tot = r.total or 0
-        cl = r.closed or 0
-        pe = r.pending or 0
-        ov = r.overdue or 0
-        ct = r.closed_today or 0
-        c7 = r.closed_last_7_days or 0
-        c_cd = r.cho_cd_tiep_nhan or 0
-        ft_ht = r.ft_hoan_thanh or 0
-        rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
-
-        is_other = (r.id is None or r.key_name == "Khác (Chưa gán NV)")
-        item = {
-            "id": r.id,
-            "key_name": "Khác (Chưa gán NV)" if is_other else r.key_name,
-            "is_other": is_other,
-            "total": tot,
-            "closed": cl,
-            "pending": pe,
-            "overdue": ov,
-            "closed_today": ct,
-            "closed_last_7_days": c7,
-            "cho_cd_tiep_nhan": c_cd,
-            "ft_hoan_thanh": ft_ht,
-            "completion_rate": rate,
-            "dong": cl,
-            "da_giao_ft": r.da_giao_ft or 0,
-            "ft_dang_thuc_hien": r.ft_dang_thuc_hien or 0,
-            "other": max(0, tot - ((r.da_giao_ft or 0) + (r.ft_dang_thuc_hien or 0) + cl))
-        }
-        if is_other:
-            other_emp = item
-        else:
-            by_employee.append(item)
-
-    # Sort regular employees by total desc, then put 'Other' at bottom
-    by_employee.sort(key=lambda x: x["total"], reverse=True)
-    if other_emp:
-        by_employee.append(other_emp)
-
-    # 4. Breakdown by Group (Cụm / Nhóm điều phối)
-    group_res = db.query(
-        Group.id.label("id"),
-        func.coalesce(Group.name, "Khác (Chưa phân cụm)").label("key_name"),
-        func.count(Task.ma_cong_viec).label("total"),
-        func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-        func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Task.trang_thai != "Đóng",
+                    else_=0
+                )
+            ).label("cho_cd_tiep_nhan"),
+            func.sum(
+                case(
+                    (
                         or_(
-                            Task.thoi_gian_con_lai < 0,
-                            and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
-                        )
+                            Task.trang_thai == "FT hoàn thành",
+                            Task.trang_thai.ilike("%FT hoàn thành%")
+                        ),
+                        1
                     ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("overdue"),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Task.trang_thai == "Đóng",
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
+                    else_=0
+                )
+            ).label("ft_hoan_thanh"),
+            func.sum(case((Task.trang_thai == "Đã giao FT", 1), else_=0)).label("da_giao_ft"),
+            func.sum(case((Task.trang_thai == "FT Đang thực hiện", 1), else_=0)).label("ft_dang_thuc_hien"),
+            func.sum(
+                case((Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]), 1), else_=0)
+            ).label("tu_choi"),
+            func.sum(
+                case((Task.trang_thai == "FT từ chối", 1), else_=0)
+            ).label("ft_tu_choi"),
+            func.sum(
+                case((Task.trang_thai.in_(["CD từ chối", "CĐ từ chối"]), 1), else_=0)
+            ).label("cd_tu_choi"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                            or_(
+                                Task.thoi_gian_con_lai < 0,
+                                and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                            )
+                        ),
+                        1
                     ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("closed_today"),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Task.trang_thai == "Đóng",
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("closed_last_7_days"),
-        func.sum(
-            case(
-                (
-                    or_(
-                        Task.trang_thai == "Chờ CD tiếp nhận",
-                        Task.trang_thai == "Chờ CĐ tiếp nhận",
-                        Task.trang_thai.ilike("%chờ%tiếp nhận%")
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("cho_cd_tiep_nhan"),
-        func.sum(
-            case(
-                (
-                    or_(
-                        Task.trang_thai == "FT hoàn thành",
-                        Task.trang_thai.ilike("%FT hoàn thành%")
-                    ),
-                    1
-                ),
-                else_=0
-            )
-        ).label("ft_hoan_thanh"),
-        func.sum(case((Task.trang_thai == "Đã giao FT", 1), else_=0)).label("da_giao_ft"),
-        func.sum(case((Task.trang_thai == "FT Đang thực hiện", 1), else_=0)).label("ft_dang_thuc_hien"),
-    ).outerjoin(Group, Task.group_id == Group.id)\
-     .filter(valid_condition)\
-     .group_by(Group.id, Group.name)\
-     .all()
+                    else_=0
+                )
+            ).label("overdue_tu_choi"),
+        ).outerjoin(Employee, Task.assigned_to_id == Employee.id)\
+         .filter(condition)\
+         .group_by(Employee.id, Employee.name)\
+         .all()
 
-    by_group = []
-    other_grp = None
+        by_employee = []
+        other_emp = None
+        for r in emp_res:
+            tot = r.total or 0
+            cl = r.closed or 0
+            pe = r.pending or 0
+            ov = r.overdue or 0
+            ct = r.closed_today or 0
+            c7 = r.closed_last_7_days or 0
+            c_cd = r.cho_cd_tiep_nhan or 0
+            ft_ht = r.ft_hoan_thanh or 0
+            t_choi = r.tu_choi or 0
+            ft_tc = r.ft_tu_choi or 0
+            cd_tc = r.cd_tu_choi or 0
+            ov_tc = r.overdue_tu_choi or 0
+            rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
+            is_other = (r.id is None or r.key_name == "Khác (Chưa gán NV)")
+            item = {
+                "id": r.id,
+                "key_name": "Khác (Chưa gán NV)" if is_other else r.key_name,
+                "is_other": is_other,
+                "total": tot,
+                "closed": cl,
+                "pending": pe,
+                "overdue": ov,
+                "closed_today": ct,
+                "closed_last_7_days": c7,
+                "cho_cd_tiep_nhan": c_cd,
+                "ft_hoan_thanh": ft_ht,
+                "tu_choi": t_choi,
+                "ft_tu_choi": ft_tc,
+                "cd_tu_choi": cd_tc,
+                "overdue_tu_choi": ov_tc,
+                "completion_rate": rate,
+                "dong": cl,
+                "da_giao_ft": r.da_giao_ft or 0,
+                "ft_dang_thuc_hien": r.ft_dang_thuc_hien or 0,
+                "other": max(0, tot - ((r.da_giao_ft or 0) + (r.ft_dang_thuc_hien or 0) + cl))
+            }
+            if is_other:
+                other_emp = item
+            else:
+                by_employee.append(item)
+        by_employee.sort(key=lambda x: x["total"], reverse=True)
+        if other_emp:
+            by_employee.append(other_emp)
 
-    for r in group_res:
-        tot = r.total or 0
-        cl = r.closed or 0
-        pe = r.pending or 0
-        ov = r.overdue or 0
-        ct = r.closed_today or 0
-        c7 = r.closed_last_7_days or 0
-        c_cd = r.cho_cd_tiep_nhan or 0
-        ft_ht = r.ft_hoan_thanh or 0
-        rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
+        group_res = db.query(
+            Group.id.label("id"),
+            func.coalesce(Group.name, "Khác (Chưa phân cụm)").label("key_name"),
+            func.count(Task.ma_cong_viec).label("total"),
+            func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
+            func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai != "Đóng",
+                            or_(
+                                Task.thoi_gian_con_lai < 0,
+                                and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                            )
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("overdue"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai == "Đóng",
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("closed_today"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai == "Đóng",
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("closed_last_7_days"),
+            func.sum(
+                case(
+                    (
+                        or_(
+                            Task.trang_thai == "Chờ CD tiếp nhận",
+                            Task.trang_thai == "Chờ CĐ tiếp nhận",
+                            Task.trang_thai.ilike("%chờ%tiếp nhận%")
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("cho_cd_tiep_nhan"),
+            func.sum(
+                case(
+                    (
+                        or_(
+                            Task.trang_thai == "FT hoàn thành",
+                            Task.trang_thai.ilike("%FT hoàn thành%")
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("ft_hoan_thanh"),
+            func.sum(case((Task.trang_thai == "Đã giao FT", 1), else_=0)).label("da_giao_ft"),
+            func.sum(case((Task.trang_thai == "FT Đang thực hiện", 1), else_=0)).label("ft_dang_thuc_hien"),
+            func.sum(
+                case((Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]), 1), else_=0)
+            ).label("tu_choi"),
+            func.sum(
+                case((Task.trang_thai == "FT từ chối", 1), else_=0)
+            ).label("ft_tu_choi"),
+            func.sum(
+                case((Task.trang_thai.in_(["CD từ chối", "CĐ từ chối"]), 1), else_=0)
+            ).label("cd_tu_choi"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                            or_(
+                                Task.thoi_gian_con_lai < 0,
+                                and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                            )
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("overdue_tu_choi"),
+        ).outerjoin(Group, Task.group_id == Group.id)\
+         .filter(condition)\
+         .group_by(Group.id, Group.name)\
+         .all()
 
-        is_other = (r.id is None or r.key_name == "Khác (Chưa phân cụm)")
-        item = {
-            "id": r.id,
-            "key_name": "Khác (Chưa phân cụm)" if is_other else r.key_name,
-            "is_other": is_other,
-            "total": tot,
-            "closed": cl,
-            "pending": pe,
-            "overdue": ov,
-            "closed_today": ct,
-            "closed_last_7_days": c7,
-            "cho_cd_tiep_nhan": c_cd,
-            "ft_hoan_thanh": ft_ht,
-            "completion_rate": rate,
-            "dong": cl,
-            "da_giao_ft": r.da_giao_ft or 0,
-            "ft_dang_thuc_hien": r.ft_dang_thuc_hien or 0,
-            "other": max(0, tot - ((r.da_giao_ft or 0) + (r.ft_dang_thuc_hien or 0) + cl))
+        by_group = []
+        other_grp = None
+        for r in group_res:
+            tot = r.total or 0
+            cl = r.closed or 0
+            pe = r.pending or 0
+            ov = r.overdue or 0
+            ct = r.closed_today or 0
+            c7 = r.closed_last_7_days or 0
+            c_cd = r.cho_cd_tiep_nhan or 0
+            ft_ht = r.ft_hoan_thanh or 0
+            t_choi = r.tu_choi or 0
+            ft_tc = r.ft_tu_choi or 0
+            cd_tc = r.cd_tu_choi or 0
+            ov_tc = r.overdue_tu_choi or 0
+            rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
+            is_other = (r.id is None or r.key_name == "Khác (Chưa phân cụm)")
+            item = {
+                "id": r.id,
+                "key_name": "Khác (Chưa phân cụm)" if is_other else r.key_name,
+                "is_other": is_other,
+                "total": tot,
+                "closed": cl,
+                "pending": pe,
+                "overdue": ov,
+                "closed_today": ct,
+                "closed_last_7_days": c7,
+                "cho_cd_tiep_nhan": c_cd,
+                "ft_hoan_thanh": ft_ht,
+                "tu_choi": t_choi,
+                "ft_tu_choi": ft_tc,
+                "cd_tu_choi": cd_tc,
+                "overdue_tu_choi": ov_tc,
+                "completion_rate": rate,
+                "dong": cl,
+                "da_giao_ft": r.da_giao_ft or 0,
+                "ft_dang_thuc_hien": r.ft_dang_thuc_hien or 0,
+                "other": max(0, tot - ((r.da_giao_ft or 0) + (r.ft_dang_thuc_hien or 0) + cl))
+            }
+            if is_other:
+                other_grp = item
+            else:
+                by_group.append(item)
+        by_group.sort(key=lambda x: x["total"], reverse=True)
+        if other_grp:
+            by_group.append(other_grp)
+
+        sum_total = db.query(func.count(Task.ma_cong_viec)).filter(condition).scalar() or 0
+        sum_closed = sum(x["closed"] for x in by_group)
+        sum_pending = sum(x["pending"] for x in by_group)
+        sum_overdue = sum(x["overdue"] for x in by_group)
+        sum_closed_today = sum(x["closed_today"] for x in by_group)
+        sum_closed_7_days = sum(x["closed_last_7_days"] for x in by_group)
+        sum_cho_cd_tiep_nhan = sum(x["cho_cd_tiep_nhan"] for x in by_group)
+        sum_ft_hoan_thanh = sum(x["ft_hoan_thanh"] for x in by_group)
+        sum_tu_choi = sum(x.get("tu_choi", 0) for x in by_group)
+        sum_ft_tu_choi = sum(x.get("ft_tu_choi", 0) for x in by_group)
+        sum_cd_tu_choi = sum(x.get("cd_tu_choi", 0) for x in by_group)
+        sum_overdue_tu_choi = sum(x.get("overdue_tu_choi", 0) for x in by_group)
+        sum_rate = round((sum_closed / sum_total * 100), 1) if sum_total > 0 else 0.0
+
+        summary = {
+            "total": sum_total,
+            "closed": sum_closed,
+            "pending": sum_pending,
+            "overdue": sum_overdue,
+            "closed_today": sum_closed_today,
+            "closed_last_7_days": sum_closed_7_days,
+            "cho_cd_tiep_nhan": sum_cho_cd_tiep_nhan,
+            "ft_hoan_thanh": sum_ft_hoan_thanh,
+            "tu_choi": sum_tu_choi,
+            "ft_tu_choi": sum_ft_tu_choi,
+            "cd_tu_choi": sum_cd_tu_choi,
+            "overdue_tu_choi": sum_overdue_tu_choi,
+            "completion_rate": sum_rate,
         }
-        if is_other:
-            other_grp = item
-        else:
-            by_group.append(item)
 
-    by_group.sort(key=lambda x: x["total"], reverse=True)
-    if other_grp:
-        by_group.append(other_grp)
+        return summary, by_employee, by_group
 
-    # Summary across all valid records
-    sum_total = total_valid
-    sum_closed = sum(x["closed"] for x in by_group)
-    sum_pending = sum(x["pending"] for x in by_group)
-    sum_overdue = sum(x["overdue"] for x in by_group)
-    sum_closed_today = sum(x["closed_today"] for x in by_group)
-    sum_closed_7_days = sum(x["closed_last_7_days"] for x in by_group)
-    sum_cho_cd_tiep_nhan = sum(x["cho_cd_tiep_nhan"] for x in by_group)
-    sum_ft_hoan_thanh = sum(x["ft_hoan_thanh"] for x in by_group)
-    sum_rate = round((sum_closed / sum_total * 100), 1) if sum_total > 0 else 0.0
+    # 1. Compute overall parent report stats
+    parent_summary, by_employee, by_group = compute_breakdown_for_condition(valid_condition)
 
-    summary = {
-        "total": sum_total,
-        "closed": sum_closed,
-        "pending": sum_pending,
-        "overdue": sum_overdue,
-        "closed_today": sum_closed_today,
-        "closed_last_7_days": sum_closed_7_days,
-        "cho_cd_tiep_nhan": sum_cho_cd_tiep_nhan,
-        "ft_hoan_thanh": sum_ft_hoan_thanh,
-        "completion_rate": sum_rate,
-    }
+    # 2. Compute sub-categories stats based on 'noi_dung_cong_viec' keywords
+    from backend.models.report_category import ReportCategory, ReportSubCategory
+
+    cat_obj = None
+    if target_type:
+        clean_target = target_type.strip().lower()
+        cat_obj = db.query(ReportCategory).filter(
+            func.lower(func.trim(ReportCategory.loai_cong_viec)) == clean_target
+        ).first()
+        if not cat_obj:
+            cat_obj = db.query(ReportCategory).filter(
+                func.lower(ReportCategory.name).ilike(f"%{clean_target[:20]}%")
+            ).first()
+    if not cat_obj:
+        cat_obj = db.query(ReportCategory).filter(ReportCategory.is_default == True).first()
+        if not cat_obj:
+            cat_obj = db.query(ReportCategory).first()
+
+    if not cat_obj:
+        try:
+            cat_obj = ReportCategory(
+                name="Bảo Dưỡng Cứng Cơ Điện Điều Hòa, Máy Phát Điện, Thông Gió Lọc Bụi ICMS",
+                loai_cong_viec=target_type or "Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS",
+                description="Báo cáo tự động loại bỏ các việc đã đóng tháng trước.",
+                is_default=True,
+                sort_order=1
+            )
+            db.add(cat_obj)
+            db.commit()
+            db.refresh(cat_obj)
+        except Exception:
+            db.rollback()
+
+    sub_categories_stats = []
+    sub_cats = []
+    if cat_obj and hasattr(cat_obj, 'id') and cat_obj.id:
+        sub_cats = db.query(ReportSubCategory).filter(
+            ReportSubCategory.category_id == cat_obj.id
+        ).order_by(ReportSubCategory.sort_order.asc(), ReportSubCategory.id.asc()).all()
+
+    if not sub_cats:
+        default_defs = [
+            {"name": "Bảo dưỡng điều hòa", "keyword": "CONDITIONER", "description": "Bảo dưỡng hệ thống điều hòa", "sort_order": 1},
+            {"name": "Bảo dưỡng máy phát điện", "keyword": "GENERATOR", "description": "Bảo dưỡng tổ máy phát điện", "sort_order": 2},
+            {"name": "Thông gió lọc bụi", "keyword": "VENTILATION", "description": "Thông gió và hệ thống lọc bụi ICMS", "sort_order": 3},
+        ]
+        if cat_obj and hasattr(cat_obj, 'id') and cat_obj.id:
+            try:
+                for item in default_defs:
+                    db.add(ReportSubCategory(
+                        category_id=cat_obj.id,
+                        name=item["name"],
+                        keyword=item["keyword"],
+                        description=item["description"],
+                        sort_order=item["sort_order"]
+                    ))
+                db.commit()
+                sub_cats = db.query(ReportSubCategory).filter(
+                    ReportSubCategory.category_id == cat_obj.id
+                ).order_by(ReportSubCategory.sort_order.asc(), ReportSubCategory.id.asc()).all()
+            except Exception:
+                db.rollback()
+
+        if not sub_cats:
+            class DummySub:
+                def __init__(self, s_id, name, keyword, desc):
+                    self.id = s_id
+                    self.name = name
+                    self.keyword = keyword
+                    self.description = desc
+            sub_cats = [
+                DummySub(1, "Bảo dưỡng điều hòa", "CONDITIONER", "Bảo dưỡng hệ thống điều hòa"),
+                DummySub(2, "Bảo dưỡng máy phát điện", "GENERATOR", "Bảo dưỡng tổ máy phát điện"),
+                DummySub(3, "Thông gió lọc bụi", "VENTILATION", "Thông gió và hệ thống lọc bụi ICMS"),
+            ]
+
+    if sub_cats:
+        active_kws = []
+        for sub in sub_cats:
+            kw = sub.keyword.strip()
+            if not kw:
+                continue
+            active_kws.append(kw)
+            sub_cond = and_(valid_condition, Task.noi_dung_cong_viec.ilike(f"%{kw}%"))
+            sub_sum, sub_emp, sub_grp = compute_breakdown_for_condition(sub_cond)
+
+            sub_categories_stats.append({
+                "id": sub.id,
+                "name": sub.name,
+                "keyword": sub.keyword,
+                "description": sub.description,
+                "is_other": False,
+                "summary": sub_sum,
+                "by_employee": sub_emp,
+                "by_group": sub_grp,
+            })
+
+        # Add "Còn lại / Khác" sub-category for tasks not matching any keyword
+        if active_kws:
+            not_matched_conditions = [~Task.noi_dung_cong_viec.ilike(f"%{kw}%") for kw in active_kws]
+            other_cond = and_(valid_condition, *not_matched_conditions)
+            other_sum, other_emp, other_grp = compute_breakdown_for_condition(other_cond)
+
+            sub_categories_stats.append({
+                "id": 0,
+                "name": "Còn lại / Khác",
+                "keyword": "KHÁC",
+                "description": None,
+                "is_other": True,
+                "summary": other_sum,
+                "by_employee": other_emp,
+                "by_group": other_grp,
+            })
 
     return {
+        "board_name": board_obj.name if board_obj else None,
         "target_task_type": target_type,
         "active_month": active_month,
         "total_valid_records": total_valid,
         "excluded_closed_prior_months": excluded_count,
-        "summary": summary,
+        "summary": parent_summary,
         "by_employee": by_employee,
         "by_group": by_group,
+        "sub_categories": sub_categories_stats,
+        "sub_categories_stats": sub_categories_stats,
     }
 
 
@@ -545,6 +814,8 @@ def get_special_maintenance_tasks(
     db: Session,
     target_type: str = MAINTENANCE_TASK_TYPE,
     target_month: Optional[str] = None,
+    board_id: Optional[int] = None,
+    sub_category_id: Optional[int] = None,
     metric: str = "total",
     filter_type: Optional[str] = None,
     filter_id: Optional[int] = None,
@@ -558,10 +829,21 @@ def get_special_maintenance_tasks(
     """
     Get paginated drilldown tasks matching the exact filter & rules of the special maintenance report.
     Guarantees 100% mathematical consistency with numbers in table.
+    Hỗ trợ lọc theo custom tracking board_id và sub_category_id (bảng con).
     """
     from backend.services.settings_service import get_current_month_setting
+    from backend.models.report_category import ReportCategory, ReportSubCategory
 
     active_month = target_month or get_current_month_setting(db)
+
+    board_obj = None
+    if board_id:
+        from backend.models.tracking import TrackingBoard
+        board_obj = db.query(TrackingBoard).filter(TrackingBoard.id == board_id).first()
+        if board_obj and board_obj.loai_cong_viec:
+            target_type = board_obj.loai_cong_viec
+        elif board_obj and not board_obj.loai_cong_viec:
+            target_type = None
 
     try:
         y_str, m_str = active_month.split("-")
@@ -575,15 +857,56 @@ def get_special_maintenance_tasks(
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
     seven_days_ago = today_start - timedelta(days=7)
 
+    cat = None
+    if target_type:
+        clean_target = target_type.strip().lower()
+        cat = db.query(ReportCategory).filter(
+            func.lower(func.trim(ReportCategory.loai_cong_viec)) == clean_target
+        ).first()
+        if not cat:
+            cat = db.query(ReportCategory).filter(
+                func.lower(ReportCategory.name).ilike(f"%{clean_target[:20]}%")
+            ).first()
+    if not cat:
+        cat = db.query(ReportCategory).filter(ReportCategory.is_default == True).first()
+        if not cat:
+            cat = db.query(ReportCategory).first()
+
+    exclude_closed = cat.exclude_closed_prior_months if (cat and hasattr(cat, 'exclude_closed_prior_months') and cat.exclude_closed_prior_months is not None) else True
+
     # 1. Base maintenance valid condition (same as stats report)
-    filters = [
-        Task.loai_cong_viec == target_type,
-        or_(
-            Task.thoi_diem_yeu_cau_ket_thuc == None,
-            Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
-            Task.trang_thai != "Đóng"
+    type_condition = [Task.loai_cong_viec == target_type] if target_type else []
+    filters = [*type_condition]
+    if exclude_closed:
+        filters.append(
+            or_(
+                Task.thoi_diem_yeu_cau_ket_thuc == None,
+                Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
+                Task.trang_thai != "Đóng"
+            )
         )
-    ]
+
+    if board_id:
+        from backend.models.tracking import TrackingBoardTask
+        filters.append(
+            Task.ma_cong_viec.in_(db.query(TrackingBoardTask.ma_cong_viec).filter(TrackingBoardTask.board_id == board_id))
+        )
+
+    # Filter by sub_category_id (Keyword match in 'noi_dung_cong_viec')
+    if sub_category_id is not None:
+        if sub_category_id > 0:
+            sub = db.query(ReportSubCategory).filter(ReportSubCategory.id == sub_category_id).first()
+            if sub and sub.keyword and sub.keyword.strip().upper() != "KHÁC":
+                filters.append(Task.noi_dung_cong_viec.ilike(f"%{sub.keyword.strip()}%"))
+        elif sub_category_id == 0:
+            # Còn lại / Khác: loại trừ các từ khóa của các bảng con
+            if cat:
+                all_subs = db.query(ReportSubCategory).filter(ReportSubCategory.category_id == cat.id).all()
+                kws = [s.keyword.strip() for s in all_subs if s.keyword.strip() and s.keyword.strip().upper() != "KHÁC"]
+            else:
+                kws = ["CONDITIONER", "DC_COOLING"]
+            if kws:
+                filters.extend([~Task.noi_dung_cong_viec.ilike(f"%{kw}%") for kw in kws])
 
     # 2. Dimension filter
     if filter_type == "employee":
@@ -643,6 +966,22 @@ def get_special_maintenance_tasks(
                 Task.trang_thai.ilike("%FT hoàn thành%")
             )
         )
+    elif metric == "tu_choi":
+        filters.append(Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]))
+    elif metric == "ft_tu_choi":
+        filters.append(Task.trang_thai == "FT từ chối")
+    elif metric == "cd_tu_choi":
+        filters.append(Task.trang_thai.in_(["CD từ chối", "CĐ từ chối"]))
+    elif metric == "overdue_tu_choi":
+        filters.append(
+            and_(
+                Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                or_(
+                    Task.thoi_gian_con_lai < 0,
+                    and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                )
+            )
+        )
 
     # 4. Search query
     if search and search.strip():
@@ -651,6 +990,7 @@ def get_special_maintenance_tasks(
             or_(
                 Task.ma_cong_viec.ilike(kw),
                 Task.noi_dung_cong_viec.ilike(kw),
+                Task.ghi_chu.ilike(kw),
                 Task.thue_bao.ilike(kw),
                 Task.station.has(Station.code.ilike(kw)),
                 Task.employee_assigned.has(Employee.name.ilike(kw)),
@@ -668,14 +1008,16 @@ def get_special_maintenance_tasks(
     else:
         query = query.order_by(desc(sort_column))
 
-    # Pagination
+    # Pagination (support large page_size up to 50000 to display all rows directly)
+    page_size = min(max(1, page_size), 50000)
     offset = (page - 1) * page_size
     items_raw = query.offset(offset).limit(page_size).all()
 
-    # Pre-fetch counts of notes and history
+    # Pre-fetch counts of notes, history, and latest note text
     task_keys = [t.ma_cong_viec for t in items_raw]
     note_counts = {}
     history_counts = {}
+    latest_notes = {}
     if task_keys:
         nc = db.query(TaskNote.ma_cong_viec, func.count(TaskNote.id))\
             .filter(TaskNote.ma_cong_viec.in_(task_keys))\
@@ -687,6 +1029,14 @@ def get_special_maintenance_tasks(
             .group_by(TaskHistory.ma_cong_viec).all()
         history_counts = {k: v for k, v in hc}
 
+        all_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content)\
+            .filter(TaskNote.ma_cong_viec.in_(task_keys))\
+            .order_by(TaskNote.created_at.desc())\
+            .all()
+        for k, content in all_notes:
+            if k not in latest_notes:
+                latest_notes[k] = content
+
     items = []
     for t in items_raw:
         item = TaskListItem(
@@ -694,6 +1044,7 @@ def get_special_maintenance_tasks(
             ma_cong_viec_cha=t.ma_cong_viec_cha,
             loai_cong_viec=t.loai_cong_viec,
             noi_dung_cong_viec=t.noi_dung_cong_viec,
+            ghi_chu=t.ghi_chu,
             trang_thai=t.trang_thai,
             trang_thai_hoan_thanh=t.trang_thai_hoan_thanh,
             thoi_diem_tao=t.thoi_diem_tao,
@@ -704,6 +1055,8 @@ def get_special_maintenance_tasks(
             thoi_diem_cd_dong=t.thoi_diem_cd_dong,
             thue_bao=t.thue_bao,
             loi=t.loi,
+            assigned_to_id=t.assigned_to_id,
+            group_id=t.group_id,
             employee_assigned_name=t.employee_assigned.name if t.employee_assigned else None,
             employee_created_name=t.employee_created.name if t.employee_created else None,
             group_name=t.group.name if t.group else None,
@@ -712,6 +1065,7 @@ def get_special_maintenance_tasks(
             station_code=t.station.code if t.station else None,
             note_count=note_counts.get(t.ma_cong_viec, 0),
             history_count=history_counts.get(t.ma_cong_viec, 0),
+            latest_note=latest_notes.get(t.ma_cong_viec),
         )
         items.append(item)
 

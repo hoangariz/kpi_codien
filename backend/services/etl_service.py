@@ -62,10 +62,10 @@ def clean_float(val) -> Optional[float]:
         return None
 
 
-def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Dict[str, int]]:
+def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
     """
     Get-or-create dimension entries in memory cache.
-    Avoids 100k queries by doing single batch select and batch insert.
+    Safely handles case-insensitivity, prevents duplicates, and avoids SQLite variable limits.
     """
     cache = {
         "employees": {},
@@ -76,94 +76,95 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Dict[
         "task_types": {},
     }
 
+    def resolve_dim(model_cls, name_col, items_set):
+        existing = db.query(getattr(model_cls, name_col), model_cls.id).all()
+        exact_map = {str(k).strip(): v for k, v in existing if k is not None}
+        lower_map = {str(k).strip().lower(): v for k, v in existing if k is not None}
+
+        new_names_dict = {}
+        for item in items_set:
+            if not item:
+                continue
+            item_str = str(item).strip()
+            if not item_str:
+                continue
+            item_lower = item_str.lower()
+            if item_str not in exact_map and item_lower not in lower_map:
+                if item_lower not in new_names_dict:
+                    new_names_dict[item_lower] = item_str
+
+        if new_names_dict:
+            try:
+                new_objs = [model_cls(**{name_col: name}) for name in new_names_dict.values()]
+                db.add_all(new_objs)
+                db.commit()
+            except Exception:
+                db.rollback()
+                for name in new_names_dict.values():
+                    try:
+                        obj = model_cls(**{name_col: name})
+                        db.add(obj)
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+
+            existing = db.query(getattr(model_cls, name_col), model_cls.id).all()
+            exact_map = {str(k).strip(): v for k, v in existing if k is not None}
+            lower_map = {str(k).strip().lower(): v for k, v in existing if k is not None}
+
+        class CaseInsensitiveCache(dict):
+            def get(self, key, default=None):
+                if key is None:
+                    return default
+                k_str = str(key).strip()
+                if k_str in exact_map:
+                    return exact_map[k_str]
+                return lower_map.get(k_str.lower(), default)
+
+        return CaseInsensitiveCache(exact_map)
+
     # 1. Employees (from both 'Nhân viên khởi tạo' and 'Nhân viên thực hiện')
     emp_names = set()
     for col in ("Nhân viên khởi tạo", "Nhân viên thực hiện"):
         if col in df.columns:
             emp_names.update(df[col].dropna().astype(str).str.strip().unique())
     emp_names.discard("")
-
-    existing_emps = db.query(Employee.name, Employee.id).all()
-    cache["employees"] = {name: id for name, id in existing_emps}
-    missing_emps = [name for name in emp_names if name not in cache["employees"]]
-    if missing_emps:
-        new_objects = [Employee(name=name) for name in missing_emps]
-        db.add_all(new_objects)
-        db.commit()
-        # Refresh cache
-        refreshed = db.query(Employee.name, Employee.id).filter(Employee.name.in_(missing_emps)).all()
-        for name, id in refreshed:
-            cache["employees"][name] = id
+    cache["employees"] = resolve_dim(Employee, "name", emp_names)
 
     # 2. Groups (from 'Nhóm điều phối')
+    group_names = set()
     if "Nhóm điều phối" in df.columns:
-        group_names = set(df["Nhóm điều phối"].dropna().astype(str).str.strip().unique())
-        group_names.discard("")
-        existing_groups = db.query(Group.name, Group.id).all()
-        cache["groups"] = {name: id for name, id in existing_groups}
-        missing_groups = [name for name in group_names if name not in cache["groups"]]
-        if missing_groups:
-            db.add_all([Group(name=name) for name in missing_groups])
-            db.commit()
-            refreshed = db.query(Group.name, Group.id).filter(Group.name.in_(missing_groups)).all()
-            for name, id in refreshed:
-                cache["groups"][name] = id
+        group_names.update(df["Nhóm điều phối"].dropna().astype(str).str.strip().unique())
+    group_names.discard("")
+    cache["groups"] = resolve_dim(Group, "name", group_names)
 
     # 3. Systems (from 'Hệ thống' and 'Mã hệ thống')
+    sys_names = set()
     if "Hệ thống" in df.columns:
-        sys_names = set(df["Hệ thống"].dropna().astype(str).str.strip().unique())
-        sys_names.discard("")
-        existing_sys = db.query(SystemModel.name, SystemModel.id).all()
-        cache["systems"] = {name: id for name, id in existing_sys}
-        missing_sys = [name for name in sys_names if name not in cache["systems"]]
-        if missing_sys:
-            db.add_all([SystemModel(name=name) for name in missing_sys])
-            db.commit()
-            refreshed = db.query(SystemModel.name, SystemModel.id).filter(SystemModel.name.in_(missing_sys)).all()
-            for name, id in refreshed:
-                cache["systems"][name] = id
+        sys_names.update(df["Hệ thống"].dropna().astype(str).str.strip().unique())
+    sys_names.discard("")
+    cache["systems"] = resolve_dim(SystemModel, "name", sys_names)
 
     # 4. Units (from 'Đơn vị tạo')
+    unit_names = set()
     if "Đơn vị tạo" in df.columns:
-        unit_names = set(df["Đơn vị tạo"].dropna().astype(str).str.strip().unique())
-        unit_names.discard("")
-        existing_units = db.query(Unit.name, Unit.id).all()
-        cache["units"] = {name: id for name, id in existing_units}
-        missing_units = [name for name in unit_names if name not in cache["units"]]
-        if missing_units:
-            db.add_all([Unit(name=name) for name in missing_units])
-            db.commit()
-            refreshed = db.query(Unit.name, Unit.id).filter(Unit.name.in_(missing_units)).all()
-            for name, id in refreshed:
-                cache["units"][name] = id
+        unit_names.update(df["Đơn vị tạo"].dropna().astype(str).str.strip().unique())
+    unit_names.discard("")
+    cache["units"] = resolve_dim(Unit, "name", unit_names)
 
     # 5. Stations (from 'Mã trạm')
+    station_codes = set()
     if "Mã trạm" in df.columns:
-        station_codes = set(df["Mã trạm"].dropna().astype(str).str.strip().unique())
-        station_codes.discard("")
-        existing_stations = db.query(Station.code, Station.id).all()
-        cache["stations"] = {code: id for code, id in existing_stations}
-        missing_stations = [code for code in station_codes if code not in cache["stations"]]
-        if missing_stations:
-            db.add_all([Station(code=code) for code in missing_stations])
-            db.commit()
-            refreshed = db.query(Station.code, Station.id).filter(Station.code.in_(missing_stations)).all()
-            for code, id in refreshed:
-                cache["stations"][code] = id
+        station_codes.update(df["Mã trạm"].dropna().astype(str).str.strip().unique())
+    station_codes.discard("")
+    cache["stations"] = resolve_dim(Station, "code", station_codes)
 
     # 6. Task Types (from 'Loại công việc')
+    type_names = set()
     if "Loại công việc" in df.columns:
-        type_names = set(df["Loại công việc"].dropna().astype(str).str.strip().unique())
-        type_names.discard("")
-        existing_types = db.query(TaskType.name, TaskType.id).all()
-        cache["task_types"] = {name: id for name, id in existing_types}
-        missing_types = [name for name in type_names if name not in cache["task_types"]]
-        if missing_types:
-            db.add_all([TaskType(name=name) for name in missing_types])
-            db.commit()
-            refreshed = db.query(TaskType.name, TaskType.id).filter(TaskType.name.in_(missing_types)).all()
-            for name, id in refreshed:
-                cache["task_types"][name] = id
+        type_names.update(df["Loại công việc"].dropna().astype(str).str.strip().unique())
+    type_names.discard("")
+    cache["task_types"] = resolve_dim(TaskType, "name", type_names)
 
     return cache
 
@@ -171,8 +172,10 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Dict[
 def process_excel_import(import_id: int, file_path: str):
     """
     Main ETL function executed in background.
-    Optimized for 100k+ rows with in-memory caching and bulk chunk upsert.
+    Optimized for 100k+ rows with fast parsing, primary key deduplication, and bulk chunk insert.
     """
+    from sqlalchemy import text
+
     db = SessionLocal()
     try:
         import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
@@ -183,25 +186,82 @@ def process_excel_import(import_id: int, file_path: str):
         import_record.progress_percent = 5
         db.commit()
 
-        # Step 1: Read excel file
-        if file_path.endswith(".csv"):
-            df = pd.read_csv(file_path, low_memory=False)
+        # Step 1: Read excel or csv file
+        file_path_lower = file_path.lower()
+        if file_path_lower.endswith(".csv"):
+            df = pd.read_csv(file_path, low_memory=False, encoding_errors="replace")
+        elif file_path_lower.endswith(".xls"):
+            try:
+                df = pd.read_excel(file_path, engine="xlrd")
+            except Exception:
+                try:
+                    df = pd.read_excel(file_path)
+                except Exception as ex:
+                    raise ValueError(f"Không thể đọc file .xls (Excel 97-2003). Vui lòng lưu file sang định dạng .xlsx để hệ thống xử lý nhanh: {ex}")
         else:
-            df = pd.read_excel(file_path, engine="openpyxl")
+            try:
+                import calamine
+                df = pd.read_excel(file_path, engine="calamine")
+            except Exception:
+                try:
+                    df = pd.read_excel(file_path, engine="openpyxl", engine_kwargs={"read_only": True, "data_only": True})
+                except Exception:
+                    df = pd.read_excel(file_path, engine="openpyxl")
 
         total_rows = len(df)
         import_record.total_rows = total_rows
         import_record.progress_percent = 15
         db.commit()
 
-        # Normalize column headers
-        df.columns = [str(c).strip() for c in df.columns]
+        # Normalize column headers (strip spaces, replace non-breaking spaces, remove BOM)
+        df.columns = [re.sub(r'\s+', ' ', str(c).strip().replace('\ufeff', '')) for c in df.columns]
+
+        # Auto-detect real header row if the file has metadata rows at the top (e.g. 7 title lines from GNOC)
+        has_macv = any(str(c).strip().lower() in ("mã công việc", "mã cv", "ma cong viec", "wo") for c in df.columns)
+        if not has_macv:
+            header_idx = None
+            for r_idx in range(min(25, len(df))):
+                row_vals = [str(val).strip().lower() for val in df.iloc[r_idx].dropna()]
+                if any(v in ("mã công việc", "mã cv", "ma cong viec", "wo") for v in row_vals):
+                    header_idx = r_idx
+                    break
+
+            if header_idx is not None:
+                new_cols = [str(c).strip() for c in df.iloc[header_idx].values]
+                df = df.iloc[header_idx + 1:].reset_index(drop=True)
+                df.columns = [re.sub(r'\s+', ' ', str(c).strip().replace('\ufeff', '')) for c in new_cols]
 
         # Standardize synonyms: "Mô tả" -> "Ghi chú", "Mức độ ưu tiên" -> "Lỗi"
         if "Mô tả" in df.columns and "Ghi chú" not in df.columns:
             df["Ghi chú"] = df["Mô tả"]
         if "Mức độ ưu tiên" in df.columns and "Lỗi" not in df.columns:
             df["Lỗi"] = df["Mức độ ưu tiên"]
+
+        # Flexible column mappings for date & time fields
+        for c in df.columns:
+            c_clean = c.lower()
+            if "thời điểm bắt đầu thực hiện" in c_clean and "Thời điểm bắt đầu thực hiện (dd/MM/yyyy HH:mm:ss)" not in df.columns:
+                df["Thời điểm bắt đầu thực hiện (dd/MM/yyyy HH:mm:ss)"] = df[c]
+            elif "thời điểm yêu cầu kết thúc" in c_clean and "Thời điểm yêu cầu kết thúc (dd/MM/yyyy HH:mm:ss)" not in df.columns:
+                df["Thời điểm yêu cầu kết thúc (dd/MM/yyyy HH:mm:ss)"] = df[c]
+            elif "thời gian còn lại" in c_clean and "Thời gian còn lại (H)" not in df.columns:
+                df["Thời gian còn lại (H)"] = df[c]
+
+        # Validate that "Mã công việc" exists
+        found_col = None
+        for c in df.columns:
+            if c.lower() in ("mã công việc", "mã cv", "ma cong viec", "ma_cong_viec", "wo"):
+                found_col = c
+                break
+        if found_col:
+            df["Mã công việc"] = df[found_col]
+        else:
+            available_cols = ", ".join(df.columns[:10])
+            raise ValueError(f"File thiếu cột bắt buộc 'Mã công việc'. Các cột tìm thấy: [{available_cols}]. Vui lòng kiểm tra lại file!")
+
+        total_rows = len(df)
+        import_record.total_rows = total_rows
+        db.commit()
 
         # Step 2: Filter out SPM and SPM_VTNET rows
         filtered_out_count = 0
@@ -212,6 +272,14 @@ def process_excel_import(import_id: int, file_path: str):
             df_valid = df[~is_spm].copy()
         else:
             df_valid = df.copy()
+
+        # Filter out rows with empty "Mã công việc"
+        df_valid = df_valid[df_valid["Mã công việc"].notna()].copy()
+        df_valid["Mã công việc"] = df_valid["Mã công việc"].astype(str).str.strip()
+        df_valid = df_valid[df_valid["Mã công việc"] != ""]
+
+        # CRITICAL: Deduplicate by "Mã công việc" keeping the latest row to prevent UNIQUE constraint collisions!
+        df_valid = df_valid.drop_duplicates(subset=["Mã công việc"], keep="last")
 
         import_record.filtered_out_count = filtered_out_count
         import_record.progress_percent = 25
@@ -226,10 +294,6 @@ def process_excel_import(import_id: int, file_path: str):
         station_cache = dim_cache["stations"]
         type_cache = dim_cache["task_types"]
 
-        # Invert employee and group caches for quick id -> name lookups in history
-        emp_id_to_name = {v: k for k, v in emp_cache.items()}
-        group_id_to_name = {v: k for k, v in group_cache.items()}
-
         import_record.progress_percent = 35
         db.commit()
 
@@ -241,8 +305,13 @@ def process_excel_import(import_id: int, file_path: str):
             pass
 
         # Step 5: Xoá sạch dữ liệu công việc cũ trong database trước khi nạp file mới
-        # (Theo yêu cầu: file mới chứa đầy đủ snapshot WO hiện tại, không cần so sánh diff với file cũ)
         import_record.progress_percent = 40
+        db.commit()
+
+        if is_sqlite:
+            db.execute(text("PRAGMA foreign_keys = OFF;"))
+        else:
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
         db.commit()
 
         db.query(TaskHistory).delete()
@@ -250,11 +319,12 @@ def process_excel_import(import_id: int, file_path: str):
         db.commit()
 
         # Step 6: Chuẩn bị dữ liệu và Bulk Insert
-        valid_rows_count = len(df_valid)
+        # Convert DataFrame to list of dicts for 100x faster iteration than iterrows()
+        df_records = df_valid.to_dict(orient="records")
         now = datetime.utcnow()
         tasks_to_insert = []
 
-        for _, row in df_valid.iterrows():
+        for row in df_records:
             ma_cv = clean_str(row.get("Mã công việc"))
             if not ma_cv:
                 continue
@@ -325,13 +395,19 @@ def process_excel_import(import_id: int, file_path: str):
             db.bulk_insert_mappings(Task, batch)
             db.commit()
 
-            pct = 40 + int(((i + len(batch)) / max(1, total_tasks)) * 55)
+            pct = 45 + int(((i + len(batch)) / max(1, total_tasks)) * 50)
             import_record.progress_percent = min(pct, 96)
             import_record.inserted_count = i + len(batch)
             db.commit()
 
+        # Re-enable foreign keys
+        if is_sqlite:
+            db.execute(text("PRAGMA foreign_keys = ON;"))
+        else:
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+        db.commit()
+
         # Step 7: Kích hoạt file này là file đang sử dụng trong DB (is_active = 1)
-        # Các file khác chuyển về is_active = 0
         db.query(ImportLog).filter(ImportLog.id != import_id).update({"is_active": 0})
         import_record.is_active = 1
         import_record.status = "COMPLETED"
@@ -339,6 +415,7 @@ def process_excel_import(import_id: int, file_path: str):
         import_record.inserted_count = total_tasks
         import_record.updated_count = 0
         import_record.unchanged_count = 0
+        import_record.error_message = None
         db.commit()
 
         # Step 8: Pre-compute & warm up statistics immediately upon import
@@ -354,10 +431,19 @@ def process_excel_import(import_id: int, file_path: str):
         err_msg = f"{str(e)}\n{traceback.format_exc()}"
         print(f"Import Error: {err_msg}")
         try:
+            if is_sqlite:
+                db.execute(text("PRAGMA foreign_keys = ON;"))
+            else:
+                db.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+            db.commit()
+        except Exception:
+            pass
+
+        try:
             import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
             if import_record:
                 import_record.status = "FAILED"
-                import_record.error_message = err_msg[:2000]
+                import_record.error_message = str(e) if len(str(e)) > 10 else err_msg[:1000]
                 db.commit()
         except Exception:
             pass

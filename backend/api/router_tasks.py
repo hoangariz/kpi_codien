@@ -33,7 +33,7 @@ def list_tasks(
     system_id: Optional[int] = None,
     is_overdue: Optional[bool] = None,
     sort_by: str = Query("thoi_diem_tao"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db)
 ):
     """Get paginated tasks with full filter and search capabilities."""

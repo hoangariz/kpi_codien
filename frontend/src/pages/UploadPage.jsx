@@ -277,7 +277,7 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
       )}
 
       {/* Error Report */}
-      {importStatus && importStatus.status === 'FAILED' && (
+      {(errorMessage || (importStatus && importStatus.status === 'FAILED')) && (
         <div 
           style={{ 
             background: 'var(--danger-light)', 
@@ -292,7 +292,7 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
             <strong>Đã xảy ra lỗi trong quá trình xử lý file!</strong>
           </div>
           <p style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
-            {importStatus.error_message || errorMessage}
+            {importStatus?.error_message || errorMessage}
           </p>
         </div>
       )}

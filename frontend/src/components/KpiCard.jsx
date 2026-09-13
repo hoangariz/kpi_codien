@@ -26,6 +26,21 @@ export default function KpiCard({ title, value, subtext, icon: Icon, color = 'bl
       bg: 'var(--info-light)',
       text: 'var(--info)',
       bar: 'var(--info)'
+    },
+    purple: {
+      bg: 'rgba(139, 92, 246, 0.15)',
+      text: '#8b5cf6',
+      bar: '#8b5cf6'
+    },
+    rose: {
+      bg: 'rgba(244, 63, 94, 0.15)',
+      text: '#e11d48',
+      bar: '#e11d48'
+    },
+    cyan: {
+      bg: 'rgba(6, 182, 212, 0.15)',
+      text: '#0891b2',
+      bar: '#0891b2'
     }
   };
 

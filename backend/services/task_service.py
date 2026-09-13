@@ -92,6 +92,7 @@ def get_tasks_paginated(
     task_keys = [t.ma_cong_viec for t in items_raw]
     note_counts = {}
     history_counts = {}
+    latest_notes = {}
     if task_keys:
         nc = db.query(TaskNote.ma_cong_viec, func.count(TaskNote.id))\
             .filter(TaskNote.ma_cong_viec.in_(task_keys))\
@@ -103,6 +104,14 @@ def get_tasks_paginated(
             .group_by(TaskHistory.ma_cong_viec).all()
         history_counts = {k: v for k, v in hc}
 
+        all_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content)\
+            .filter(TaskNote.ma_cong_viec.in_(task_keys))\
+            .order_by(TaskNote.created_at.desc())\
+            .all()
+        for k, content in all_notes:
+            if k not in latest_notes:
+                latest_notes[k] = content
+
     items = []
     for t in items_raw:
         item = TaskListItem(
@@ -110,6 +119,7 @@ def get_tasks_paginated(
             ma_cong_viec_cha=t.ma_cong_viec_cha,
             loai_cong_viec=t.loai_cong_viec,
             noi_dung_cong_viec=t.noi_dung_cong_viec,
+            ghi_chu=t.ghi_chu,
             trang_thai=t.trang_thai,
             trang_thai_hoan_thanh=t.trang_thai_hoan_thanh,
             thoi_diem_tao=t.thoi_diem_tao,
@@ -120,6 +130,8 @@ def get_tasks_paginated(
             thoi_diem_cd_dong=t.thoi_diem_cd_dong,
             thue_bao=t.thue_bao,
             loi=t.loi,
+            assigned_to_id=t.assigned_to_id,
+            group_id=t.group_id,
             employee_assigned_name=t.employee_assigned.name if t.employee_assigned else None,
             employee_created_name=t.employee_created.name if t.employee_created else None,
             group_name=t.group.name if t.group else None,
@@ -128,6 +140,7 @@ def get_tasks_paginated(
             station_code=t.station.code if t.station else None,
             note_count=note_counts.get(t.ma_cong_viec, 0),
             history_count=history_counts.get(t.ma_cong_viec, 0),
+            latest_note=latest_notes.get(t.ma_cong_viec),
         )
         items.append(item)
 

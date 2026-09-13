@@ -5,8 +5,8 @@ let maintenanceTasksCache = null;
 let maintenanceTasksCacheKey = null;
 let maintenanceTasksLoadingPromise = null;
 
-async function loadAllValidMaintenanceTasks(targetType, activeMonth) {
-  const cacheKey = `${targetType}_${activeMonth}`;
+async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosedPriorMonths = true) {
+  const cacheKey = `${targetType}_${activeMonth}_${excludeClosedPriorMonths !== false}`;
   if (maintenanceTasksCache && maintenanceTasksCacheKey === cacheKey) {
     return maintenanceTasksCache;
   }
@@ -19,7 +19,7 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth) {
       // 1. First try backend endpoint /stats/maintenance-special/tasks
       try {
         const res = await api.get('/stats/maintenance-special/tasks', {
-          params: { task_type: targetType, month: activeMonth, metric: 'total', page: 1, page_size: 500 }
+          params: { task_type: targetType, month: activeMonth, metric: 'total', page: 1, page_size: 5000 }
         });
         if (res.data?.items) {
           let allItems = res.data.items;
@@ -27,7 +27,7 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth) {
             const pagePromises = [];
             for (let p = 2; p <= res.data.total_pages; p++) {
               pagePromises.push(api.get('/stats/maintenance-special/tasks', {
-                params: { task_type: targetType, month: activeMonth, metric: 'total', page: p, page_size: 500 }
+                params: { task_type: targetType, month: activeMonth, metric: 'total', page: p, page_size: 5000 }
               }));
             }
             const rList = await Promise.all(pagePromises);
@@ -80,7 +80,7 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth) {
 
       const validItems = items.filter(t => {
         if (t.loai_cong_viec !== targetType) return false;
-        if (t.trang_thai === 'Đóng' && t.thoi_diem_yeu_cau_ket_thuc) {
+        if (excludeClosedPriorMonths !== false && t.trang_thai === 'Đóng' && t.thoi_diem_yeu_cau_ket_thuc) {
           const endDt = new Date(t.thoi_diem_yeu_cau_ket_thuc);
           if (endDt < monthStart) return false;
         }
@@ -115,39 +115,103 @@ export const statsApi = {
     const res = await api.get('/stats/maintenance-special', { params });
     return res.data;
   },
-  preloadMaintenanceTasks: async (month = '2026-09', targetType = 'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS') => {
-    return loadAllValidMaintenanceTasks(targetType, month || '2026-09');
+  preloadMaintenanceTasks: async (month = '2026-09', targetType = 'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS', excludeClosedPriorMonths = true) => {
+    return loadAllValidMaintenanceTasks(targetType, month || '2026-09', excludeClosedPriorMonths);
   },
   clearMaintenanceCache: () => {
     maintenanceTasksCache = null;
     maintenanceTasksCacheKey = null;
     maintenanceTasksLoadingPromise = null;
   },
+  updateTaskNoteInCache: (ma_cong_viec, note_content) => {
+    if (maintenanceTasksCache && Array.isArray(maintenanceTasksCache)) {
+      const idx = maintenanceTasksCache.findIndex(t => t.ma_cong_viec === ma_cong_viec);
+      if (idx !== -1) {
+        maintenanceTasksCache[idx] = {
+          ...maintenanceTasksCache[idx],
+          latest_note: note_content,
+          note_count: (maintenanceTasksCache[idx].note_count || 0) + 1
+        };
+      }
+    }
+  },
   getMaintenanceTasks: async (params = {}) => {
     const targetType = params.target_type || 'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS';
     const activeMonth = params.month || '2026-09';
+    const excludeClosed = params.exclude_closed_prior_months !== false;
 
     // Load or slice from memory cache (< 1ms instant access)
-    const allValidTasks = await loadAllValidMaintenanceTasks(targetType, activeMonth);
+    const allValidTasks = await loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosed);
     let items = [...allValidTasks];
+
+    // 0. Tracking Board Filter
+    if (params.board_codes && Array.isArray(params.board_codes)) {
+      const codeSet = new Set(params.board_codes);
+      items = items.filter(t => codeSet.has(t.ma_cong_viec));
+    } else if (params.board_id) {
+      try {
+        const boardRes = await api.get(`/tracking-boards/${params.board_id}`);
+        const codes = boardRes.data?.tasks?.map(t => t.ma_cong_viec) || [];
+        const codeSet = new Set(codes);
+        items = items.filter(t => codeSet.has(t.ma_cong_viec));
+      } catch (e) {
+        console.error('Error fetching board tasks for filtering:', e);
+      }
+    }
 
     // 1. Dimension Filter
     if (params.filter_type === 'employee') {
       if (params.is_other) {
-        items = items.filter(t => !t.employee_assigned_name);
-      } else if (params.filter_id != null) {
-        items = items.filter(t => t.assigned_to_id === params.filter_id || (params.target_name && t.employee_assigned_name === params.target_name));
-      } else if (params.target_name) {
-        items = items.filter(t => t.employee_assigned_name === params.target_name);
+        items = items.filter(t => !t.assigned_to_id || !t.employee_assigned_name || t.employee_assigned_name.includes('Chưa gán') || t.employee_assigned_name.includes('Khác'));
+      } else {
+        const target = (params.target_name || '').trim().toLowerCase();
+        items = items.filter(t => {
+          if (params.filter_id != null && t.assigned_to_id != null && t.assigned_to_id === params.filter_id) {
+            return true;
+          }
+          if (target && target !== 'toàn bộ báo cáo' && t.employee_assigned_name) {
+            return t.employee_assigned_name.trim().toLowerCase() === target;
+          }
+          return false;
+        });
       }
     } else if (params.filter_type === 'group') {
       if (params.is_other) {
-        items = items.filter(t => !t.group_name);
-      } else if (params.filter_id != null) {
-        items = items.filter(t => t.group_id === params.filter_id || (params.target_name && t.group_name === params.target_name));
-      } else if (params.target_name) {
-        items = items.filter(t => t.group_name === params.target_name);
+        items = items.filter(t => !t.group_id || !t.group_name || t.group_name.includes('Chưa phân cụm') || t.group_name.includes('Khác'));
+      } else {
+        const target = (params.target_name || '').trim().toLowerCase();
+        items = items.filter(t => {
+          if (params.filter_id != null && t.group_id != null && t.group_id === params.filter_id) {
+            return true;
+          }
+          if (target && target !== 'toàn bộ báo cáo' && t.group_name) {
+            const gName = t.group_name.trim().toLowerCase();
+            return gName === target || gName.includes(target) || target.includes(gName);
+          }
+          return false;
+        });
       }
+    }
+
+    // 1.5 Sub-category keyword filter (Hỗ trợ Bảng con từ khóa & Bảng con Khác)
+    const isOtherSub = Boolean(
+      params.is_sub_other || 
+      params.sub_category_id === 0 || 
+      (params.sub_keyword && (params.sub_keyword.toUpperCase() === 'KHÁC' || params.sub_keyword.toLowerCase() === 'khác'))
+    );
+
+    if (isOtherSub) {
+      const definedKws = (params.all_sub_keywords || ['CONDITIONER', 'DC_COOLING', 'GENERATOR', 'VENTILATION'])
+        .filter(k => k && k.toUpperCase() !== 'KHÁC')
+        .map(k => k.trim().toLowerCase())
+        .filter(Boolean);
+      items = items.filter(t => {
+        const content = (t.noi_dung_cong_viec || '').toLowerCase();
+        return !definedKws.some(k => content.includes(k));
+      });
+    } else if (params.sub_keyword && params.sub_keyword.toUpperCase() !== 'KHÁC') {
+      const kw = params.sub_keyword.trim().toLowerCase();
+      items = items.filter(t => (t.noi_dung_cong_viec || '').toLowerCase().includes(kw));
     }
 
     // 2. Metric Filter
@@ -190,6 +254,26 @@ export const statsApi = {
         const s = (t.trang_thai || '').toLowerCase();
         return s.includes('ft hoàn thành');
       });
+    } else if (params.metric === 'tu_choi') {
+      items = items.filter(t => {
+        const s = (t.trang_thai || '').toLowerCase();
+        return s.includes('từ chối');
+      });
+    } else if (params.metric === 'ft_tu_choi') {
+      items = items.filter(t => (t.trang_thai || '').toLowerCase().includes('ft từ chối'));
+    } else if (params.metric === 'cd_tu_choi') {
+      items = items.filter(t => {
+        const s = (t.trang_thai || '').toLowerCase();
+        return s.includes('cd từ chối') || s.includes('cđ từ chối');
+      });
+    } else if (params.metric === 'overdue_tu_choi') {
+      items = items.filter(t => {
+        const s = (t.trang_thai || '').toLowerCase();
+        if (!s.includes('từ chối')) return false;
+        if (t.thoi_gian_con_lai < 0) return true;
+        if (t.thoi_diem_yeu_cau_ket_thuc && new Date(t.thoi_diem_yeu_cau_ket_thuc) < now) return true;
+        return false;
+      });
     }
 
     // 3. Search filter
@@ -198,6 +282,7 @@ export const statsApi = {
       items = items.filter(t => 
         (t.ma_cong_viec && t.ma_cong_viec.toLowerCase().includes(q)) ||
         (t.noi_dung_cong_viec && t.noi_dung_cong_viec.toLowerCase().includes(q)) ||
+        (t.ghi_chu && t.ghi_chu.toLowerCase().includes(q)) ||
         (t.station_code && t.station_code.toLowerCase().includes(q)) ||
         (t.employee_assigned_name && t.employee_assigned_name.toLowerCase().includes(q)) ||
         (t.group_name && t.group_name.toLowerCase().includes(q))
@@ -242,9 +327,9 @@ export const statsApi = {
 
     const total = items.length;
     const page = params.page || 1;
-    const pageSize = params.page_size || 50;
+    const pageSize = params.page_size || 50000;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const pagedItems = items.slice((page - 1) * pageSize, page * pageSize);
+    const pagedItems = (pageSize >= total && page === 1) ? items : items.slice((page - 1) * pageSize, page * pageSize);
 
     return {
       total,

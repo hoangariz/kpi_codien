@@ -4,6 +4,8 @@ from backend.models.task import Task
 from backend.models.history import TaskHistory
 from backend.models.note import TaskNote
 from backend.models.settings import SystemSetting
+from backend.models.tracking import TrackingBoard, TrackingBoardTask
+from backend.models.report_category import ReportCategory, ReportSubCategory
 
 __all__ = [
     "Employee",
@@ -17,4 +19,9 @@ __all__ = [
     "TaskHistory",
     "TaskNote",
     "SystemSetting",
+    "TrackingBoard",
+    "TrackingBoardTask",
+    "ReportCategory",
+    "ReportSubCategory",
 ]
+

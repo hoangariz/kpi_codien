@@ -6,11 +6,25 @@ from backend.config import DATABASE_URL
 is_sqlite = DATABASE_URL.startswith("sqlite")
 
 if is_sqlite:
+    from sqlalchemy import event
+
     engine = create_engine(
         DATABASE_URL,
-        connect_args={"check_same_thread": False},
+        connect_args={"check_same_thread": False, "timeout": 60},
         echo=False
     )
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=60000")
+        except Exception:
+            pass
+        finally:
+            cursor.close()
 else:
     # MySQL / MariaDB connection pool optimized for aaPanel production
     engine = create_engine(

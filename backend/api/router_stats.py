@@ -73,6 +73,7 @@ def stats_by_employee(
 def stats_maintenance_special(
     task_type: Optional[str] = MAINTENANCE_TASK_TYPE,
     month: Optional[str] = None,
+    board_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -80,23 +81,26 @@ def stats_maintenance_special(
     'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS'
     grouped by Nhân viên thực hiện and Nhóm điều phối.
     Filters out previous month closed tasks according to active month setting.
+    Can also filter by custom tracking board_id.
     """
-    return get_special_maintenance_stats(db, target_type=task_type, target_month=month)
+    return get_special_maintenance_stats(db, target_type=task_type, target_month=month, board_id=board_id)
 
 
 @router.get("/maintenance-special/tasks", response_model=PaginatedTasksResponse)
 def stats_maintenance_tasks(
     task_type: Optional[str] = MAINTENANCE_TASK_TYPE,
     month: Optional[str] = None,
+    board_id: Optional[int] = None,
+    sub_category_id: Optional[int] = None,
     metric: str = Query("total"),
     filter_type: Optional[str] = None,
     filter_id: Optional[int] = None,
     is_other: bool = Query(False),
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=500),
+    page_size: int = Query(10000, ge=1, le=50000),
     sort_by: str = Query("thoi_diem_yeu_cau_ket_thuc"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db)
 ):
     """
@@ -107,6 +111,8 @@ def stats_maintenance_tasks(
         db=db,
         target_type=task_type,
         target_month=month,
+        board_id=board_id,
+        sub_category_id=sub_category_id,
         metric=metric,
         filter_type=filter_type,
         filter_id=filter_id,

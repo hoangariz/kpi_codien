@@ -11,6 +11,12 @@ class KPIOverview(BaseModel):
     total_groups: int
     total_employees: int
     maintenance_total: int  # Specifically for "Bảo dưỡng cứng cơ điện điều hòa..."
+    tu_choi_count: int = 0
+    ft_tu_choi_count: int = 0
+    cd_tu_choi_count: int = 0
+    overdue_tu_choi_count: int = 0
+    ft_hoan_thanh_count: int = 0
+    cho_cd_tiep_nhan_count: int = 0
 
 
 class StatusBreakdown(BaseModel):
@@ -59,6 +65,10 @@ class MaintenanceStatItem(BaseModel):
     ft_dang_thuc_hien: int = 0
     cho_cd_tiep_nhan: int = 0
     ft_hoan_thanh: int = 0
+    tu_choi: int = 0
+    ft_tu_choi: int = 0
+    cd_tu_choi: int = 0
+    overdue_tu_choi: int = 0
     other: int = 0
 
 
@@ -70,6 +80,8 @@ class MaintenanceSpecialResponse(BaseModel):
     summary: Dict[str, Any]
     by_employee: List[MaintenanceStatItem]
     by_group: List[MaintenanceStatItem]
+    sub_categories: Optional[List[Dict[str, Any]]] = []
+    sub_categories_stats: Optional[List[Dict[str, Any]]] = []
 
 
 class TimelineItem(BaseModel):

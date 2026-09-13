@@ -5,8 +5,6 @@ import {
   Search, 
   Download, 
   Eye, 
-  ChevronLeft, 
-  ChevronRight, 
   AlertCircle,
   FileSpreadsheet,
   Calendar,
@@ -60,8 +58,6 @@ function getStatusBadgeClass(status) {
 }
 
 export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSelectTask }) {
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState('thoi_diem_yeu_cau_ket_thuc');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -73,7 +69,6 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       setSortKey(key);
       setSortOrder(key.startsWith('thoi_diem_') ? 'desc' : 'asc');
     }
-    setPage(1);
   };
 
   const renderSortIndicator = (key) => {
@@ -87,21 +82,29 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     );
   };
 
-  // Fetch tasks matching the clicked number's exact filters
+  // Fetch all tasks matching the clicked number's exact filters (display all directly without page size limit)
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['maintenance-drilldown-tasks', filterInfo, page, pageSize, searchTerm, sortKey, sortOrder],
+    queryKey: ['maintenance-drilldown-tasks', filterInfo, searchTerm, sortKey, sortOrder],
     queryFn: () => statsApi.getMaintenanceTasks({
       metric: filterInfo.metric || 'total',
       filter_type: filterInfo.filterType || null,
       filter_id: filterInfo.filterId ?? null,
+      target_name: filterInfo.targetName || null,
       is_other: Boolean(filterInfo.isOther),
       month: filterInfo.activeMonth || null,
       target_type: filterInfo.targetType || undefined,
+      exclude_closed_prior_months: filterInfo.excludeClosedPriorMonths,
+      board_id: filterInfo.boardId || undefined,
+      board_codes: filterInfo.boardCodes || undefined,
+      sub_category_id: filterInfo.subCategoryId || undefined,
+      sub_keyword: filterInfo.subKeyword || undefined,
+      is_sub_other: Boolean(filterInfo.isSubOther),
+      all_sub_keywords: filterInfo.allSubKeywords || undefined,
       search: searchTerm.trim() || undefined,
       sort_by: sortKey,
       sort_order: sortOrder,
-      page,
-      page_size: pageSize,
+      page: 1,
+      page_size: 20000,
     }),
     enabled: Boolean(isOpen && filterInfo),
     keepPreviousData: true,
@@ -118,9 +121,11 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     if (!items.length) return;
     const headers = [
       'STT',
+      'Ghi chú',
       'Mã công việc',
       'Loại công việc',
       'Nội dung công việc',
+      'Mô tả',
       'Trạng thái',
       'Nhóm điều phối',
       'Nhân viên thực hiện',
@@ -131,10 +136,12 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     ];
 
     const rows = items.map((t, idx) => [
-      (page - 1) * pageSize + idx + 1,
+      idx + 1,
+      `"${(t.latest_note || '').replace(/"/g, '""')}"`,
       `"${t.ma_cong_viec || ''}"`,
       `"${(t.loai_cong_viec || '').replace(/"/g, '""')}"`,
       `"${(t.noi_dung_cong_viec || '').replace(/"/g, '""')}"`,
+      `"${(t.ghi_chu || '').replace(/"/g, '""')}"`,
       `"${t.trang_thai || ''}"`,
       `"${t.group_name || ''}"`,
       `"${t.employee_assigned_name || ''}"`,
@@ -150,7 +157,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     const link = document.createElement('a');
     link.setAttribute('href', url);
     const safeTitle = `${filterInfo.targetName || 'Tat_ca'}_${filterInfo.metricLabel || 'Chi_tiet'}`.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_');
-    link.setAttribute('download', `Chi_tiet_${safeTitle}_Trang_${page}.csv`);
+    link.setAttribute('download', `Chi_tiet_${safeTitle}_Toan_bo.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -215,6 +222,33 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
             <span className="badge badge-neutral" style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}>
               {isLoading ? 'Đang tải...' : `${total.toLocaleString()} công việc`}
             </span>
+
+            {filterInfo.boardName && (
+              <span style={{ 
+                padding: '2px 8px', 
+                borderRadius: '12px', 
+                background: 'rgba(139, 92, 246, 0.15)', 
+                color: '#8b5cf6', 
+                fontSize: '0.78rem', 
+                fontWeight: 700 
+              }}>
+                📌 {filterInfo.boardName}
+              </span>
+            )}
+
+            {filterInfo.subCategoryName && (
+              <span style={{
+                padding: '2px 10px',
+                borderRadius: '12px',
+                background: 'rgba(2, 132, 199, 0.15)',
+                color: 'var(--brand-primary)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                border: '1px solid rgba(2, 132, 199, 0.3)'
+              }}>
+                📂 Đầu việc con: {filterInfo.subCategoryName}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -257,19 +291,16 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
               <Search size={14} className="search-icon" />
               <input
                 type="text"
-                placeholder="Tìm theo mã việc, nội dung, trạm, người nhận..."
+                placeholder="Tìm theo mã việc, nội dung, mô tả, trạm, người nhận..."
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1); // reset to page 1 on search
-                }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 style={{ padding: '6px 10px 6px 32px', fontSize: '0.82rem', height: '32px' }}
               />
             </div>
             {searchTerm && (
               <button 
                 className="btn btn-outline" 
-                onClick={() => { setSearchTerm(''); setPage(1); }}
+                onClick={() => setSearchTerm('')}
                 style={{ padding: '4px 8px', fontSize: '0.75rem', height: '32px' }}
               >
                 Xóa
@@ -278,26 +309,10 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            <span>* Nhấp tiêu đề cột để sắp xếp A-Z / 0-9 &bull; Rê chuột vào ô để xem nội dung đầy đủ</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>Hiển thị:</span>
-              <select 
-                value={pageSize} 
-                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.78rem'
-                }}
-              >
-                <option value={25}>25 hàng</option>
-                <option value={50}>50 hàng</option>
-                <option value={100}>100 hàng</option>
-              </select>
-            </div>
+            <span>* Nhấp tiêu đề cột để sắp xếp &bull; Rê chuột vào ô để xem nội dung đầy đủ</span>
+            <span className="badge badge-info" style={{ fontSize: '0.72rem', padding: '3px 8px', fontWeight: 700 }}>
+              Hiển thị toàn bộ ({items.length.toLocaleString()})
+            </span>
           </div>
         </div>
 
@@ -325,6 +340,14 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                   <th style={{ width: '38px', minWidth: '38px', whiteSpace: 'nowrap' }}>STT</th>
                   
                   <th 
+                    onClick={() => handleSort('latest_note')}
+                    style={{ width: '160px', minWidth: '140px', maxWidth: '220px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    title="Nhấn để sắp xếp theo Ghi chú"
+                  >
+                    Ghi chú {renderSortIndicator('latest_note')}
+                  </th>
+
+                  <th 
                     onClick={() => handleSort('ma_cong_viec')}
                     style={{ width: '130px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                     title="Nhấn để sắp xếp theo Mã công việc"
@@ -346,6 +369,14 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                     title="Nhấn để sắp xếp theo Nội dung công việc"
                   >
                     Nội dung công việc {renderSortIndicator('noi_dung_cong_viec')}
+                  </th>
+
+                  <th 
+                    onClick={() => handleSort('ghi_chu')}
+                    style={{ minWidth: '180px', maxWidth: '300px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    title="Nhấn để sắp xếp theo Mô tả"
+                  >
+                    Mô tả {renderSortIndicator('ghi_chu')}
                   </th>
 
                   <th 
@@ -410,7 +441,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
               <tbody>
                 {items.map((t, idx) => {
                   const isOverdue = t.thoi_gian_con_lai < 0;
-                  const stt = (page - 1) * pageSize + idx + 1;
+                  const stt = idx + 1;
                   return (
                     <tr 
                       key={t.ma_cong_viec} 
@@ -422,6 +453,31 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                       {/* 1. STT */}
                       <td className="cell-num" style={{ width: '38px', color: 'var(--text-muted)' }}>
                         {stt}
+                      </td>
+
+                      {/* Ghi chú */}
+                      <td 
+                        style={{ 
+                          whiteSpace: 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          maxWidth: '180px',
+                          color: t.latest_note ? 'var(--text-primary)' : 'var(--text-muted)',
+                          fontStyle: t.latest_note ? 'normal' : 'italic',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                        title={t.latest_note ? `Ghi chú: ${t.latest_note}` : 'Chưa có ghi chú (Nhấn để xem/thêm ghi chú)'}
+                        onClick={() => onSelectTask && onSelectTask(t)}
+                      >
+                        {t.latest_note ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ color: 'var(--brand-primary)', fontSize: '11px' }}>📝</span>
+                            <span>{t.latest_note}</span>
+                          </span>
+                        ) : (
+                          <span style={{ opacity: 0.4 }}>--</span>
+                        )}
                       </td>
 
                       {/* 2. Mã công việc */}
@@ -464,6 +520,20 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                         title={t.noi_dung_cong_viec || '(Không có nội dung)'}
                       >
                         {t.noi_dung_cong_viec || '(Không có nội dung)'}
+                      </td>
+
+                      {/* 4.5 Mô tả */}
+                      <td 
+                        style={{ 
+                          whiteSpace: 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          maxWidth: '300px',
+                          color: 'var(--text-secondary)'
+                        }}
+                        title={t.ghi_chu || '(Không có mô tả)'}
+                      >
+                        {t.ghi_chu || <span style={{ opacity: 0.35 }}>--</span>}
                       </td>
 
                       {/* 5. Trạng thái */}
@@ -577,10 +647,10 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
           )}
         </div>
 
-        {/* Modal Footer: Pagination */}
+        {/* Modal Footer: Total & Count Summary (Displaying All Records) */}
         <div 
           style={{ 
-            padding: '8px 20px', 
+            padding: '10px 20px', 
             background: 'var(--bg-secondary)', 
             borderTop: '1px solid var(--border-color)',
             display: 'flex',
@@ -590,32 +660,19 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
             gap: '10px'
           }}
         >
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Hiển thị từ <strong>{Math.min(total, (page - 1) * pageSize + 1)}</strong> đến <strong>{Math.min(total, page * pageSize)}</strong> trong tổng số <strong>{total.toLocaleString()}</strong> công việc
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>Tổng cộng:</span>
+            <strong style={{ color: 'var(--brand-primary)', fontSize: '0.98rem', fontFamily: 'var(--font-mono)' }}>
+              {total.toLocaleString()}
+            </strong>
+            <span>công việc</span>
+            <span className="badge badge-success" style={{ fontSize: '0.72rem', padding: '2px 8px', fontWeight: 700 }}>
+              Đang hiển thị toàn bộ ({items.length.toLocaleString()})
+            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              className="btn btn-outline"
-              disabled={page <= 1 || isFetching}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              style={{ padding: '4px 10px', fontSize: '0.78rem', gap: '4px' }}
-            >
-              <ChevronLeft size={14} /> Trang trước
-            </button>
-
-            <span style={{ padding: '0 8px', fontSize: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-              Trang {page} / {totalPages}
-            </span>
-
-            <button
-              className="btn btn-outline"
-              disabled={page >= totalPages || isFetching}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              style={{ padding: '4px 10px', fontSize: '0.78rem', gap: '4px' }}
-            >
-              Trang sau <ChevronRight size={14} />
-            </button>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {searchTerm ? `(Đang lọc tìm kiếm: "${searchTerm}")` : '* Cuộn danh sách để xem toàn bộ công việc'}
           </div>
         </div>
       </div>
