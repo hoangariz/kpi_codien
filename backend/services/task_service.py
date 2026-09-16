@@ -18,6 +18,8 @@ def get_tasks_paginated(
     loai_cong_viec: Optional[str] = None,
     system_id: Optional[int] = None,
     is_overdue: Optional[bool] = None,
+    station_code: Optional[str] = None,
+    ft_username: Optional[str] = None,
     sort_by: str = "thoi_diem_tao",
     sort_order: str = "desc"
 ) -> Dict[str, Any]:
@@ -27,15 +29,39 @@ def get_tasks_paginated(
     filters = []
 
     if search:
-        search_pattern = f"%{search.strip()}%"
+        # Detect multiple WO codes (comma-separated)
+        if ',' in search:
+            wo_codes = [s.strip() for s in search.split(',') if s.strip()]
+            if wo_codes:
+                filters.append(Task.ma_cong_viec.in_(wo_codes))
+        else:
+            search_pattern = f"%{search.strip()}%"
+            filters.append(
+                or_(
+                    Task.ma_cong_viec.ilike(search_pattern),
+                    Task.noi_dung_cong_viec.ilike(search_pattern),
+                    Task.thue_bao.ilike(search_pattern),
+                    Task.ghi_chu.ilike(search_pattern),
+                    Task.station.has(Station.code.ilike(search_pattern)),
+                    Task.employee_assigned.has(Employee.name.ilike(search_pattern)),
+                )
+            )
+
+    if station_code and station_code.strip() and ft_username and ft_username.strip() and station_code.strip() == ft_username.strip():
+        # station_ft combined mode: match either station OR FT name
+        val = station_code.strip()
         filters.append(
             or_(
-                Task.ma_cong_viec.ilike(search_pattern),
-                Task.noi_dung_cong_viec.ilike(search_pattern),
-                Task.thue_bao.ilike(search_pattern),
-                Task.ghi_chu.ilike(search_pattern),
+                Task.station.has(Station.code.ilike(f"%{val}%")),
+                Task.employee_assigned.has(Employee.name.ilike(f"%{val}%")),
             )
         )
+    else:
+        if station_code and station_code.strip():
+            filters.append(Task.station.has(Station.code.ilike(f"%{station_code.strip()}%")))
+        if ft_username and ft_username.strip():
+            filters.append(Task.employee_assigned.has(Employee.name.ilike(f"%{ft_username.strip()}%")))
+
 
     if group_id:
         filters.append(Task.group_id == group_id)

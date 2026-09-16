@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from backend.database import Base
 
@@ -15,6 +15,10 @@ class ReportCategory(Base):
     sort_order = Column(Integer, default=0)
     is_default = Column(Boolean, default=False)
     exclude_closed_prior_months = Column(Boolean, default=True, nullable=False)
+    # Multi-filter support: 'by_loai' (lọc theo loai_cong_viec) | 'by_system' (lọc theo hệ thống)
+    filter_mode = Column(String(20), default="by_loai", nullable=False)
+    # JSON array string, VD: '["SPM", "ICMS"]' hoặc '["VCC_CD_LDTB Lắp đặt tủ nguồn DC"]'
+    filter_values = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

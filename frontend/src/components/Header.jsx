@@ -2,6 +2,7 @@ import React from 'react';
 import { 
   Activity, 
   LayoutDashboard, 
+  Search,
   Settings, 
   Sun, 
   Moon, 
@@ -23,8 +24,6 @@ export default function Header({
     month: 'numeric',
   });
 
-  const isAtAdmin = activeTab === 'admin';
-
   return (
     <header className="top-navbar">
       {/* Left: Brand + Status */}
@@ -43,21 +42,35 @@ export default function Header({
           </div>
         </div>
 
-        {/* If user is inside /admin, show a clear back button */}
-        {isAtAdmin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="badge badge-info" style={{ fontSize: '0.72rem', padding: '3px 8px', gap: '4px' }}>
-              <Settings size={12} /> Trang Quản Trị (/admin)
-            </span>
-            <button
-              className="btn btn-outline"
-              onClick={() => setActiveTab('dashboard')}
-              style={{ padding: '4px 12px', fontSize: '0.78rem', gap: '5px' }}
-            >
-              ⬅ Về Tổng Quan
-            </button>
-          </div>
-        )}
+        {/* Center Menu Navigation */}
+        <nav className="header-nav">
+          <button
+            className={`header-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+            title="Trang Tổng Quan KPI & Báo Cáo"
+          >
+            <LayoutDashboard size={16} />
+            <span>Tổng Quan</span>
+          </button>
+
+          <button
+            className={`header-nav-btn ${activeTab === 'search' ? 'active' : ''}`}
+            onClick={() => setActiveTab('search')}
+            title="Tra cứu công việc theo Mã WO, Mã Trạm, FT và ghi chú"
+          >
+            <Search size={16} />
+            <span>Tra Cứu & Chi Tiết WO</span>
+          </button>
+
+          <button
+            className={`header-nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
+            onClick={() => setActiveTab('admin')}
+            title="Quản trị bảng báo cáo, hệ thống và cấu hình"
+          >
+            <Settings size={16} />
+            <span>Quản Trị</span>
+          </button>
+        </nav>
       </div>
 
       {/* Right: Date, Theme, Refresh */}

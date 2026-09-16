@@ -1,25 +1,66 @@
+import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, or_, and_
 
 from backend.models import Task, ReportCategory
+from backend.models.dimensions import SystemModel
 from backend.schemas.report_category_schema import ReportCategoryCreate, ReportCategoryUpdate
 from backend.services.settings_service import get_current_month_setting
 
 
+def _parse_filter_values(raw: Optional[str]) -> List[str]:
+    """Deserialize filter_values JSON string → list. Returns [] on error."""
+    if not raw:
+        return []
+    try:
+        vals = json.loads(raw)
+        return [v for v in vals if v and str(v).strip()] if isinstance(vals, list) else []
+    except Exception:
+        return []
+
+
+def _build_type_conditions(cat, db: Session):
+    """
+    Build SQLAlchemy filter conditions based on cat.filter_mode and cat.filter_values.
+    Returns a list of conditions to be passed to .filter(*conds).
+    """
+    mode = (cat.filter_mode or "by_loai").strip()
+    values = _parse_filter_values(cat.filter_values)
+
+    if not values:
+        # Fallback: dùng loai_cong_viec cũ
+        if cat.loai_cong_viec and not cat.loai_cong_viec.startswith("["):
+            return [Task.loai_cong_viec == cat.loai_cong_viec]
+        return []
+
+    if mode == "by_system":
+        # Lọc theo hệ thống: join Task → SystemModel, filter name IN values
+        upper_values = [v.upper().strip() for v in values]
+        sys_ids = db.query(SystemModel.id).filter(
+            func.upper(func.trim(SystemModel.name)).in_(upper_values)
+        ).subquery()
+        return [Task.system_id.in_(sys_ids)]
+    else:
+        # by_loai (default): lọc theo loai_cong_viec IN values
+        if len(values) == 1:
+            return [Task.loai_cong_viec == values[0]]
+        return [Task.loai_cong_viec.in_(values)]
+
+
 def get_report_categories(
-    db: Session, 
-    target_month: Optional[str] = None, 
+    db: Session,
+    target_month: Optional[str] = None,
     include_summary: bool = True
 ) -> List[Dict[str, Any]]:
     """
     Get all report categories.
-    Optionally computes mini summary (total, closed, pending, overdue, rate) 
-    using the active month time rule.
+    Optionally computes mini summary (total, closed, pending, overdue, rate)
+    using the active month time rule. Supports multi-value filter_mode/filter_values.
     """
     categories = db.query(ReportCategory).order_by(
-        ReportCategory.sort_order.asc(), 
+        ReportCategory.sort_order.asc(),
         ReportCategory.id.asc()
     ).all()
 
@@ -35,6 +76,7 @@ def get_report_categories(
 
     output = []
     for cat in categories:
+        fv = _parse_filter_values(cat.filter_values)
         item = {
             "id": cat.id,
             "name": cat.name,
@@ -44,13 +86,34 @@ def get_report_categories(
             "is_default": cat.is_default,
             "exclude_closed_prior_months": cat.exclude_closed_prior_months if cat.exclude_closed_prior_months is not None else True,
             "sort_order": cat.sort_order,
+            "filter_mode": cat.filter_mode or "by_loai",
+            "filter_values": fv,
             "created_at": cat.created_at,
             "updated_at": cat.updated_at,
             "summary": None
         }
 
         if include_summary:
-            base_conds = [Task.loai_cong_viec == cat.loai_cong_viec]
+            base_conds = _build_type_conditions(cat, db)
+            if not base_conds:
+                item["summary"] = {"total": 0, "closed": 0, "pending": 0, "overdue": 0, "completion_rate": 0.0}
+                item["sub_categories"] = [
+                    {
+                        "id": sub.id,
+                        "category_id": sub.category_id,
+                        "name": sub.name,
+                        "keyword": sub.keyword,
+                        "description": sub.description,
+                        "sort_order": sub.sort_order,
+                        "created_at": sub.created_at,
+                        "updated_at": sub.updated_at,
+                        "summary": None
+                    }
+                    for sub in (cat.sub_categories or [])
+                ]
+                output.append(item)
+                continue
+
             exclude_closed = cat.exclude_closed_prior_months if cat.exclude_closed_prior_months is not None else True
             if exclude_closed:
                 base_conds.append(
@@ -100,7 +163,7 @@ def get_report_categories(
             }
 
         # Include sub_categories
-        sub_cats = [
+        item["sub_categories"] = [
             {
                 "id": sub.id,
                 "category_id": sub.category_id,
@@ -114,7 +177,6 @@ def get_report_categories(
             }
             for sub in (cat.sub_categories or [])
         ]
-        item["sub_categories"] = sub_cats
 
         output.append(item)
 
@@ -127,11 +189,24 @@ def get_report_category_by_id(db: Session, cat_id: int) -> Optional[ReportCatego
 
 def create_report_category(db: Session, payload: ReportCategoryCreate) -> ReportCategory:
     clean_name = payload.name.strip()
-    clean_type = payload.loai_cong_viec.strip()
     if not clean_name:
         raise ValueError("Tên bảng báo cáo không được để trống")
-    if not clean_type:
-        raise ValueError("Loại công việc không được để trống")
+
+    mode = (payload.filter_mode or "by_loai").strip()
+    values = [v.strip() for v in (payload.filter_values or []) if v and v.strip()]
+
+    if not values and payload.loai_cong_viec and payload.loai_cong_viec.strip():
+        # Backward compat: nếu chỉ dùng loai_cong_viec cũ
+        values = [payload.loai_cong_viec.strip()]
+
+    if not values:
+        raise ValueError("Vui lòng chọn ít nhất một giá trị lọc (loại công việc hoặc hệ thống)")
+
+    # Populate loai_cong_viec for backward compat
+    if mode == "by_loai":
+        clean_type = values[0]
+    else:
+        clean_type = f"[Hệ thống: {', '.join(values)}]"
 
     cat = ReportCategory(
         name=clean_name,
@@ -141,6 +216,8 @@ def create_report_category(db: Session, payload: ReportCategoryCreate) -> Report
         sort_order=payload.sort_order or 0,
         is_default=False,
         exclude_closed_prior_months=payload.exclude_closed_prior_months if payload.exclude_closed_prior_months is not None else True,
+        filter_mode=mode,
+        filter_values=json.dumps(values, ensure_ascii=False),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
@@ -151,8 +228,8 @@ def create_report_category(db: Session, payload: ReportCategoryCreate) -> Report
 
 
 def update_report_category(
-    db: Session, 
-    cat_id: int, 
+    db: Session,
+    cat_id: int,
     payload: ReportCategoryUpdate
 ) -> Optional[ReportCategory]:
     cat = db.query(ReportCategory).filter(ReportCategory.id == cat_id).first()
@@ -165,11 +242,28 @@ def update_report_category(
             raise ValueError("Tên bảng báo cáo không được để trống")
         cat.name = clean_name
 
-    if payload.loai_cong_viec is not None:
+    # Handle filter_mode + filter_values update
+    if payload.filter_values is not None:
+        mode = (payload.filter_mode or cat.filter_mode or "by_loai").strip()
+        values = [v.strip() for v in payload.filter_values if v and v.strip()]
+        if values:
+            cat.filter_mode = mode
+            cat.filter_values = json.dumps(values, ensure_ascii=False)
+            if mode == "by_loai":
+                cat.loai_cong_viec = values[0]
+            else:
+                cat.loai_cong_viec = f"[Hệ thống: {', '.join(values)}]"
+    elif payload.filter_mode is not None:
+        cat.filter_mode = payload.filter_mode.strip()
+
+    # Backward compat: direct loai_cong_viec update (only if filter_values not provided)
+    if payload.loai_cong_viec is not None and payload.filter_values is None:
         clean_type = payload.loai_cong_viec.strip()
         if not clean_type:
             raise ValueError("Loại công việc không được để trống")
         cat.loai_cong_viec = clean_type
+        cat.filter_mode = "by_loai"
+        cat.filter_values = json.dumps([clean_type], ensure_ascii=False)
 
     if payload.description is not None:
         cat.description = payload.description.strip() if payload.description.strip() else None
@@ -210,8 +304,8 @@ from backend.schemas.report_category_schema import ReportSubCategoryCreate, Repo
 
 
 def create_sub_category(
-    db: Session, 
-    category_id: int, 
+    db: Session,
+    category_id: int,
     payload: ReportSubCategoryCreate
 ) -> ReportSubCategory:
     """
@@ -257,8 +351,8 @@ def create_sub_category(
 
 
 def update_sub_category(
-    db: Session, 
-    sub_id: int, 
+    db: Session,
+    sub_id: int,
     payload: ReportSubCategoryUpdate
 ) -> Optional[ReportSubCategory]:
     """Cập nhật thông tin bảng con, kiểm tra trùng lặp từ khóa."""
@@ -311,4 +405,3 @@ def delete_sub_category(db: Session, sub_id: int) -> bool:
     db.delete(sub)
     db.commit()
     return True
-

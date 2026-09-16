@@ -273,6 +273,36 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
               </tr>
             </thead>
             <tbody>
+              {/* Excel True Summary Top Row */}
+              <tr className="excel-summary-row">
+                <td colSpan={2} style={{ textAlign: 'right', paddingRight: '14px', fontSize: '0.85rem', fontWeight: 800 }}>
+                  TỔNG CỘNG:
+                </td>
+                <td className="cell-num" style={{ fontSize: '0.95rem', color: 'var(--brand-primary)' }}>
+                  {summary.total ?? total_valid_records}
+                </td>
+                <td className="cell-num cell-closed" style={{ fontSize: '0.95rem' }}>
+                  {summary.closed ?? 0}
+                </td>
+                <td className="cell-num cell-pending" style={{ fontSize: '0.95rem' }}>
+                  {summary.pending ?? 0}
+                </td>
+                <td className="cell-num cell-overdue" style={{ fontSize: '0.95rem' }}>
+                  {summary.overdue ?? 0}
+                </td>
+                <td className="cell-num cell-today" style={{ fontSize: '0.95rem' }}>
+                  +{summary.closed_today ?? 0}
+                </td>
+                <td className="cell-num cell-week" style={{ fontSize: '0.95rem' }}>
+                  {summary.closed_last_7_days ?? 0}
+                </td>
+                <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.9rem' }}>
+                  {summary.completion_rate ?? 0}%
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>Full</span>
+                </td>
+              </tr>
               {currentList.map((row, index) => (
                 <tr 
                   key={row.id || index}
@@ -345,37 +375,6 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
                   </td>
                 </tr>
               ))}
-
-              {/* Excel True Summary Bottom Row */}
-              <tr className="excel-summary-row">
-                <td colSpan={2} style={{ textAlign: 'right', paddingRight: '14px', fontSize: '0.85rem' }}>
-                  TỔNG CỘNG ({currentList.length} hàng):
-                </td>
-                <td className="cell-num" style={{ fontSize: '0.95rem', color: 'var(--brand-primary)' }}>
-                  {summary.total ?? total_valid_records}
-                </td>
-                <td className="cell-num cell-closed" style={{ fontSize: '0.95rem' }}>
-                  {summary.closed ?? 0}
-                </td>
-                <td className="cell-num cell-pending" style={{ fontSize: '0.95rem' }}>
-                  {summary.pending ?? 0}
-                </td>
-                <td className="cell-num cell-overdue" style={{ fontSize: '0.95rem' }}>
-                  {summary.overdue ?? 0}
-                </td>
-                <td className="cell-num cell-today" style={{ fontSize: '0.95rem' }}>
-                  +{summary.closed_today ?? 0}
-                </td>
-                <td className="cell-num cell-week" style={{ fontSize: '0.95rem' }}>
-                  {summary.closed_last_7_days ?? 0}
-                </td>
-                <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.9rem' }}>
-                  {summary.completion_rate ?? 0}%
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>Full</span>
-                </td>
-              </tr>
             </tbody>
           </table>
 

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Header from './components/Header';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
+import SearchPage from './pages/SearchPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ export default function App() {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
       if (path.includes('/admin') || hash.includes('admin')) return 'admin';
+      if (path.includes('/search') || hash.includes('search')) return 'search';
     } catch (e) {
       console.error(e);
     }
@@ -71,8 +73,12 @@ export default function App() {
       if (!window.location.pathname.includes('/admin')) {
         window.history.pushState({}, '', '/admin');
       }
+    } else if (tab === 'search') {
+      if (!window.location.pathname.includes('/search')) {
+        window.history.pushState({}, '', '/search');
+      }
     } else {
-      if (window.location.pathname.includes('/admin') || window.location.hash.includes('admin')) {
+      if (window.location.pathname !== '/' || window.location.hash) {
         window.history.pushState({}, '', '/');
       }
     }
@@ -84,6 +90,8 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
       if (path.includes('/admin') || hash.includes('admin')) {
         setActiveTab('admin');
+      } else if (path.includes('/search') || hash.includes('search')) {
+        setActiveTab('search');
       } else {
         setActiveTab('dashboard');
       }
@@ -121,6 +129,8 @@ export default function App() {
             <div className="content-body">
               {activeTab === 'admin' ? (
                 <AdminPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
+              ) : activeTab === 'search' ? (
+                <SearchPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
               ) : (
                 <DashboardPage />
               )}

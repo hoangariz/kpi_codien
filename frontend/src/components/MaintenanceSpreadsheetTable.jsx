@@ -508,6 +508,78 @@ export default function MaintenanceSpreadsheetTable({
                 </tr>
               </thead>
               <tbody>
+                {/* Excel Summary Row on TOP */}
+                <tr className="excel-summary-row">
+                  <td colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                    TỔNG CỘNG:
+                  </td>
+                  <td 
+                    className="cell-num cell-clickable" 
+                    style={{ width: '75px', fontSize: '0.98rem', color: 'var(--brand-primary)' }}
+                    title="Nhấn để xem toàn bộ danh sách công việc"
+                    onClick={() => handleCellClick('total', 'Tổng Số')}
+                  >
+                    {summary.total ?? 0}
+                  </td>
+                  <td 
+                    className="cell-num cell-closed cell-clickable" 
+                    style={{ width: '75px', fontSize: '0.98rem' }}
+                    title="Nhấn để xem toàn bộ việc đã đóng"
+                    onClick={() => handleCellClick('closed', 'Đã Đóng')}
+                  >
+                    {summary.closed ?? 0}
+                  </td>
+                  <td 
+                    className="cell-num cell-pending cell-clickable" 
+                    style={{ width: '75px', fontSize: '0.98rem' }}
+                    title="Nhấn để xem toàn bộ việc đang tồn"
+                    onClick={() => handleCellClick('pending', 'Tồn Việc')}
+                  >
+                    {summary.pending ?? 0}
+                  </td>
+                  <td 
+                    className="cell-num cell-overdue cell-clickable" 
+                    style={{ width: '75px', fontSize: '0.98rem' }}
+                    title="Nhấn để xem toàn bộ việc quá hạn"
+                    onClick={() => handleCellClick('overdue', 'Quá Hạn')}
+                  >
+                    {summary.overdue ?? 0}
+                  </td>
+                  <td 
+                    className="cell-num cell-today cell-clickable" 
+                    style={{ width: '85px', fontSize: '0.98rem' }}
+                    title="Nhấn để xem toàn bộ việc đóng hôm nay"
+                    onClick={() => handleCellClick('closed_today', 'Đóng Hôm Nay')}
+                  >
+                    +{summary.closed_today ?? 0}
+                  </td>
+                  <td 
+                    className="cell-num cell-week cell-clickable" 
+                    style={{ width: '85px', fontSize: '0.98rem' }}
+                    title="Nhấn để xem toàn bộ việc đóng 7 ngày qua"
+                    onClick={() => handleCellClick('closed_last_7_days', 'Đóng Tuần Qua')}
+                  >
+                    {summary.closed_last_7_days ?? 0}
+                  </td>
+                  <td style={{ padding: '3px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                      <div style={{ flex: 1, height: '9px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <div 
+                          style={{ 
+                            width: `${Math.min(100, Math.max(0, summary.completion_rate || 0))}%`, 
+                            height: '100%', 
+                            background: (summary.completion_rate || 0) >= 80 ? 'var(--success)' : 'var(--brand-primary)',
+                            borderRadius: '4px'
+                          }} 
+                        />
+                      </div>
+                      <span style={{ fontSize: '0.92rem', fontFamily: 'var(--font-mono)', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: 'var(--brand-primary)' }}>
+                        {summary.completion_rate ?? 0}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+
                 {sortedList.length === 0 ? (
                   <tr>
                     <td colSpan={9} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
@@ -603,78 +675,6 @@ export default function MaintenanceSpreadsheetTable({
                     </tr>
                   ))
                 )}
-
-                {/* Excel Summary Row */}
-                <tr className="excel-summary-row">
-                  <td colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                    TỔNG CỘNG ({sortedList.length} hàng):
-                  </td>
-                  <td 
-                    className="cell-num cell-clickable" 
-                    style={{ width: '75px', fontSize: '0.98rem', color: 'var(--brand-primary)' }}
-                    title="Nhấn để xem toàn bộ danh sách công việc"
-                    onClick={() => handleCellClick('total', 'Tổng Số')}
-                  >
-                    {summary.total ?? 0}
-                  </td>
-                  <td 
-                    className="cell-num cell-closed cell-clickable" 
-                    style={{ width: '75px', fontSize: '0.98rem' }}
-                    title="Nhấn để xem toàn bộ việc đã đóng"
-                    onClick={() => handleCellClick('closed', 'Đã Đóng')}
-                  >
-                    {summary.closed ?? 0}
-                  </td>
-                  <td 
-                    className="cell-num cell-pending cell-clickable" 
-                    style={{ width: '75px', fontSize: '0.98rem' }}
-                    title="Nhấn để xem toàn bộ việc đang tồn"
-                    onClick={() => handleCellClick('pending', 'Tồn Việc')}
-                  >
-                    {summary.pending ?? 0}
-                  </td>
-                  <td 
-                    className="cell-num cell-overdue cell-clickable" 
-                    style={{ width: '75px', fontSize: '0.98rem' }}
-                    title="Nhấn để xem toàn bộ việc quá hạn"
-                    onClick={() => handleCellClick('overdue', 'Quá Hạn')}
-                  >
-                    {summary.overdue ?? 0}
-                  </td>
-                  <td 
-                    className="cell-num cell-today cell-clickable" 
-                    style={{ width: '85px', fontSize: '0.98rem' }}
-                    title="Nhấn để xem toàn bộ việc đóng hôm nay"
-                    onClick={() => handleCellClick('closed_today', 'Đóng Hôm Nay')}
-                  >
-                    +{summary.closed_today ?? 0}
-                  </td>
-                  <td 
-                    className="cell-num cell-week cell-clickable" 
-                    style={{ width: '85px', fontSize: '0.98rem' }}
-                    title="Nhấn để xem toàn bộ việc đóng 7 ngày qua"
-                    onClick={() => handleCellClick('closed_last_7_days', 'Đóng Tuần Qua')}
-                  >
-                    {summary.closed_last_7_days ?? 0}
-                  </td>
-                  <td style={{ padding: '3px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                      <div style={{ flex: 1, height: '9px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
-                        <div 
-                          style={{ 
-                            width: `${Math.min(100, Math.max(0, summary.completion_rate || 0))}%`, 
-                            height: '100%', 
-                            background: (summary.completion_rate || 0) >= 80 ? 'var(--success)' : 'var(--brand-primary)',
-                            borderRadius: '4px'
-                          }} 
-                        />
-                      </div>
-                      <span style={{ fontSize: '0.92rem', fontFamily: 'var(--font-mono)', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: 'var(--brand-primary)' }}>
-                        {summary.completion_rate ?? 0}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
               </tbody>
             </table>
           </div>

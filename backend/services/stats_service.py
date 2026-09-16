@@ -13,6 +13,44 @@ COMPLETED_STATUSES = ["Đóng", "Hoàn thành", "Đã hoàn thành", "Thành cô
 IN_PROGRESS_STATUSES = ["Đã giao FT", "FT Đang thực hiện", "FT Tiếp nhận", "Đang thực hiện", "Đang xử lý"]
 
 
+import json as _json
+
+def _build_cat_type_conditions(cat, db: Session):
+    """
+    Build SQLAlchemy filter conditions for a ReportCategory.
+    Supports filter_mode='by_loai' (loai_cong_viec IN list)
+    or filter_mode='by_system' (system_id IN resolved system ids).
+    Falls back to single loai_cong_viec == equality for old records.
+    """
+    mode = (getattr(cat, 'filter_mode', None) or 'by_loai').strip()
+    raw = getattr(cat, 'filter_values', None)
+    values = []
+    if raw:
+        try:
+            parsed = _json.loads(raw)
+            values = [v.strip() for v in parsed if v and str(v).strip()] if isinstance(parsed, list) else []
+        except Exception:
+            values = []
+
+    if not values:
+        # Backward compat: fallback to loai_cong_viec string
+        lv = getattr(cat, 'loai_cong_viec', None)
+        if lv and not lv.startswith('['):
+            return [Task.loai_cong_viec == lv]
+        return []
+
+    if mode == 'by_system':
+        upper_vals = [v.upper().strip() for v in values]
+        sys_ids = db.query(SystemModel.id).filter(
+            func.upper(func.trim(SystemModel.name)).in_(upper_vals)
+        ).subquery()
+        return [Task.system_id.in_(sys_ids)]
+    else:
+        if len(values) == 1:
+            return [Task.loai_cong_viec == values[0]]
+        return [Task.loai_cong_viec.in_(values)]
+
+
 def get_kpi_overview(db: Session) -> Dict[str, Any]:
     """Overall KPIs across all tasks."""
     now = datetime.utcnow()
@@ -304,7 +342,7 @@ def get_special_maintenance_stats(
 
     exclude_closed = cat_obj.exclude_closed_prior_months if (cat_obj and hasattr(cat_obj, 'exclude_closed_prior_months') and cat_obj.exclude_closed_prior_months is not None) else True
 
-    type_condition = [Task.loai_cong_viec == target_type] if target_type else []
+    type_condition = _build_cat_type_conditions(cat_obj, db) if cat_obj else ([Task.loai_cong_viec == target_type] if target_type else [])
 
     # 1. Calculate count of excluded records (Đã đóng của tháng trước)
     if exclude_closed:
@@ -722,7 +760,14 @@ def get_special_maintenance_stats(
             ReportSubCategory.category_id == cat_obj.id
         ).order_by(ReportSubCategory.sort_order.asc(), ReportSubCategory.id.asc()).all()
 
-    if not sub_cats:
+    # Only seed default sub categories if this is the system default maintenance category
+    is_maint_default = bool(
+        cat_obj and (
+            cat_obj.is_default
+            or (cat_obj.loai_cong_viec and cat_obj.loai_cong_viec.strip().lower() == MAINTENANCE_TASK_TYPE.strip().lower())
+        )
+    )
+    if not sub_cats and is_maint_default:
         default_defs = [
             {"name": "Bảo dưỡng điều hòa", "keyword": "CONDITIONER", "description": "Bảo dưỡng hệ thống điều hòa", "sort_order": 1},
             {"name": "Bảo dưỡng máy phát điện", "keyword": "GENERATOR", "description": "Bảo dưỡng tổ máy phát điện", "sort_order": 2},
@@ -875,7 +920,7 @@ def get_special_maintenance_tasks(
     exclude_closed = cat.exclude_closed_prior_months if (cat and hasattr(cat, 'exclude_closed_prior_months') and cat.exclude_closed_prior_months is not None) else True
 
     # 1. Base maintenance valid condition (same as stats report)
-    type_condition = [Task.loai_cong_viec == target_type] if target_type else []
+    type_condition = _build_cat_type_conditions(cat, db) if cat else ([Task.loai_cong_viec == target_type] if target_type else [])
     filters = [*type_condition]
     if exclude_closed:
         filters.append(

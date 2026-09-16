@@ -32,6 +32,8 @@ def list_tasks(
     loai_cong_viec: Optional[str] = None,
     system_id: Optional[int] = None,
     is_overdue: Optional[bool] = None,
+    station_code: Optional[str] = None,
+    ft_username: Optional[str] = None,
     sort_by: str = Query("thoi_diem_tao"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db)
@@ -48,6 +50,8 @@ def list_tasks(
         loai_cong_viec=loai_cong_viec,
         system_id=system_id,
         is_overdue=is_overdue,
+        station_code=station_code,
+        ft_username=ft_username,
         sort_by=sort_by,
         sort_order=sort_order
     )

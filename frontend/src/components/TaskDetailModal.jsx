@@ -300,28 +300,62 @@ export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
         {/* Modal Body: Single Clean Scrollable Content */}
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Key metadata grid (3 boxes, removed Thue bao / FT Mobile) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          {/* Key metadata grid (Full sheet information) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
             <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhân Viên Thực Hiện</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhân Viên Thực Hiện (FT)</span>
               <strong style={{ fontSize: '0.92rem', color: 'var(--brand-primary)' }}>
                 {task.employee_assigned_name || 'Chưa gán'}
               </strong>
             </div>
 
             <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhóm Điều Phối</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhóm Điều Phối (Cụm)</span>
               <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>
                 {task.group_name || 'Chưa phân nhóm'}
               </strong>
             </div>
 
             <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Hệ Thống / Mã Trạm</span>
-              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                {task.system_name || '--'} / {task.station_code || '--'}
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Mã Trạm / Hệ Thống</span>
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                {task.station_code || '--'} {task.system_name ? `(${task.system_name})` : ''}
               </strong>
             </div>
+
+            <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Mã WO Cha / Đơn Vị</span>
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                {task.ma_cong_viec_cha || '--'} {task.unit_name ? `• ${task.unit_name}` : ''}
+              </strong>
+            </div>
+
+            {task.thue_bao && (
+              <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Thuê Bao / Thiết Bị</span>
+                <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                  {task.thue_bao}
+                </strong>
+              </div>
+            )}
+
+            {task.ft_mobile && (
+              <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Số Điện Thoại FT</span>
+                <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  {task.ft_mobile}
+                </strong>
+              </div>
+            )}
+
+            {task.loi && (
+              <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Mức Độ Lỗi / Ưu Tiên</span>
+                <strong style={{ fontSize: '0.92rem', color: 'var(--warning-dark)' }}>
+                  {task.loi}
+                </strong>
+              </div>
+            )}
           </div>
 
           {/* Timing details */}

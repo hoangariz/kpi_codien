@@ -41,12 +41,7 @@ export default function MaintenancePage({ onNavigateToTasks }) {
     ? data.sub_categories
     : (data?.sub_categories_stats && data.sub_categories_stats.length > 0)
       ? data.sub_categories_stats
-      : [
-          { id: 1, name: 'Bảo dưỡng điều hòa', keyword: 'CONDITIONER', description: 'Bảo dưỡng hệ thống điều hòa', summary: { total: 0 } },
-          { id: 2, name: 'Bảo dưỡng máy phát điện', keyword: 'GENERATOR', description: 'Bảo dưỡng tổ máy phát điện', summary: { total: 0 } },
-          { id: 3, name: 'Thông gió lọc bụi', keyword: 'VENTILATION', description: 'Thông gió và hệ thống lọc bụi ICMS', summary: { total: 0 } },
-          { id: 0, name: 'Còn lại / Khác', keyword: 'KHÁC', description: 'Các công việc khác không thuộc từ khóa trên', is_other: true, summary: { total: 0 } }
-        ];
+      : [];
 
   const formatMonthDisplay = (m) => {
     if (!m) return '';

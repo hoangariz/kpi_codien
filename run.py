@@ -94,7 +94,7 @@ def main():
     # Step 3: Start backend
     print("[3/4] Đang khởi chạy Backend FastAPI trên cổng 8000...")
     backend_proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
+        [sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
         cwd=str(ROOT_DIR)
     )
 
@@ -102,15 +102,27 @@ def main():
     npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
     print("[4/4] Đang khởi chạy Frontend React Vite trên cổng 3000...")
     frontend_proc = subprocess.Popen(
-        [npm_cmd, "run", "dev"],
+        [npm_cmd, "run", "dev", "--", "--host", "0.0.0.0"],
         cwd=str(ROOT_DIR / "frontend")
     )
+
+    # Get local LAN IP
+    local_ip = "127.0.0.1"
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
 
     print()
     print("=" * 70)
     print("   HỆ THỐNG ĐANG CHẠY THÀNH CÔNG!")
-    print("   - Giao diện Web:    http://localhost:3000")
-    print("   - Swagger API Docs: http://localhost:8000/api/docs")
+    print("   - Máy của bạn (Local):     http://localhost:3000")
+    print(f"   - Người khác (Cùng Wi-Fi/LAN): http://{local_ip}:3000")
+    print("   - Swagger API Docs:        http://localhost:8000/api/docs")
     print("=" * 70)
     print("   Nhấn Ctrl+C trong cửa sổ này để tắt toàn bộ hệ thống.")
     print()

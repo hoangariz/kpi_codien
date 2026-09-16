@@ -126,11 +126,18 @@ export default function AdminPage({ onNavigateToDashboard }) {
 
   // Report Categories State
   const [newCatName, setNewCatName] = useState('');
-  const [newCatTaskType, setNewCatTaskType] = useState('');
+  const [newCatTaskType, setNewCatTaskType] = useState(''); // kept for backward compat
   const [newCatDesc, setNewCatDesc] = useState('');
   const [newCatExcludeClosedPrior, setNewCatExcludeClosedPrior] = useState(true);
+  const [newCatFilterMode, setNewCatFilterMode] = useState('by_loai'); // 'by_loai' | 'by_system'
+  const [newCatFilterValues, setNewCatFilterValues] = useState([]); // array of selected values
+  const [newCatTypeSearch, setNewCatTypeSearch] = useState(''); // search box in picker
   const [editingCategory, setEditingCategory] = useState(null);
   const [catSearchFilter, setCatSearchFilter] = useState('');
+  // Edit category filter state
+  const [editCatFilterMode, setEditCatFilterMode] = useState('by_loai');
+  const [editCatFilterValues, setEditCatFilterValues] = useState([]);
+  const [editCatTypeSearch, setEditCatTypeSearch] = useState('');
 
   // Sub-categories State
   const [selectedCatForSub, setSelectedCatForSub] = useState(null);
@@ -163,6 +170,9 @@ export default function AdminPage({ onNavigateToDashboard }) {
       setNewCatTaskType('');
       setNewCatDesc('');
       setNewCatExcludeClosedPrior(true);
+      setNewCatFilterMode('by_loai');
+      setNewCatFilterValues([]);
+      setNewCatTypeSearch('');
       refetchCategories();
       queryClient.invalidateQueries({ queryKey: ['report-categories'] });
       alert(`Đã tạo thành công bảng báo cáo "${res.name}"!`);
@@ -883,85 +893,206 @@ export default function AdminPage({ onNavigateToDashboard }) {
                 Quản Lý Danh Mục Loại Báo Cáo (Hiển Thị Trên Dashboard)
               </h3>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Cấu hình các bảng báo cáo theo loại công việc (hiển thị cùng cấp với <strong>Bảo Dưỡng Cứng Cơ Điện</strong> trên Dashboard). Tự động lọc các việc tháng hiện tại hoặc việc tồn tháng cũ chưa đóng.
+                Cấu hình các bảng báo cáo theo loại công việc hoặc hệ thống. Hỗ trợ chọn nhiều giá trị để gộp nhiều loại công việc vào 1 bảng.
               </p>
             </div>
           </div>
         </div>
 
         {/* Form tạo loại báo cáo mới */}
-        <form 
+        <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!newCatName.trim() || !newCatTaskType.trim()) return;
+            if (!newCatName.trim() || newCatFilterValues.length === 0) return;
             createCategoryMutation.mutate({
               name: newCatName.trim(),
-              loai_cong_viec: newCatTaskType.trim(),
+              loai_cong_viec: '',
               description: newCatDesc.trim() || undefined,
-              exclude_closed_prior_months: newCatExcludeClosedPrior
+              exclude_closed_prior_months: newCatExcludeClosedPrior,
+              filter_mode: newCatFilterMode,
+              filter_values: newCatFilterValues,
             });
           }}
-          style={{ 
-            background: 'var(--bg-tertiary)', 
-            padding: '18px 20px', 
-            borderRadius: 'var(--radius-md)', 
+          style={{
+            background: 'var(--bg-tertiary)',
+            padding: '20px 22px',
+            borderRadius: 'var(--radius-md)',
             marginBottom: '20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '14px',
+            gap: '16px',
             border: '1px solid rgba(2, 132, 199, 0.2)'
           }}
         >
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 260px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '4px', color: 'var(--text-secondary)' }}>
-                TÊN BẢNG BÁO CÁO <span style={{ color: 'var(--danger)' }}>*</span>
-              </label>
-              <input
-                type="text"
-                className="select-filter"
-                placeholder="VD: Báo Hỏng Hạ Tầng Mạng Lưới, Bảo Dưỡng Trạm BTS..."
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
+          {/* Row 1: Tên bảng */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+              TỀN BẢNG BÁO CÁO <span style={{ color: 'var(--danger)' }}>*</span>
+            </label>
+            <input
+              type="text"
+              className="select-filter"
+              placeholder="VD: Báo Hỏng Hạ Tầng Mạng Lưới, Bảo Dưỡng Trạm BTS..."
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              style={{ width: '100%', padding: '9px 13px', fontSize: '0.88rem' }}
+              required
+            />
+          </div>
 
-            <div style={{ flex: '1 1 320px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '4px', color: 'var(--text-secondary)' }}>
-                LOẠI CÔNG VIỆC TRONG DB (TASK.LOAI_CONG_VIEC) <span style={{ color: 'var(--danger)' }}>*</span>
-              </label>
-              <input
-                type="text"
-                list="report-category-task-types-datalist"
-                className="select-filter"
-                placeholder="Chọn từ 84 loại công việc có sẵn hoặc nhập..."
-                value={newCatTaskType}
-                onChange={(e) => setNewCatTaskType(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
-                required
-              />
-              <datalist id="report-category-task-types-datalist">
-                {taskTypesList.map((tt) => (
-                  <option key={tt} value={tt} />
+          {/* Row 2: Chế độ lọc — toggle */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+              CHẾ ĐỘ LỌC <span style={{ color: 'var(--danger)' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', gap: '0', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content' }}>
+              <button
+                type="button"
+                onClick={() => { setNewCatFilterMode('by_loai'); setNewCatFilterValues([]); setNewCatTypeSearch(''); }}
+                style={{
+                  padding: '7px 18px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: newCatFilterMode === 'by_loai' ? 'var(--brand-primary)' : 'var(--bg-secondary)',
+                  color: newCatFilterMode === 'by_loai' ? '#fff' : 'var(--text-secondary)',
+                  transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                📂 Theo Loại Công Việc
+              </button>
+              <button
+                type="button"
+                onClick={() => { setNewCatFilterMode('by_system'); setNewCatFilterValues([]); setNewCatTypeSearch(''); }}
+                style={{
+                  padding: '7px 18px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  borderLeft: '1px solid var(--border-color)',
+                  cursor: 'pointer',
+                  background: newCatFilterMode === 'by_system' ? 'var(--brand-primary)' : 'var(--bg-secondary)',
+                  color: newCatFilterMode === 'by_system' ? '#fff' : 'var(--text-secondary)',
+                  transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                🖥️ Theo Hệ Thống
+              </button>
+            </div>
+          </div>
+
+          {/* Row 3: Picker theo mode */}
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '14px 16px' }}>
+            {/* Tag chips already selected */}
+            {newCatFilterValues.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                {newCatFilterValues.map(v => (
+                  <span key={v} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    background: 'rgba(2, 132, 199, 0.12)', color: 'var(--brand-primary)',
+                    border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: '999px',
+                    padding: '3px 10px', fontSize: '0.78rem', fontWeight: 700
+                  }}>
+                    {v}
+                    <button
+                      type="button"
+                      onClick={() => setNewCatFilterValues(prev => prev.filter(x => x !== v))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', color: 'var(--brand-primary)', lineHeight: 1, fontSize: '0.9rem', fontWeight: 900 }}
+                    >×</button>
+                  </span>
                 ))}
-              </datalist>
-            </div>
+              </div>
+            )}
 
-            <div style={{ flex: '2 1 280px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '4px', color: 'var(--text-secondary)' }}>
-                MÔ TẢ BÁO CÁO (TÙY CHỌN)
-              </label>
+            {/* Search box */}
+            <div style={{ position: 'relative', marginBottom: '8px' }}>
+              <Search size={13} style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 type="text"
                 className="select-filter"
-                placeholder="Ghi chú mục đích của bảng báo cáo..."
-                value={newCatDesc}
-                onChange={(e) => setNewCatDesc(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
+                placeholder={newCatFilterMode === 'by_loai' ? 'Tìm loại công việc...' : 'Tìm hệ thống...'}
+                value={newCatTypeSearch}
+                onChange={(e) => setNewCatTypeSearch(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px 6px 28px', fontSize: '0.82rem' }}
               />
             </div>
+
+            {/* Options list */}
+            {newCatFilterMode === 'by_loai' ? (
+              <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {(taskTypesList || [])
+                  .filter(tt => !newCatTypeSearch || tt.toLowerCase().includes(newCatTypeSearch.toLowerCase()))
+                  .map(tt => {
+                    const sel = newCatFilterValues.includes(tt);
+                    return (
+                      <button
+                        key={tt}
+                        type="button"
+                        onClick={() => setNewCatFilterValues(prev => sel ? prev.filter(x => x !== tt) : [...prev, tt])}
+                        style={{
+                          padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '999px', cursor: 'pointer',
+                          border: sel ? '1.5px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                          background: sel ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-tertiary)',
+                          color: sel ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                          transition: 'all 0.12s',
+                          maxWidth: '100%', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}
+                        title={tt}
+                      >
+                        {sel ? '✓ ' : ''}{tt}
+                      </button>
+                    );
+                  })}
+              </div>
+            ) : (
+              /* by_system: show system checkboxes */
+              <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {((filterOptions?.systems || []).filter(s => !newCatTypeSearch || s.name.toLowerCase().includes(newCatTypeSearch.toLowerCase())))
+                  .map(s => {
+                    const sel = newCatFilterValues.includes(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setNewCatFilterValues(prev => sel ? prev.filter(x => x !== s.name) : [...prev, s.name])}
+                        style={{
+                          padding: '4px 12px', fontSize: '0.78rem', fontWeight: 700, borderRadius: '999px', cursor: 'pointer',
+                          border: sel ? '1.5px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                          background: sel ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-tertiary)',
+                          color: sel ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                          transition: 'all 0.12s',
+                        }}
+                      >
+                        {sel ? '✓ ' : ''}{s.name}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+
+            {newCatFilterValues.length === 0 && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--danger)', fontWeight: 600, margin: '8px 0 0 0' }}>
+                ⚠️ Chưa chọn giá trị lọc nào!
+              </p>
+            )}
+          </div>
+
+          {/* Row 4: Mô tả */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+              MÔ TẢ BÁO CÁO (TÙY CHỌN)
+            </label>
+            <input
+              type="text"
+              className="select-filter"
+              placeholder="Ghi chú mục đích của bảng báo cáo..."
+              value={newCatDesc}
+              onChange={(e) => setNewCatDesc(e.target.value)}
+              style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
+            />
           </div>
 
           {/* Setting: Lọc bỏ WO đóng tháng trước */}
@@ -974,19 +1105,19 @@ export default function AdminPage({ onNavigateToDashboard }) {
               style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--brand-primary)' }}
             />
             <label htmlFor="newCatExcludeClosedPrior" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
-              Loại bỏ các công việc đã đóng của tháng trước (Mặc định: <strong>BẬT</strong> - Chỉ tính các công việc có hạn tháng này và các công việc tồn đọng quá hạn chưa đóng)
+              Loại bỏ công việc đã đóng của tháng trước (Mặc định: <strong>BẬT</strong>)
             </label>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              ⚡ Cấu hình thời gian áp dụng đồng bộ cho cả Dashboard tổng hợp và Bảng chi tiết.
+              ⚡ Đã chọn <strong>{newCatFilterValues.length}</strong> {newCatFilterMode === 'by_loai' ? 'loại công việc' : 'hệ thống'}
             </span>
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={createCategoryMutation.isPending || !newCatName.trim() || !newCatTaskType.trim()}
-              style={{ padding: '8px 20px', gap: '6px', fontWeight: 700 }}
+              disabled={createCategoryMutation.isPending || !newCatName.trim() || newCatFilterValues.length === 0}
+              style={{ padding: '8px 22px', gap: '6px', fontWeight: 700 }}
             >
               <Plus size={16} />
               {createCategoryMutation.isPending ? 'Đang tạo...' : 'Tạo Bảng Báo Cáo Mới'}
@@ -1018,7 +1149,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
               <tr>
                 <th style={{ width: '40px', textAlign: 'center' }}>STT</th>
                 <th style={{ minWidth: '220px', textAlign: 'left' }}>Tên Bảng Báo Cáo</th>
-                <th style={{ minWidth: '220px', textAlign: 'left' }}>Loại Công Việc (Task.loai_cong_viec)</th>
+                <th style={{ minWidth: '260px', textAlign: 'left' }}>Bộ Lọc</th>
                 <th style={{ minWidth: '160px', textAlign: 'left' }}>Mô Tả</th>
                 <th style={{ width: '150px', textAlign: 'center' }}>Lọc Đóng Tháng Trước</th>
                 <th style={{ width: '220px', textAlign: 'center' }}>Số Liệu Tháng Này</th>
@@ -1055,9 +1186,28 @@ export default function AdminPage({ onNavigateToDashboard }) {
                         </div>
                       </td>
                       <td>
-                        <span className="badge badge-info" style={{ fontSize: '0.74rem', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }} title={c.loai_cong_viec}>
-                          🔍 {c.loai_cong_viec}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            fontSize: '0.72rem', fontWeight: 700,
+                            color: c.filter_mode === 'by_system' ? 'var(--warning-dark, #b45309)' : 'var(--brand-primary)',
+                            background: c.filter_mode === 'by_system' ? 'rgba(251,191,36,0.12)' : 'rgba(2,132,199,0.1)',
+                            border: c.filter_mode === 'by_system' ? '1px solid rgba(251,191,36,0.35)' : '1px solid rgba(2,132,199,0.25)',
+                            borderRadius: '999px', padding: '2px 8px', width: 'fit-content'
+                          }}>
+                            {c.filter_mode === 'by_system' ? '🖥️ Hệ thống' : '📂 Loại CV'}
+                          </span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '260px' }}>
+                            {(c.filter_values || []).slice(0, 4).map((fv, fi) => (
+                              <span key={fi} className="badge badge-info" style={{ fontSize: '0.72rem', padding: '1px 7px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }} title={fv}>
+                                {fv}
+                              </span>
+                            ))}
+                            {(c.filter_values || []).length > 4 && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>+{c.filter_values.length - 4} khác</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
                         {c.description || '--'}
@@ -1098,13 +1248,20 @@ export default function AdminPage({ onNavigateToDashboard }) {
                           <button
                             type="button"
                             className="btn btn-outline"
-                            onClick={() => setEditingCategory({ 
-                              id: c.id, 
-                              name: c.name, 
-                              loai_cong_viec: c.loai_cong_viec, 
-                              description: c.description || '',
-                              exclude_closed_prior_months: c.exclude_closed_prior_months !== false
-                            })}
+                            onClick={() => {
+                              setEditingCategory({ 
+                                id: c.id, 
+                                name: c.name, 
+                                loai_cong_viec: c.loai_cong_viec, 
+                                description: c.description || '',
+                                exclude_closed_prior_months: c.exclude_closed_prior_months !== false,
+                                filter_mode: c.filter_mode || 'by_loai',
+                                filter_values: c.filter_values || [],
+                              });
+                              setEditCatFilterMode(c.filter_mode || 'by_loai');
+                              setEditCatFilterValues(c.filter_values || []);
+                              setEditCatTypeSearch('');
+                            }}
                             title="Sửa tên hoặc cấu hình báo cáo này"
                             style={{ padding: '3px 8px', fontSize: '0.75rem', gap: '4px', color: 'var(--brand-primary)', borderColor: 'rgba(2, 132, 199, 0.3)' }}
                           >
@@ -2772,14 +2929,15 @@ export default function AdminPage({ onNavigateToDashboard }) {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!editingCategory.name?.trim() || !editingCategory.loai_cong_viec?.trim()) return;
+                if (!editingCategory.name?.trim() || editCatFilterValues.length === 0) return;
                 updateCategoryMutation.mutate({
                   id: editingCategory.id,
                   data: {
                     name: editingCategory.name.trim(),
-                    loai_cong_viec: editingCategory.loai_cong_viec.trim(),
                     description: editingCategory.description?.trim() || '',
-                    exclude_closed_prior_months: editingCategory.exclude_closed_prior_months !== false
+                    exclude_closed_prior_months: editingCategory.exclude_closed_prior_months !== false,
+                    filter_mode: editCatFilterMode,
+                    filter_values: editCatFilterValues,
                   }
                 });
               }}
@@ -2798,24 +2956,90 @@ export default function AdminPage({ onNavigateToDashboard }) {
                 />
               </div>
 
+              {/* Chế độ lọc toggle */}
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                  LOẠI CÔNG VIỆC TRONG DB (TASK.LOAI_CONG_VIEC) <span style={{ color: 'var(--danger)' }}>*</span>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-secondary)' }}>
+                  CHẾ ĐỘ LỌC <span style={{ color: 'var(--danger)' }}>*</span>
                 </label>
-                <input
-                  type="text"
-                  list="edit-report-cat-types-datalist"
-                  className="select-filter"
-                  value={editingCategory.loai_cong_viec}
-                  onChange={(e) => setEditingCategory({ ...editingCategory, loai_cong_viec: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
-                  required
-                />
-                <datalist id="edit-report-cat-types-datalist">
-                  {taskTypesList.map((tt) => (
-                    <option key={tt} value={tt} />
-                  ))}
-                </datalist>
+                <div style={{ display: 'flex', gap: '0', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content', marginBottom: '10px' }}>
+                  <button type="button"
+                    onClick={() => { setEditCatFilterMode('by_loai'); setEditCatFilterValues([]); setEditCatTypeSearch(''); }}
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+                      background: editCatFilterMode === 'by_loai' ? 'var(--brand-primary)' : 'var(--bg-secondary)',
+                      color: editCatFilterMode === 'by_loai' ? '#fff' : 'var(--text-secondary)' }}
+                  >📂 Loại Công Việc</button>
+                  <button type="button"
+                    onClick={() => { setEditCatFilterMode('by_system'); setEditCatFilterValues([]); setEditCatTypeSearch(''); }}
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700, border: 'none', borderLeft: '1px solid var(--border-color)', cursor: 'pointer',
+                      background: editCatFilterMode === 'by_system' ? 'var(--brand-primary)' : 'var(--bg-secondary)',
+                      color: editCatFilterMode === 'by_system' ? '#fff' : 'var(--text-secondary)' }}
+                  >🖥️ Hệ Thống</button>
+                </div>
+                {/* Tags đã chọn */}
+                {editCatFilterValues.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '8px' }}>
+                    {editCatFilterValues.map(v => (
+                      <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        background: 'rgba(2,132,199,0.1)', color: 'var(--brand-primary)',
+                        border: '1px solid rgba(2,132,199,0.25)', borderRadius: '999px', padding: '2px 8px', fontSize: '0.76rem', fontWeight: 700 }}>
+                        {v}
+                        <button type="button"
+                          onClick={() => setEditCatFilterValues(prev => prev.filter(x => x !== v))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', lineHeight: 1, fontWeight: 900 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Search + list */}
+                <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+                  <div style={{ position: 'relative', marginBottom: '8px' }}>
+                    <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input type="text" className="select-filter"
+                      placeholder={editCatFilterMode === 'by_loai' ? 'Tìm loại công việc...' : 'Tìm hệ thống...'}
+                      value={editCatTypeSearch}
+                      onChange={(e) => setEditCatTypeSearch(e.target.value)}
+                      style={{ width: '100%', padding: '5px 9px 5px 26px', fontSize: '0.8rem' }}
+                    />
+                  </div>
+                  <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {editCatFilterMode === 'by_loai'
+                      ? (taskTypesList || [])
+                          .filter(tt => !editCatTypeSearch || tt.toLowerCase().includes(editCatTypeSearch.toLowerCase()))
+                          .map(tt => {
+                            const sel = editCatFilterValues.includes(tt);
+                            return (
+                              <button key={tt} type="button"
+                                onClick={() => setEditCatFilterValues(prev => sel ? prev.filter(x => x !== tt) : [...prev, tt])}
+                                style={{ padding: '3px 9px', fontSize: '0.73rem', fontWeight: 600, borderRadius: '999px', cursor: 'pointer',
+                                  border: sel ? '1.5px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                                  background: sel ? 'rgba(2,132,199,0.12)' : 'var(--bg-secondary)',
+                                  color: sel ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                                  maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tt}>
+                                {sel ? '✓ ' : ''}{tt}
+                              </button>
+                            );
+                          })
+                      : (filterOptions?.systems || [])
+                          .filter(s => !editCatTypeSearch || s.name.toLowerCase().includes(editCatTypeSearch.toLowerCase()))
+                          .map(s => {
+                            const sel = editCatFilterValues.includes(s.name);
+                            return (
+                              <button key={s.id} type="button"
+                                onClick={() => setEditCatFilterValues(prev => sel ? prev.filter(x => x !== s.name) : [...prev, s.name])}
+                                style={{ padding: '3px 11px', fontSize: '0.76rem', fontWeight: 700, borderRadius: '999px', cursor: 'pointer',
+                                  border: sel ? '1.5px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                                  background: sel ? 'rgba(2,132,199,0.12)' : 'var(--bg-secondary)',
+                                  color: sel ? 'var(--brand-primary)' : 'var(--text-secondary)' }}>
+                                {sel ? '✓ ' : ''}{s.name}
+                              </button>
+                            );
+                          })
+                    }
+                  </div>
+                  {editCatFilterValues.length === 0 && (
+                    <p style={{ fontSize: '0.73rem', color: 'var(--danger)', fontWeight: 600, margin: '6px 0 0 0' }}>⚠️ Chưa chọn giá trị lọc nào!</p>
+                  )}
+                </div>
               </div>
 
               <div style={{ marginBottom: '16px' }}>
@@ -2857,7 +3081,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={updateCategoryMutation.isPending || !editingCategory.name?.trim() || !editingCategory.loai_cong_viec?.trim()}
+                  disabled={updateCategoryMutation.isPending || !editingCategory.name?.trim() || editCatFilterValues.length === 0}
                   style={{ padding: '8px 20px', gap: '6px', fontWeight: 700 }}
                 >
                   <Save size={15} />
