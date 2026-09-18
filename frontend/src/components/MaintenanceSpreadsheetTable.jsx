@@ -108,11 +108,12 @@ export default function MaintenanceSpreadsheetTable({
       currentTab === 'employee' ? 'Nhân Viên Thực Hiện' : 'Nhóm Điều Phối (Cụm)',
       'Tổng Số',
       'Đã Đóng',
+      '% Đóng',
       'Tồn Việc',
       'Quá Hạn',
       'Đóng Hôm Nay',
       'Đóng Tuần Qua',
-      'Tỉ Lệ Đóng (%)'
+      'Tiến Độ (%)'
     ];
 
     const rows = sortedList.map((row, idx) => [
@@ -120,6 +121,7 @@ export default function MaintenanceSpreadsheetTable({
       currentTab === 'group' ? `"${formatGroupName(row.key_name)}"` : `"${row.key_name}"`,
       row.total,
       row.closed,
+      `${row.completion_rate}%`,
       row.pending,
       row.overdue,
       row.closed_today || 0,
@@ -132,6 +134,7 @@ export default function MaintenanceSpreadsheetTable({
       '--',
       summary.total ?? 0,
       summary.closed ?? 0,
+      `${summary.completion_rate ?? 0}%`,
       summary.pending ?? 0,
       summary.overdue ?? 0,
       summary.closed_today ?? 0,
@@ -372,6 +375,13 @@ export default function MaintenanceSpreadsheetTable({
                     Đã Đóng{renderSortIndicator('closed')}
                   </th>
                   <th 
+                    style={{ width: '75px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('completion_rate')}
+                    title="Nhấn để sắp xếp theo % Đóng"
+                  >
+                    % Đóng{renderSortIndicator('completion_rate')}
+                  </th>
+                  <th 
                     style={{ width: '75px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                     onClick={() => handleSort('pending')}
                     title="Nhấn để sắp xếp theo Tồn Việc"
@@ -400,11 +410,11 @@ export default function MaintenanceSpreadsheetTable({
                     Đóng Tuần Qua{renderSortIndicator('closed_last_7_days')}
                   </th>
                   <th 
-                    style={{ textAlign: 'left', paddingLeft: '14px', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ minWidth: '130px', textAlign: 'left', paddingLeft: '14px', cursor: 'pointer', userSelect: 'none' }}
                     onClick={() => handleSort('completion_rate')}
-                    title="Nhấn để sắp xếp theo Tỉ Lệ Đóng"
+                    title="Nhấn để sắp xếp theo Tiến Độ Hoàn Thành"
                   >
-                    Tỉ Lệ Đóng (%){renderSortIndicator('completion_rate')}
+                    Tiến Độ{renderSortIndicator('completion_rate')}
                   </th>
                 </tr>
               </thead>
@@ -429,6 +439,19 @@ export default function MaintenanceSpreadsheetTable({
                     onClick={() => handleCellClick('closed', 'Đã Đóng')}
                   >
                     {summary.closed ?? 0}
+                  </td>
+                  <td 
+                    className="cell-num" 
+                    style={{ 
+                      width: '75px', 
+                      fontSize: '0.98rem', 
+                      fontWeight: 800, 
+                      fontFamily: 'var(--font-mono)', 
+                      color: (summary.completion_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)' 
+                    }}
+                    title={`Tỉ lệ đóng toàn bộ: ${summary.completion_rate ?? 0}%`}
+                  >
+                    {summary.completion_rate ?? 0}%
                   </td>
                   <td 
                     className="cell-num cell-pending cell-clickable" 
@@ -483,7 +506,7 @@ export default function MaintenanceSpreadsheetTable({
 
                 {sortedList.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                    <td colSpan={10} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
                       Không tìm thấy bản ghi nào phù hợp với bộ lọc tìm kiếm.
                     </td>
                   </tr>
@@ -528,6 +551,19 @@ export default function MaintenanceSpreadsheetTable({
                           onClick={() => handleCellClick('closed', 'Đã Đóng', row)}
                         >
                           {row.closed}
+                        </td>
+                        <td 
+                          className="cell-num" 
+                          style={{ 
+                            width: '75px', 
+                            whiteSpace: 'nowrap', 
+                            fontWeight: 800, 
+                            fontFamily: 'var(--font-mono)', 
+                            color: row.completion_rate >= 80 ? 'var(--success-dark)' : row.completion_rate >= 40 ? 'var(--brand-primary)' : 'var(--warning-dark)'
+                          }}
+                          title={`Tỉ lệ đóng của ${displayName}: ${row.completion_rate}%`}
+                        >
+                          {row.completion_rate}%
                         </td>
                         <td 
                           className="cell-num cell-pending cell-clickable" 
