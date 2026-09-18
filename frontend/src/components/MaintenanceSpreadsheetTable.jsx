@@ -42,6 +42,8 @@ export default function MaintenanceSpreadsheetTable({
 
   const currentTab = onTabChange ? activeTab : localActiveTab;
   const handleTabSelect = (tab) => {
+    setSearchQuery('');
+    setSortKey(null);
     if (onTabChange) {
       onTabChange(tab);
     } else {
@@ -334,8 +336,9 @@ export default function MaintenanceSpreadsheetTable({
             <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '38px', whiteSpace: 'nowrap' }}>STT</th>
+                  <th className="col-stt" style={{ width: '38px', whiteSpace: 'nowrap' }}>STT</th>
                   <th 
+                    className="col-name"
                     style={{ textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                     onClick={() => handleSort('key_name')}
                     title="Nhấn để sắp xếp theo tên A-Z hoặc Z-A"
@@ -397,7 +400,7 @@ export default function MaintenanceSpreadsheetTable({
               <tbody>
                 {/* Excel Summary Row on TOP */}
                 <tr className="excel-summary-row">
-                  <td colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                  <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
                     TỔNG CỘNG:
                   </td>
                   <td 
@@ -476,19 +479,23 @@ export default function MaintenanceSpreadsheetTable({
                 ) : (
                   sortedList.map((row, index) => (
                     <tr 
-                      key={row.id || index}
+                      key={`${currentTab}-${row.is_other ? 'other' : (row.id ?? '')}-${index}-${row.key_name}`}
                       className="excel-row"
                       style={{
                         background: row.is_other ? 'rgba(148, 163, 184, 0.08)' : (index % 2 === 0 ? 'var(--bg-secondary)' : 'var(--bg-tertiary)')
                       }}
                     >
-                      <td className="cell-num" style={{ width: '38px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
+                      <td className="cell-num col-stt" style={{ width: '38px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
                         {row.is_other ? '*' : index + 1}
                       </td>
-                      <td style={{ width: '1px', whiteSpace: 'nowrap', paddingRight: '22px' }}>
-                        <strong style={{ fontSize: '0.92rem', color: row.is_other ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                      <td className="col-name" style={{ whiteSpace: 'nowrap', paddingRight: '14px' }}>
+                        <span 
+                          className="row-name-text"
+                          title={row.key_name}
+                          style={{ fontSize: '0.92rem', color: row.is_other ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: 700 }}
+                        >
                           {row.key_name}
-                        </strong>
+                        </span>
                         {row.is_other && (
                           <span className="badge badge-neutral" style={{ marginLeft: '6px', fontSize: '0.65rem' }}>Khác</span>
                         )}

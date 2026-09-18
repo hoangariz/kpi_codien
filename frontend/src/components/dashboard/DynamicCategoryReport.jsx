@@ -210,6 +210,7 @@ export default function DynamicCategoryReport({
       {/* Case 1: No sub-categories configured for this category -> Directly render the Parent Table cleanly */}
       {subCategoriesList.length === 0 && (
         <MaintenanceSpreadsheetTable
+          key={`maint-summary-${activeCategory?.id || 'main'}`}
           title={`BẢNG TỔNG HỢP: ${categoryTitle}`}
           badgeText="BẢNG BÁO CÁO TỔNG HỢP"
           badgeType="badge-info"
@@ -229,6 +230,7 @@ export default function DynamicCategoryReport({
       {subCategoriesList.length > 0 && activeSubCategoryFilter === 'parent' && (
         <div>
           <MaintenanceSpreadsheetTable
+            key={`maint-parent-${activeCategory?.id || 'main'}`}
             title={`BẢNG MẸ: ${categoryTitle}`}
             badgeText="BẢNG MẸ TỔNG HỢP"
             badgeType="badge-info"
