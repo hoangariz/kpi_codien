@@ -13,7 +13,7 @@ import {
 
 export default function Sidebar({ activeTab, setActiveTab, theme, toggleTheme }) {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard Tổng Quan', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Dashboard Tổng Quan DĐ', icon: LayoutDashboard },
     { id: 'maintenance', label: 'Bảo Dưỡng Cơ Điện', icon: Wrench, badge: 'Đặc thù' },
     { id: 'tasks', label: 'Danh Sách Công Việc', icon: CheckSquare },
     { id: 'admin', label: 'Quản Trị / Import (/admin)', icon: Settings, badge: 'Admin' },

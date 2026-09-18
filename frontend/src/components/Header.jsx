@@ -1,23 +1,23 @@
 import React from 'react';
-import { 
-  Activity, 
-  LayoutDashboard, 
+import {
+  Activity,
+  LayoutDashboard,
   Search,
-  Sun, 
-  Moon, 
+  Sun,
+  Moon,
   RefreshCw,
   Calendar,
   Database,
   Sparkles
 } from 'lucide-react';
 
-export default function Header({ 
-  activeTab, 
-  setActiveTab, 
-  theme, 
-  toggleTheme, 
-  onRefresh, 
-  isRefreshing 
+export default function Header({
+  activeTab,
+  setActiveTab,
+  theme,
+  toggleTheme,
+  onRefresh,
+  isRefreshing
 }) {
   const currentDate = new Date().toLocaleDateString('vi-VN', {
     weekday: 'short',
@@ -29,8 +29,8 @@ export default function Header({
     <header className="top-navbar">
       {/* Left: Brand + Status */}
       <div className="header-left">
-        <div 
-          className="brand-box" 
+        <div
+          className="brand-box"
           onClick={() => setActiveTab('dashboard')}
           title="Về trang tổng quan"
         >
@@ -38,7 +38,7 @@ export default function Header({
             <Activity size={22} />
           </div>
           <div>
-            <div className="brand-title">KPI Cơ Điện</div>
+            <div className="brand-title">KPI</div>
             <div className="brand-subtitle">VCC Network</div>
           </div>
         </div>
@@ -48,10 +48,10 @@ export default function Header({
           <button
             className={`header-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
-            title="Trang Tổng Quan KPI & Báo Cáo"
+            title="Trang Tổng Quan DĐ KPI & Báo Cáo"
           >
             <LayoutDashboard size={16} />
-            <span>Tổng Quan</span>
+            <span>Tổng Quan DĐ</span>
           </button>
 
           <button
@@ -96,13 +96,13 @@ export default function Header({
 
       {/* Right: Date, Theme, Refresh */}
       <div className="header-right">
-        <div 
+        <div
           className="header-date"
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px', 
-            fontSize: '0.8rem', 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.8rem',
             color: 'var(--text-muted)',
             background: 'var(--bg-tertiary)',
             padding: '4px 10px',
@@ -113,18 +113,18 @@ export default function Header({
           <span>{currentDate}</span>
         </div>
 
-        <button 
-          className="btn-icon" 
-          onClick={toggleTheme} 
+        <button
+          className="btn-icon"
+          onClick={toggleTheme}
           title={theme === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'}
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         {onRefresh && (
-          <button 
-            className="btn-icon" 
-            onClick={onRefresh} 
+          <button
+            className="btn-icon"
+            onClick={onRefresh}
             title="Làm mới dữ liệu"
             disabled={isRefreshing}
           >
