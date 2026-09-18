@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   FolderKanban, 
@@ -10,6 +10,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
+import { formatGroupName } from '../utils/groupFormat';
 
 /**
  * Reusable Large Excel Spreadsheet Table Component
@@ -39,8 +40,12 @@ export default function MaintenanceSpreadsheetTable({
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState('desc');
 
-
   const currentTab = onTabChange ? activeTab : localActiveTab;
+
+  useEffect(() => {
+    setSearchQuery('');
+    setSortKey(null);
+  }, [currentTab]);
   const handleTabSelect = (tab) => {
     setSearchQuery('');
     setSortKey(null);
@@ -72,9 +77,13 @@ export default function MaintenanceSpreadsheetTable({
   };
 
   const currentList = currentTab === 'employee' ? byEmployee : byGroup;
-  const filteredList = currentList.filter(item => 
-    !searchQuery.trim() || item.key_name.toLowerCase().includes(searchQuery.toLowerCase().trim())
-  );
+  const filteredList = currentList.filter(item => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const raw = (item.key_name || '').toLowerCase();
+    const short = currentTab === 'group' ? formatGroupName(item.key_name).toLowerCase() : '';
+    return raw.includes(q) || short.includes(q);
+  });
 
   const sortedList = [...filteredList].sort((a, b) => {
     if (a.is_other) return 1;
@@ -82,7 +91,9 @@ export default function MaintenanceSpreadsheetTable({
     if (!sortKey) return 0;
     let cmp = 0;
     if (sortKey === 'key_name') {
-      cmp = (a.key_name || '').localeCompare(b.key_name || '', 'vi');
+      const nameA = currentTab === 'group' ? formatGroupName(a.key_name) : (a.key_name || '');
+      const nameB = currentTab === 'group' ? formatGroupName(b.key_name) : (b.key_name || '');
+      cmp = nameA.localeCompare(nameB, 'vi');
     } else {
       const valA = Number(a[sortKey] ?? 0);
       const valB = Number(b[sortKey] ?? 0);
@@ -106,7 +117,7 @@ export default function MaintenanceSpreadsheetTable({
 
     const rows = sortedList.map((row, idx) => [
       idx + 1,
-      `"${row.key_name}"`,
+      currentTab === 'group' ? `"${formatGroupName(row.key_name)}"` : `"${row.key_name}"`,
       row.total,
       row.closed,
       row.pending,
@@ -397,7 +408,7 @@ export default function MaintenanceSpreadsheetTable({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody key={`tbody-${currentTab}`}>
                 {/* Excel Summary Row on TOP */}
                 <tr className="excel-summary-row">
                   <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
@@ -477,97 +488,100 @@ export default function MaintenanceSpreadsheetTable({
                     </td>
                   </tr>
                 ) : (
-                  sortedList.map((row, index) => (
-                    <tr 
-                      key={`${currentTab}-${row.is_other ? 'other' : (row.id ?? '')}-${index}-${row.key_name}`}
-                      className="excel-row"
-                      style={{
-                        background: row.is_other ? 'rgba(148, 163, 184, 0.08)' : (index % 2 === 0 ? 'var(--bg-secondary)' : 'var(--bg-tertiary)')
-                      }}
-                    >
-                      <td className="cell-num col-stt" style={{ width: '38px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
-                        {row.is_other ? '*' : index + 1}
-                      </td>
-                      <td className="col-name" style={{ whiteSpace: 'nowrap', paddingRight: '14px' }}>
-                        <span 
-                          className="row-name-text"
-                          title={row.key_name}
-                          style={{ fontSize: '0.92rem', color: row.is_other ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: 700 }}
-                        >
-                          {row.key_name}
-                        </span>
-                        {row.is_other && (
-                          <span className="badge badge-neutral" style={{ marginLeft: '6px', fontSize: '0.65rem' }}>Khác</span>
-                        )}
-                      </td>
-                      <td 
-                        className="cell-num cell-clickable" 
-                        style={{ width: '75px', whiteSpace: 'nowrap' }}
-                        title={`Nhấn để xem ${row.total} công việc của ${row.key_name}`}
-                        onClick={() => handleCellClick('total', 'Tổng Số', row)}
+                  sortedList.map((row, index) => {
+                    const displayName = currentTab === 'group' ? formatGroupName(row.key_name) : row.key_name;
+                    return (
+                      <tr 
+                        key={`${currentTab}-${row.is_other ? 'other' : (row.id ?? '')}-${index}-${row.key_name}`}
+                        className="excel-row"
+                        style={{
+                          background: row.is_other ? 'rgba(148, 163, 184, 0.08)' : (index % 2 === 0 ? 'var(--bg-secondary)' : 'var(--bg-tertiary)')
+                        }}
                       >
-                        {row.total}
-                      </td>
-                      <td 
-                        className="cell-num cell-closed cell-clickable" 
-                        style={{ width: '75px', whiteSpace: 'nowrap' }}
-                        title={`Nhấn để xem ${row.closed} việc đã đóng của ${row.key_name}`}
-                        onClick={() => handleCellClick('closed', 'Đã Đóng', row)}
-                      >
-                        {row.closed}
-                      </td>
-                      <td 
-                        className="cell-num cell-pending cell-clickable" 
-                        style={{ width: '75px', whiteSpace: 'nowrap' }}
-                        title={`Nhấn để xem ${row.pending} việc tồn của ${row.key_name}`}
-                        onClick={() => handleCellClick('pending', 'Tồn Việc', row)}
-                      >
-                        {row.pending}
-                      </td>
-                      <td 
-                        className="cell-num cell-overdue cell-clickable" 
-                        style={{ width: '75px', whiteSpace: 'nowrap' }}
-                        title={`Nhấn để xem ${row.overdue} việc quá hạn của ${row.key_name}`}
-                        onClick={() => handleCellClick('overdue', 'Quá Hạn', row)}
-                      >
-                        {row.overdue > 0 ? row.overdue : '0'}
-                      </td>
-                      <td 
-                        className="cell-num cell-today cell-clickable" 
-                        style={{ width: '85px', whiteSpace: 'nowrap' }}
-                        title={`Nhấn để xem ${row.closed_today} việc đóng hôm nay của ${row.key_name}`}
-                        onClick={() => handleCellClick('closed_today', 'Đóng Hôm Nay', row)}
-                      >
-                        {row.closed_today > 0 ? `+${row.closed_today}` : '0'}
-                      </td>
-                      <td 
-                        className="cell-num cell-week cell-clickable" 
-                        style={{ width: '85px', whiteSpace: 'nowrap' }}
-                        title={`Nhấn để xem ${row.closed_last_7_days} việc đóng 7 ngày qua của ${row.key_name}`}
-                        onClick={() => handleCellClick('closed_last_7_days', 'Đóng Tuần Qua', row)}
-                      >
-                        {row.closed_last_7_days}
-                      </td>
-                      <td style={{ padding: '2.5px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                          <div style={{ flex: 1, height: '9px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}>
-                            <div 
-                              style={{ 
-                                width: `${Math.min(100, Math.max(0, row.completion_rate))}%`, 
-                                height: '100%', 
-                                background: row.completion_rate >= 80 ? 'var(--success)' : row.completion_rate >= 40 ? 'var(--brand-primary)' : 'var(--warning)',
-                                borderRadius: '4px',
-                                transition: 'width 0.2s ease'
-                              }} 
-                            />
-                          </div>
-                          <span style={{ fontSize: '0.88rem', fontFamily: 'var(--font-mono)', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: row.completion_rate >= 80 ? 'var(--success-dark)' : 'var(--text-primary)' }}>
-                            {row.completion_rate}%
+                        <td className="cell-num col-stt" style={{ width: '38px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
+                          {row.is_other ? '*' : index + 1}
+                        </td>
+                        <td className="col-name" style={{ whiteSpace: 'nowrap', paddingRight: '14px' }}>
+                          <span 
+                            className="row-name-text"
+                            title={row.key_name}
+                            style={{ fontSize: '0.92rem', color: row.is_other ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: 700 }}
+                          >
+                            {displayName}
                           </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                          {row.is_other && (
+                            <span className="badge badge-neutral" style={{ marginLeft: '6px', fontSize: '0.65rem' }}>Khác</span>
+                          )}
+                        </td>
+                        <td 
+                          className="cell-num cell-clickable" 
+                          style={{ width: '75px', whiteSpace: 'nowrap' }}
+                          title={`Nhấn để xem ${row.total} công việc của ${displayName}`}
+                          onClick={() => handleCellClick('total', 'Tổng Số', row)}
+                        >
+                          {row.total}
+                        </td>
+                        <td 
+                          className="cell-num cell-closed cell-clickable" 
+                          style={{ width: '75px', whiteSpace: 'nowrap' }}
+                          title={`Nhấn để xem ${row.closed} việc đã đóng của ${displayName}`}
+                          onClick={() => handleCellClick('closed', 'Đã Đóng', row)}
+                        >
+                          {row.closed}
+                        </td>
+                        <td 
+                          className="cell-num cell-pending cell-clickable" 
+                          style={{ width: '75px', whiteSpace: 'nowrap' }}
+                          title={`Nhấn để xem ${row.pending} việc tồn của ${displayName}`}
+                          onClick={() => handleCellClick('pending', 'Tồn Việc', row)}
+                        >
+                          {row.pending}
+                        </td>
+                        <td 
+                          className="cell-num cell-overdue cell-clickable" 
+                          style={{ width: '75px', whiteSpace: 'nowrap' }}
+                          title={`Nhấn để xem ${row.overdue} việc quá hạn của ${displayName}`}
+                          onClick={() => handleCellClick('overdue', 'Quá Hạn', row)}
+                        >
+                          {row.overdue > 0 ? row.overdue : '0'}
+                        </td>
+                        <td 
+                          className="cell-num cell-today cell-clickable" 
+                          style={{ width: '85px', whiteSpace: 'nowrap' }}
+                          title={`Nhấn để xem ${row.closed_today} việc đóng hôm nay của ${displayName}`}
+                          onClick={() => handleCellClick('closed_today', 'Đóng Hôm Nay', row)}
+                        >
+                          {row.closed_today > 0 ? `+${row.closed_today}` : '0'}
+                        </td>
+                        <td 
+                          className="cell-num cell-week cell-clickable" 
+                          style={{ width: '85px', whiteSpace: 'nowrap' }}
+                          title={`Nhấn để xem ${row.closed_last_7_days} việc đóng 7 ngày qua của ${displayName}`}
+                          onClick={() => handleCellClick('closed_last_7_days', 'Đóng Tuần Qua', row)}
+                        >
+                          {row.closed_last_7_days}
+                        </td>
+                        <td style={{ padding: '2.5px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                            <div style={{ flex: 1, height: '9px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}>
+                              <div 
+                                style={{ 
+                                  width: `${Math.min(100, Math.max(0, row.completion_rate))}%`, 
+                                  height: '100%', 
+                                  background: row.completion_rate >= 80 ? 'var(--success)' : row.completion_rate >= 40 ? 'var(--brand-primary)' : 'var(--warning)',
+                                  borderRadius: '4px',
+                                  transition: 'width 0.2s ease'
+                                }} 
+                              />
+                            </div>
+                            <span style={{ fontSize: '0.88rem', fontFamily: 'var(--font-mono)', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: row.completion_rate >= 80 ? 'var(--success-dark)' : 'var(--text-primary)' }}>
+                              {row.completion_rate}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

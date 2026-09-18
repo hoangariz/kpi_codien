@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { statsApi } from '../api/statsApi';
 import { fixedWoApi } from '../api/fixedWoApi';
+import { formatGroupName } from '../utils/groupFormat';
 
 /**
  * Format datetime string as dd/MM/yyyy HH:mm:ss
@@ -217,7 +218,9 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
             <span style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               {filterInfo.targetName ? (
                 <>
-                  <span style={{ color: 'var(--brand-primary)' }}>{filterInfo.targetName}</span>
+                  <span style={{ color: 'var(--brand-primary)' }} title={filterInfo.targetName}>
+                    {filterInfo.filterType === 'group' ? formatGroupName(filterInfo.targetName) : filterInfo.targetName}
+                  </span>
                   <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>&bull;</span>
                 </>
               ) : null}
@@ -569,7 +572,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                         }}
                         title={t.group_name || 'Chưa phân nhóm'}
                       >
-                        {t.group_name || <span style={{ color: 'var(--text-muted)' }}>Chưa phân nhóm</span>}
+                        {t.group_name ? formatGroupName(t.group_name) : <span style={{ color: 'var(--text-muted)' }}>Chưa phân nhóm</span>}
                       </td>
 
                       {/* 7. Nhân viên thực hiện */}

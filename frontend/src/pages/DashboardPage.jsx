@@ -14,6 +14,7 @@ import HighPriorityBoardSection from '../components/dashboard/HighPriorityBoardS
 import ReportSelectorCards from '../components/dashboard/ReportSelectorCards';
 import DynamicCategoryReport from '../components/dashboard/DynamicCategoryReport';
 import OverviewChartsSection from '../components/dashboard/OverviewChartsSection';
+import { formatGroupName } from '../utils/groupFormat';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -201,7 +202,7 @@ export default function DashboardPage() {
 
   // Prepare chart data for Groups (top 8)
   const groupChartData = (groupStats || []).slice(0, 8).map((g) => ({
-    name: g.group_name.replace('Trung tâm ', 'TT.').replace(/\(.*\)/, ''),
+    name: formatGroupName(g.group_name),
     'Hoàn thành': g.completed,
     'Đang xử lý': g.in_progress,
     'Trễ hạn': g.overdue,
@@ -284,27 +285,29 @@ export default function DashboardPage() {
       <div id="report-detail-section" style={{ scrollMarginTop: '80px', borderRadius: 'var(--radius-lg)' }}>
         {selectedReport === 'maintenance' && (
           <DynamicCategoryReport
-          activeCategory={activeCategory}
-          maintSpecial={maintSpecial}
-          loadingMaint={loadingMaint}
-          maintSummary={maintSummary}
-          byEmployee={byEmployee}
-          byGroup={byGroup}
-          maintActiveTab={maintActiveTab}
-          setMaintActiveTab={setMaintActiveTab}
-          activeSubCategoryFilter={activeSubCategoryFilter || 'parent'}
-          setActiveSubCategoryFilter={setActiveSubCategoryFilter}
-          selectedBoardId={selectedBoardId}
-          setSelectedBoardId={setSelectedBoardId}
-          selectedBoard={selectedBoard}
-          trackingBoards={trackingBoards}
-          handleOpenDrilldown={handleOpenDrilldown}
-        />
-      )}
+            key={`maint-cat-${activeCategory?.id || 'main'}`}
+            activeCategory={activeCategory}
+            maintSpecial={maintSpecial}
+            loadingMaint={loadingMaint}
+            maintSummary={maintSummary}
+            byEmployee={byEmployee}
+            byGroup={byGroup}
+            maintActiveTab={maintActiveTab}
+            setMaintActiveTab={setMaintActiveTab}
+            activeSubCategoryFilter={activeSubCategoryFilter || 'parent'}
+            setActiveSubCategoryFilter={setActiveSubCategoryFilter}
+            selectedBoardId={selectedBoardId}
+            setSelectedBoardId={setSelectedBoardId}
+            selectedBoard={selectedBoard}
+            trackingBoards={trackingBoards}
+            handleOpenDrilldown={handleOpenDrilldown}
+          />
+        )}
 
       {/* 4b. Vùng Hiển Thị Báo Cáo Cố Định WO Được Chọn */}
       {selectedReport === 'fixed_wo' && activeFixedWoId && (
         <DynamicCategoryReport
+          key={`fixed-wo-rep-${activeFixedWoId}`}
           activeCategory={{
             id: activeFixedWoId,
             name: fixedWoStats?.name || 'Báo Cáo Cố Định WO',
