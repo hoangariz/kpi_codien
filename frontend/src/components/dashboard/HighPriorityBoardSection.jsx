@@ -270,7 +270,7 @@ export default function HighPriorityBoardSection({
                       );
                     })
                     .map((t, idx) => {
-                      const isOverdue = t.thoi_gian_con_lai != null && t.thoi_gian_con_lai < 0 && t.trang_thai !== 'Đóng';
+                      const isOverdue = t.thoi_gian_con_lai != null && t.thoi_gian_con_lai < 0 && !['Đóng', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(t.trang_thai);
                       return (
                         <tr key={t.id || t.ma_cong_viec} className="excel-row">
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>

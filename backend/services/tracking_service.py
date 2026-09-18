@@ -7,6 +7,9 @@ from backend.models.tracking import TrackingBoard, TrackingBoardTask
 from backend.models.task import Task
 
 
+CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
+
+
 def get_matching_tasks_by_type(db: Session, loai_cong_viec: str, target_month: Optional[str] = None) -> List[str]:
     """
     Get list of task codes matching user-specified rule:
@@ -14,7 +17,7 @@ def get_matching_tasks_by_type(db: Session, loai_cong_viec: str, target_month: O
     AND (
         Task.thoi_diem_yeu_cau_ket_thuc IS NULL
         OR Task.thoi_diem_yeu_cau_ket_thuc >= month_start
-        OR Task.trang_thai != 'Đóng'
+        OR Task.trang_thai NOT IN CLOSED_STATUSES
     )
     """
     from backend.services.settings_service import get_current_month_setting
@@ -32,7 +35,7 @@ def get_matching_tasks_by_type(db: Session, loai_cong_viec: str, target_month: O
         or_(
             Task.thoi_diem_yeu_cau_ket_thuc == None,
             Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
-            Task.trang_thai != "Đóng"
+            ~Task.trang_thai.in_(CLOSED_STATUSES)
         )
     ).all()
     return [r[0] for r in matching if r[0]]

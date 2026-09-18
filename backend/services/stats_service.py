@@ -9,7 +9,8 @@ from backend.schemas.task_schema import TaskListItem
 MAINTENANCE_TASK_TYPE = "Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS"
 
 # Common status sets
-COMPLETED_STATUSES = ["Đóng", "Hoàn thành", "Đã hoàn thành", "Thành công"]
+CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
+COMPLETED_STATUSES = ["Đóng", "Hoàn thành", "Đã hoàn thành", "Thành công", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
 IN_PROGRESS_STATUSES = ["Đã giao FT", "FT Đang thực hiện", "FT Tiếp nhận", "Đang thực hiện", "Đang xử lý"]
 
 
@@ -348,7 +349,7 @@ def get_special_maintenance_stats(
     if exclude_closed:
         excluded_query = db.query(func.count(Task.ma_cong_viec)).filter(
             *type_condition,
-            Task.trang_thai == "Đóng",
+            Task.trang_thai.in_(CLOSED_STATUSES),
             Task.thoi_diem_yeu_cau_ket_thuc != None,
             Task.thoi_diem_yeu_cau_ket_thuc < month_start
         )
@@ -365,7 +366,7 @@ def get_special_maintenance_stats(
             or_(
                 Task.thoi_diem_yeu_cau_ket_thuc == None,
                 Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
-                Task.trang_thai != "Đóng"
+                ~Task.trang_thai.in_(CLOSED_STATUSES)
             )
         ]
     else:
@@ -389,13 +390,13 @@ def get_special_maintenance_stats(
             Employee.id.label("id"),
             func.coalesce(Employee.name, "Khác").label("key_name"),
             func.count(Task.ma_cong_viec).label("total"),
-            func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-            func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+            func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+            func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
             func.sum(
                 case(
                     (
                         and_(
-                            Task.trang_thai != "Đóng",
+                            ~Task.trang_thai.in_(CLOSED_STATUSES),
                             or_(
                                 Task.thoi_gian_con_lai < 0,
                                 and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -410,7 +411,7 @@ def get_special_maintenance_stats(
                 case(
                     (
                         and_(
-                            Task.trang_thai == "Đóng",
+                            Task.trang_thai.in_(CLOSED_STATUSES),
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
                         ),
@@ -423,7 +424,7 @@ def get_special_maintenance_stats(
                 case(
                     (
                         and_(
-                            Task.trang_thai == "Đóng",
+                            Task.trang_thai.in_(CLOSED_STATUSES),
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
                         ),
@@ -539,13 +540,13 @@ def get_special_maintenance_stats(
             Group.id.label("id"),
             func.coalesce(Group.name, "Khác (Chưa phân cụm)").label("key_name"),
             func.count(Task.ma_cong_viec).label("total"),
-            func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-            func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+            func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+            func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
             func.sum(
                 case(
                     (
                         and_(
-                            Task.trang_thai != "Đóng",
+                            ~Task.trang_thai.in_(CLOSED_STATUSES),
                             or_(
                                 Task.thoi_gian_con_lai < 0,
                                 and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -560,7 +561,7 @@ def get_special_maintenance_stats(
                 case(
                     (
                         and_(
-                            Task.trang_thai == "Đóng",
+                            Task.trang_thai.in_(CLOSED_STATUSES),
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
                         ),
@@ -573,7 +574,7 @@ def get_special_maintenance_stats(
                 case(
                     (
                         and_(
-                            Task.trang_thai == "Đóng",
+                            Task.trang_thai.in_(CLOSED_STATUSES),
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
                         ),
@@ -927,7 +928,7 @@ def get_special_maintenance_tasks(
             or_(
                 Task.thoi_diem_yeu_cau_ket_thuc == None,
                 Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
-                Task.trang_thai != "Đóng"
+                ~Task.trang_thai.in_(CLOSED_STATUSES)
             )
         )
 
@@ -967,13 +968,13 @@ def get_special_maintenance_tasks(
 
     # 3. Metric filter
     if metric == "closed":
-        filters.append(Task.trang_thai == "Đóng")
+        filters.append(Task.trang_thai.in_(CLOSED_STATUSES))
     elif metric == "pending":
-        filters.append(Task.trang_thai != "Đóng")
+        filters.append(~Task.trang_thai.in_(CLOSED_STATUSES))
     elif metric == "overdue":
         filters.append(
             and_(
-                Task.trang_thai != "Đóng",
+                ~Task.trang_thai.in_(CLOSED_STATUSES),
                 or_(
                     Task.thoi_gian_con_lai < 0,
                     and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -983,7 +984,7 @@ def get_special_maintenance_tasks(
     elif metric == "closed_today":
         filters.append(
             and_(
-                Task.trang_thai == "Đóng",
+                Task.trang_thai.in_(CLOSED_STATUSES),
                 func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                 func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
             )
@@ -991,7 +992,7 @@ def get_special_maintenance_tasks(
     elif metric == "closed_last_7_days":
         filters.append(
             and_(
-                Task.trang_thai == "Đóng",
+                Task.trang_thai.in_(CLOSED_STATUSES),
                 func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                 func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
             )

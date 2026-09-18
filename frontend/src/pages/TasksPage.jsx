@@ -94,7 +94,7 @@ export default function TasksPage({ initialFilters = {} }) {
 
   const getStatusBadge = (status) => {
     if (!status) return <span className="badge badge-neutral">--</span>;
-    if (['Đóng', 'Hoàn thành'].includes(status)) return <span className="badge badge-success">{status}</span>;
+    if (['Đóng', 'Hoàn thành', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(status)) return <span className="badge badge-success">{status}</span>;
     if (['Đã giao FT', 'FT Tiếp nhận'].includes(status)) return <span className="badge badge-warning">{status}</span>;
     if (['FT Đang thực hiện', 'Đang thực hiện'].includes(status)) return <span className="badge badge-info">{status}</span>;
     return <span className="badge badge-neutral">{status}</span>;

@@ -12,6 +12,8 @@ from backend.schemas.fixed_wo_schema import (
     FixedWoReportUpdate,
 )
 
+CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
+
 
 def parse_wo_codes_input(raw: Optional[Union[List[str], str]]) -> List[str]:
     """Parse, clean, and deduplicate WO codes from raw string or list."""
@@ -143,13 +145,13 @@ def get_fixed_wo_reports(db: Session) -> List[Dict[str, Any]]:
 
         agg = db.query(
             func.count(Task.ma_cong_viec).label("matched"),
-            func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-            func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+            func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+            func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
             func.sum(
                 case(
                     (
                         and_(
-                            Task.trang_thai != "Đóng",
+                            ~Task.trang_thai.in_(CLOSED_STATUSES),
                             or_(
                                 Task.thoi_gian_con_lai < 0,
                                 and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -224,13 +226,13 @@ def get_fixed_wo_stats(
     # 1. Overall Summary
     overall_agg = db.query(
         func.count(Task.ma_cong_viec).label("matched"),
-        func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-        func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+        func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+        func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
         func.sum(
             case(
                 (
                     and_(
-                        Task.trang_thai != "Đóng",
+                        ~Task.trang_thai.in_(CLOSED_STATUSES),
                         or_(
                             Task.thoi_gian_con_lai < 0,
                             and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -245,7 +247,7 @@ def get_fixed_wo_stats(
             case(
                 (
                     and_(
-                        Task.trang_thai == "Đóng",
+                        Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
                     ),
@@ -258,7 +260,7 @@ def get_fixed_wo_stats(
             case(
                 (
                     and_(
-                        Task.trang_thai == "Đóng",
+                        Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
                     ),
@@ -326,13 +328,13 @@ def get_fixed_wo_stats(
         Employee.id.label("id"),
         func.coalesce(Employee.name, "Khác").label("key_name"),
         func.count(Task.ma_cong_viec).label("total"),
-        func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-        func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+        func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+        func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
         func.sum(
             case(
                 (
                     and_(
-                        Task.trang_thai != "Đóng",
+                        ~Task.trang_thai.in_(CLOSED_STATUSES),
                         or_(
                             Task.thoi_gian_con_lai < 0,
                             and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -347,7 +349,7 @@ def get_fixed_wo_stats(
             case(
                 (
                     and_(
-                        Task.trang_thai == "Đóng",
+                        Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
                     ),
@@ -360,7 +362,7 @@ def get_fixed_wo_stats(
             case(
                 (
                     and_(
-                        Task.trang_thai == "Đóng",
+                        Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
                     ),
@@ -509,13 +511,13 @@ def get_fixed_wo_stats(
         Group.id.label("id"),
         func.coalesce(Group.name, "Khác").label("key_name"),
         func.count(Task.ma_cong_viec).label("total"),
-        func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-        func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+        func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+        func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
         func.sum(
             case(
                 (
                     and_(
-                        Task.trang_thai != "Đóng",
+                        ~Task.trang_thai.in_(CLOSED_STATUSES),
                         or_(
                             Task.thoi_gian_con_lai < 0,
                             and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -530,7 +532,7 @@ def get_fixed_wo_stats(
             case(
                 (
                     and_(
-                        Task.trang_thai == "Đóng",
+                        Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
                     ),
@@ -543,7 +545,7 @@ def get_fixed_wo_stats(
             case(
                 (
                     and_(
-                        Task.trang_thai == "Đóng",
+                        Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
                     ),
@@ -742,14 +744,14 @@ def get_fixed_wo_tasks(
 
     # Metric filter
     if metric == "closed":
-        query = query.filter(Task.trang_thai == "Đóng")
+        query = query.filter(Task.trang_thai.in_(CLOSED_STATUSES))
     elif metric == "pending":
-        query = query.filter(Task.trang_thai != "Đóng")
+        query = query.filter(~Task.trang_thai.in_(CLOSED_STATUSES))
     elif metric == "da_giao_ft":
         query = query.filter(Task.trang_thai == "Đã giao FT")
     elif metric == "overdue":
         query = query.filter(
-            Task.trang_thai != "Đóng",
+            ~Task.trang_thai.in_(CLOSED_STATUSES),
             or_(
                 Task.thoi_gian_con_lai < 0,
                 and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
@@ -757,13 +759,13 @@ def get_fixed_wo_tasks(
         )
     elif metric == "closed_today":
         query = query.filter(
-            Task.trang_thai == "Đóng",
+            Task.trang_thai.in_(CLOSED_STATUSES),
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
         )
     elif metric == "closed_last_7_days":
         query = query.filter(
-            Task.trang_thai == "Đóng",
+            Task.trang_thai.in_(CLOSED_STATUSES),
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
         )

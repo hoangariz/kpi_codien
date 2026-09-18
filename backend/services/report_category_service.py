@@ -59,35 +59,32 @@ def get_report_categories(
     Optionally computes mini summary (total, closed, pending, overdue, rate)
     using the active month time rule. Supports multi-value filter_mode/filter_values.
     """
-    categories = db.query(ReportCategory).order_by(
+    cats = db.query(ReportCategory).order_by(
         ReportCategory.sort_order.asc(),
-        ReportCategory.id.asc()
+        ReportCategory.created_at.asc()
     ).all()
 
+    now = datetime.utcnow()
     active_month = target_month or get_current_month_setting(db)
     try:
         y_str, m_str = active_month.split("-")
         month_start = datetime(int(y_str), int(m_str), 1, 0, 0, 0)
     except Exception:
-        now_dt = datetime.utcnow()
-        month_start = datetime(now_dt.year, now_dt.month, 1, 0, 0, 0)
-
-    now = datetime.utcnow()
+        month_start = datetime(now.year, now.month, 1, 0, 0, 0)
 
     output = []
-    for cat in categories:
-        fv = _parse_filter_values(cat.filter_values)
+    for cat in cats:
         item = {
             "id": cat.id,
             "name": cat.name,
             "loai_cong_viec": cat.loai_cong_viec,
             "description": cat.description,
             "icon": cat.icon,
-            "is_default": cat.is_default,
-            "exclude_closed_prior_months": cat.exclude_closed_prior_months if cat.exclude_closed_prior_months is not None else True,
             "sort_order": cat.sort_order,
+            "is_default": cat.is_default,
+            "exclude_closed_prior_months": cat.exclude_closed_prior_months,
             "filter_mode": cat.filter_mode or "by_loai",
-            "filter_values": fv,
+            "filter_values": _parse_filter_values(cat.filter_values),
             "created_at": cat.created_at,
             "updated_at": cat.updated_at,
             "summary": None
@@ -96,7 +93,8 @@ def get_report_categories(
         if include_summary:
             base_conds = _build_type_conditions(cat, db)
             if not base_conds:
-                item["summary"] = {"total": 0, "closed": 0, "pending": 0, "overdue": 0, "completion_rate": 0.0}
+                item["summary"] = None
+                # Still process sub_categories
                 item["sub_categories"] = [
                     {
                         "id": sub.id,
@@ -120,19 +118,19 @@ def get_report_categories(
                     or_(
                         Task.thoi_diem_yeu_cau_ket_thuc == None,
                         Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
-                        Task.trang_thai != "Đóng"
+                        ~Task.trang_thai.in_(CLOSED_STATUSES)
                     )
                 )
 
             res = db.query(
                 func.count(Task.ma_cong_viec).label("total"),
-                func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
-                func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
+                func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+                func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
                 func.sum(
                     case(
                         (
                             and_(
-                                Task.trang_thai != "Đóng",
+                                ~Task.trang_thai.in_(CLOSED_STATUSES),
                                 or_(
                                     Task.thoi_gian_con_lai < 0,
                                     and_(

@@ -5,6 +5,12 @@ let maintenanceTasksCache = null;
 let maintenanceTasksCacheKey = null;
 let maintenanceTasksLoadingPromise = null;
 
+export const isClosedStatus = (status) => {
+  if (!status) return false;
+  const s = String(status).trim().toLowerCase();
+  return s === 'đóng' || s === 'ft hoàn thành';
+};
+
 async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosedPriorMonths = true) {
   const cacheKey = `${targetType}_${activeMonth}_${excludeClosedPriorMonths !== false}`;
   if (maintenanceTasksCache && maintenanceTasksCacheKey === cacheKey) {
@@ -80,7 +86,7 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClos
 
       const validItems = items.filter(t => {
         if (t.loai_cong_viec !== targetType) return false;
-        if (excludeClosedPriorMonths !== false && t.trang_thai === 'Đóng' && t.thoi_diem_yeu_cau_ket_thuc) {
+        if (excludeClosedPriorMonths !== false && isClosedStatus(t.trang_thai) && t.thoi_diem_yeu_cau_ket_thuc) {
           const endDt = new Date(t.thoi_diem_yeu_cau_ket_thuc);
           if (endDt < monthStart) return false;
         }
@@ -220,26 +226,26 @@ export const statsApi = {
     const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     if (params.metric === 'closed') {
-      items = items.filter(t => t.trang_thai === 'Đóng');
+      items = items.filter(t => isClosedStatus(t.trang_thai));
     } else if (params.metric === 'pending') {
-      items = items.filter(t => t.trang_thai !== 'Đóng');
+      items = items.filter(t => !isClosedStatus(t.trang_thai));
     } else if (params.metric === 'overdue') {
       items = items.filter(t => {
-        if (t.trang_thai === 'Đóng') return false;
+        if (isClosedStatus(t.trang_thai)) return false;
         if (t.thoi_gian_con_lai < 0) return true;
         if (t.thoi_diem_yeu_cau_ket_thuc && new Date(t.thoi_diem_yeu_cau_ket_thuc) < now) return true;
         return false;
       });
     } else if (params.metric === 'closed_today') {
       items = items.filter(t => {
-        if (t.trang_thai !== 'Đóng') return false;
+        if (!isClosedStatus(t.trang_thai)) return false;
         const dateStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
         const ftDate = dateStr ? new Date(dateStr) : null;
         return ftDate && ftDate >= todayStart;
       });
     } else if (params.metric === 'closed_last_7_days') {
       items = items.filter(t => {
-        if (t.trang_thai !== 'Đóng') return false;
+        if (!isClosedStatus(t.trang_thai)) return false;
         const dateStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
         const ftDate = dateStr ? new Date(dateStr) : null;
         return ftDate && ftDate >= sevenDaysAgo;

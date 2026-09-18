@@ -782,7 +782,7 @@ export default function SearchPage({ onNavigateToDashboard }) {
             </thead>
             <tbody>
               {tasksList.map((t, idx) => {
-                const isOverdue = t.thoi_gian_con_lai != null && t.thoi_gian_con_lai < 0 && t.trang_thai !== 'Đóng';
+                const isOverdue = t.thoi_gian_con_lai != null && t.thoi_gian_con_lai < 0 && !['Đóng', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(t.trang_thai);
                 const isQuickNoteActive = quickNoteTaskId === t.ma_cong_viec;
 
                 return (

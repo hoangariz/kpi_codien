@@ -76,7 +76,7 @@ def get_tasks_paginated(
 
     if is_overdue is not None:
         now = datetime.utcnow()
-        completed = ["Đóng", "Hoàn thành", "Đã hoàn thành", "Thành công"]
+        completed = ["Đóng", "Hoàn thành", "Đã hoàn thành", "Thành công", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
         if is_overdue:
             filters.append(
                 and_(

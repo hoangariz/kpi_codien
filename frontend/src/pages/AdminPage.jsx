@@ -2970,8 +2970,8 @@ export default function AdminPage({ onNavigateToDashboard }) {
                               borderRadius: '4px',
                               fontSize: '0.75rem',
                               fontWeight: 600,
-                              background: t.trang_thai === 'Đóng' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(2, 132, 199, 0.15)',
-                              color: t.trang_thai === 'Đóng' ? 'var(--success-dark)' : 'var(--brand-primary)'
+                              background: ['Đóng', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(t.trang_thai) ? 'rgba(16, 185, 129, 0.15)' : 'rgba(2, 132, 199, 0.15)',
+                              color: ['Đóng', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(t.trang_thai) ? 'var(--success-dark)' : 'var(--brand-primary)'
                             }}>
                               {t.trang_thai || '--'}
                             </span>
@@ -3675,7 +3675,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {it.is_matched ? (
-                            <span className={`badge ${it.trang_thai === 'Đóng' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                            <span className={`badge ${['Đóng', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(it.trang_thai) ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
                               {it.trang_thai || 'Đóng'}
                             </span>
                           ) : (

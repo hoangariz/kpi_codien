@@ -88,9 +88,10 @@ export default function DashboardPage() {
   const activeHighBoard = (trackingBoards || []).find(b => String(b.id) === String(activeHighBoardId));
   const highTasks = activeHighBoardDetail?.tasks || [];
   const highTotal = highTasks.length;
-  const highClosed = highTasks.filter(t => t.trang_thai === 'Đóng').length;
-  const highPending = highTasks.filter(t => t.trang_thai && t.trang_thai !== 'Đóng').length;
-  const highOverdue = highTasks.filter(t => t.trang_thai !== 'Đóng' && t.thoi_gian_con_lai != null && t.thoi_gian_con_lai < 0).length;
+  const isHighClosed = (status) => ['Đóng', 'FT hoàn thành', 'FT Hoàn thành', 'FT Hoàn Thành'].includes(status);
+  const highClosed = highTasks.filter(t => isHighClosed(t.trang_thai)).length;
+  const highPending = highTasks.filter(t => t.trang_thai && !isHighClosed(t.trang_thai)).length;
+  const highOverdue = highTasks.filter(t => !isHighClosed(t.trang_thai) && t.thoi_gian_con_lai != null && t.thoi_gian_con_lai < 0).length;
   const highRate = highTotal > 0 ? Math.round((highClosed / highTotal) * 100) : 0;
 
   // High-priority board mutations
