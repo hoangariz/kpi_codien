@@ -48,10 +48,10 @@ export default function Header({
           <button
             className={`header-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
-            title="Trang Tổng Quan DĐ KPI & Báo Cáo"
+            title="Trang Tổng Quan KPI & Báo Cáo"
           >
             <LayoutDashboard size={16} />
-            <span>Tổng Quan DĐ</span>
+            <span>Tổng Quan</span>
           </button>
 
           <button

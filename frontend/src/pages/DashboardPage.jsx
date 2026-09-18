@@ -6,8 +6,6 @@ import { tasksApi } from '../api/tasksApi';
 import { trackingApi } from '../api/trackingApi';
 import { reportCategoryApi } from '../api/reportCategoryApi';
 import { fixedWoApi } from '../api/fixedWoApi';
-import { importsApi } from '../api/importsApi';
-import { Database } from 'lucide-react';
 
 import TaskDrilldownModal from '../components/TaskDrilldownModal';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -20,43 +18,6 @@ import { formatGroupName } from '../utils/groupFormat';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
-
-  // Fetch latest import log for data freshness timestamp
-  const { data: importLogs } = useQuery({
-    queryKey: ['import-logs-latest'],
-    queryFn: () => importsApi.getImportLogs(1),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const latestImport = importLogs && importLogs.length > 0 ? importLogs[0] : null;
-  const lastDataUpdate = latestImport?.imported_at || null;
-
-  const parseUtcDate = (val) => {
-    if (!val) return null;
-    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-    const str = String(val).trim();
-    const iso = str.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(str)
-      ? str
-      : (str.includes('T') ? str + 'Z' : str.replace(' ', 'T') + 'Z');
-    const d = new Date(iso);
-    return isNaN(d.getTime()) ? new Date(str) : d;
-  };
-
-  const formatDataTimestamp = (val) => {
-    const dt = parseUtcDate(val);
-    if (!dt || isNaN(dt.getTime())) return 'Chưa xác định';
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(dt);
-    const get = (type) => parts.find((p) => p.type === type)?.value || '';
-    return `${get('day')}/${get('month')}/${get('year')} lúc ${get('hour')}:${get('minute')}`;
-  };
 
   // Navigation & View state
   const [selectedReport, setSelectedReport] = useState('maintenance'); // 'maintenance' | 'fixed_wo' | 'overview-charts'
@@ -282,28 +243,6 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Data Freshness Indicator */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-          gap: '8px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Database size={13} style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-            Dữ liệu cập nhật đến: <strong style={{ color: lastDataUpdate ? 'var(--brand-primary)' : 'var(--text-muted)' }}>{formatDataTimestamp(lastDataUpdate)}</strong>
-            {latestImport?.file_name && (
-              <span style={{ marginLeft: '6px', opacity: 0.6 }}>({latestImport.file_name})</span>
-            )}
-          </span>
-        </div>
-      </div>
-
       {/* 1. Mục: WO Trong Trạng Thái Theo Dõi Cao */}
       <HighPriorityBoardSection
         trackingBoards={trackingBoards}
