@@ -12,6 +12,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { statsApi } from '../api/statsApi';
+import { fixedWoApi } from '../api/fixedWoApi';
 
 /**
  * Format datetime string as dd/MM/yyyy HH:mm:ss
@@ -85,27 +86,42 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
   // Fetch all tasks matching the clicked number's exact filters (display all directly without page size limit)
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['maintenance-drilldown-tasks', filterInfo, searchTerm, sortKey, sortOrder],
-    queryFn: () => statsApi.getMaintenanceTasks({
-      metric: filterInfo.metric || 'total',
-      filter_type: filterInfo.filterType || null,
-      filter_id: filterInfo.filterId ?? null,
-      target_name: filterInfo.targetName || null,
-      is_other: Boolean(filterInfo.isOther),
-      month: filterInfo.activeMonth || null,
-      target_type: filterInfo.targetType || undefined,
-      exclude_closed_prior_months: filterInfo.excludeClosedPriorMonths,
-      board_id: filterInfo.boardId || undefined,
-      board_codes: filterInfo.boardCodes || undefined,
-      sub_category_id: filterInfo.subCategoryId || undefined,
-      sub_keyword: filterInfo.subKeyword || undefined,
-      is_sub_other: Boolean(filterInfo.isSubOther),
-      all_sub_keywords: filterInfo.allSubKeywords || undefined,
-      search: searchTerm.trim() || undefined,
-      sort_by: sortKey,
-      sort_order: sortOrder,
-      page: 1,
-      page_size: 20000,
-    }),
+    queryFn: () => {
+      if (filterInfo.fixedWoReportId) {
+        return fixedWoApi.getTasks(filterInfo.fixedWoReportId, {
+          metric: filterInfo.metric || 'total',
+          filter_type: filterInfo.filterType || null,
+          filter_id: filterInfo.filterId ?? null,
+          is_other: Boolean(filterInfo.isOther),
+          search: searchTerm.trim() || undefined,
+          sort_by: sortKey,
+          sort_order: sortOrder,
+          page: 1,
+          page_size: 20000,
+        });
+      }
+      return statsApi.getMaintenanceTasks({
+        metric: filterInfo.metric || 'total',
+        filter_type: filterInfo.filterType || null,
+        filter_id: filterInfo.filterId ?? null,
+        target_name: filterInfo.targetName || null,
+        is_other: Boolean(filterInfo.isOther),
+        month: filterInfo.activeMonth || null,
+        target_type: filterInfo.targetType || undefined,
+        exclude_closed_prior_months: filterInfo.excludeClosedPriorMonths,
+        board_id: filterInfo.boardId || undefined,
+        board_codes: filterInfo.boardCodes || undefined,
+        sub_category_id: filterInfo.subCategoryId || undefined,
+        sub_keyword: filterInfo.subKeyword || undefined,
+        is_sub_other: Boolean(filterInfo.isSubOther),
+        all_sub_keywords: filterInfo.allSubKeywords || undefined,
+        search: searchTerm.trim() || undefined,
+        sort_by: sortKey,
+        sort_order: sortOrder,
+        page: 1,
+        page_size: 20000,
+      });
+    },
     enabled: Boolean(isOpen && filterInfo),
     keepPreviousData: true,
   });

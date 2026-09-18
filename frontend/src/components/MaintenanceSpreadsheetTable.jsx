@@ -4,8 +4,6 @@ import {
   FolderKanban, 
   Search, 
   Download, 
-  ChevronDown, 
-  ChevronUp, 
   Layers, 
   Tag,
   CheckCircle2,
@@ -40,7 +38,7 @@ export default function MaintenanceSpreadsheetTable({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState('desc');
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
 
   const currentTab = onTabChange ? activeTab : localActiveTab;
   const handleTabSelect = (tab) => {
@@ -157,126 +155,9 @@ export default function MaintenanceSpreadsheetTable({
         background: 'var(--bg-secondary)'
       }}
     >
-      {/* Table Header / Banner */}
-      <div 
-        style={{
-          padding: '16px 20px',
-          background: isChild 
-            ? 'linear-gradient(90deg, rgba(2, 132, 199, 0.08) 0%, var(--bg-secondary) 100%)' 
-            : 'var(--bg-tertiary)',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <span 
-            className={`badge ${badgeType}`}
-            style={{ 
-              fontWeight: 800, 
-              fontSize: '0.78rem', 
-              padding: '4px 10px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            {isChild ? (isOther ? '📦 KHÁC' : '⚡ BẢNG CON') : '📊 BẢNG MẸ TỔNG HỢP'}
-          </span>
 
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: isChild ? '1.12rem' : '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                {title}
-              </h3>
-              {keyword && (
-                <span 
-                  style={{
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    background: 'rgba(2, 132, 199, 0.15)',
-                    color: 'var(--brand-primary)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    border: '1px solid rgba(2, 132, 199, 0.3)'
-                  }}
-                >
-                  Từ khóa: <strong>{keyword}</strong>
-                </span>
-              )}
-              {isOther && (
-                <span className="badge badge-neutral" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                  Không khớp từ khóa con nào
-                </span>
-              )}
-            </div>
-            {subtitle && (
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </div>
 
-        {/* Quick summary inline chips + Collapse toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tổng:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--brand-primary)' }}>
-              {summary.total ?? 0}
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 1px' }}>|</span>
-            <span style={{ fontSize: '0.82rem', color: 'var(--success-dark)' }}>Đã đóng:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--success-dark)' }}>
-              {summary.closed ?? 0}
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 1px' }}>|</span>
-            <span style={{ fontSize: '0.82rem', color: 'var(--warning-dark)' }}>Tồn:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--warning-dark)' }}>
-              {summary.pending ?? 0}
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 1px' }}>|</span>
-            <span style={{ fontSize: '0.82rem', color: 'var(--danger-dark)' }}>Quá hạn:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--danger-dark)' }}>
-              {summary.overdue ?? 0}
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 1px' }}>|</span>
-            <span style={{ fontSize: '0.82rem', color: '#e11d48' }}>Từ chối:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#e11d48' }} title={`FT từ chối: ${summary.ft_tu_choi ?? 0} | CĐ từ chối: ${summary.cd_tu_choi ?? 0} | Quá hạn: ${summary.overdue_tu_choi ?? 0}`}>
-              {summary.tu_choi ?? 0}
-              <span style={{ fontSize: '0.72rem', color: 'var(--danger-dark)', marginLeft: '2px', fontWeight: 600 }}>({summary.overdue_tu_choi ?? 0} QH)</span>
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 1px' }}>|</span>
-            <span style={{ fontSize: '0.82rem', color: '#0891b2' }}>FT xong:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#0891b2' }}>
-              {summary.ft_hoan_thanh ?? 0}
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 1px' }}>|</span>
-            <span style={{ fontSize: '0.82rem', color: '#8b5cf6' }}>Chờ nhận:</span>
-            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#8b5cf6' }}>
-              {summary.cho_cd_tiep_nhan ?? 0}
-            </strong>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() => setIsExpanded(prev => !prev)}
-            style={{ padding: '5px 10px', fontSize: '0.8rem', gap: '4px' }}
-            title={isExpanded ? 'Thu gọn bảng này' : 'Mở rộng bảng này'}
-          >
-            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            <span>{isExpanded ? 'Thu gọn' : 'Mở rộng'}</span>
-          </button>
-        </div>
-      </div>
-
-      {isExpanded && (
-        <>
+      <>
           {/* Quick Clickable Metric Strip (Compact) */}
           <div 
             style={{ 
@@ -598,7 +479,7 @@ export default function MaintenanceSpreadsheetTable({
                       <td className="cell-num" style={{ width: '38px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
                         {row.is_other ? '*' : index + 1}
                       </td>
-                      <td style={{ width: '1%', whiteSpace: 'nowrap', paddingRight: '22px' }}>
+                      <td style={{ width: '1px', whiteSpace: 'nowrap', paddingRight: '22px' }}>
                         <strong style={{ fontSize: '0.92rem', color: row.is_other ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                           {row.key_name}
                         </strong>
@@ -678,8 +559,7 @@ export default function MaintenanceSpreadsheetTable({
               </tbody>
             </table>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }

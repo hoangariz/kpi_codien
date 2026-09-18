@@ -12,8 +12,13 @@ export default function ImportHistoryPage() {
 
   const formatDate = (d) => {
     if (!d) return '--';
-    const dt = new Date(d);
-    return isNaN(dt) ? d : dt.toLocaleString('vi-VN');
+    if (d instanceof Date) return isNaN(d.getTime()) ? '--' : d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const str = String(d).trim();
+    const iso = str.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(str)
+      ? str
+      : (str.includes('T') ? str + 'Z' : str.replace(' ', 'T') + 'Z');
+    const dt = new Date(iso);
+    return isNaN(dt.getTime()) ? d : dt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   };
 
   const getStatusBadge = (status) => {

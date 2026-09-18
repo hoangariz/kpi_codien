@@ -5,6 +5,7 @@ import { statsApi } from '../api/statsApi';
 import { tasksApi } from '../api/tasksApi';
 import { trackingApi } from '../api/trackingApi';
 import { reportCategoryApi } from '../api/reportCategoryApi';
+import { fixedWoApi } from '../api/fixedWoApi';
 
 import TaskDrilldownModal from '../components/TaskDrilldownModal';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -18,10 +19,11 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
 
   // Navigation & View state
-  const [selectedReport, setSelectedReport] = useState('maintenance'); // 'maintenance' | 'overview-charts'
+  const [selectedReport, setSelectedReport] = useState('maintenance'); // 'maintenance' | 'fixed_wo' | 'overview-charts'
   const [activeCategoryId, setActiveCategoryId] = useState(1);
+  const [activeFixedWoId, setActiveFixedWoId] = useState(null);
   const [maintActiveTab, setMaintActiveTab] = useState('employee'); // 'employee' | 'group'
-  const [activeSubCategoryFilter, setActiveSubCategoryFilter] = useState('all'); // 'all' | 'parent' | sub_category_id
+  const [activeSubCategoryFilter, setActiveSubCategoryFilter] = useState('parent'); // 'parent' | sub_category_id
   const [timelineDays, setTimelineDays] = useState(14);
 
   // Tracking Board Filter state (for lower category report)
@@ -51,11 +53,19 @@ export default function DashboardPage() {
     queryFn: trackingApi.getBoards,
   });
 
-  useEffect(() => {
-    if (trackingBoards && trackingBoards.length > 0 && !activeHighBoardId) {
-      setActiveHighBoardId(String(trackingBoards[0].id));
-    }
-  }, [trackingBoards, activeHighBoardId]);
+  // 2b. Fetch fixed WO reports & active stats
+  const { data: fixedWoReports } = useQuery({
+    queryKey: ['fixed-wo-reports'],
+    queryFn: fixedWoApi.getReports,
+  });
+
+  const { data: fixedWoStats, isLoading: loadingFixedWoStats } = useQuery({
+    queryKey: ['fixed-wo-stats', activeFixedWoId],
+    queryFn: () => fixedWoApi.getStats(activeFixedWoId),
+    enabled: Boolean(activeFixedWoId && selectedReport === 'fixed_wo'),
+  });
+
+
 
   // Selected board detail for lower report filter
   const { data: selectedBoardDetail } = useQuery({
@@ -143,6 +153,21 @@ export default function DashboardPage() {
 
   // Modals handlers
   const handleOpenDrilldown = (metric, metricLabel, row = null, subContext = null) => {
+    if (selectedReport === 'fixed_wo') {
+      const isOtherRow = Boolean(row?.is_other || row?.key_name === 'Khác' || (row && row.id == null));
+      setDrilldownFilter({
+        fixedWoReportId: activeFixedWoId,
+        metric,
+        metricLabel,
+        filterType: row ? maintActiveTab : 'all',
+        filterId: row?.id ?? null,
+        isOther: isOtherRow,
+        targetName: row ? row.key_name : (fixedWoStats?.name || 'Báo Cáo Cố Định'),
+        activeMonth: fixedWoStats?.active_month,
+      });
+      return;
+    }
+
     setDrilldownFilter({
       metric,
       metricLabel,
@@ -228,6 +253,10 @@ export default function DashboardPage() {
         activeCategory={activeCategory}
         setActiveCategoryId={setActiveCategoryId}
         maintSummary={maintSummary}
+        fixedWoReports={fixedWoReports}
+        activeFixedWoId={activeFixedWoId}
+        setActiveFixedWoId={setActiveFixedWoId}
+        fixedWoSummary={fixedWoStats?.summary || {}}
       />
 
       {/* 4. Vùng Hiển Thị Báo Cáo Chuyên Sâu Theo Danh Mục Được Chọn */}
@@ -241,12 +270,38 @@ export default function DashboardPage() {
           byGroup={byGroup}
           maintActiveTab={maintActiveTab}
           setMaintActiveTab={setMaintActiveTab}
-          activeSubCategoryFilter={activeSubCategoryFilter}
+          activeSubCategoryFilter={activeSubCategoryFilter || 'parent'}
           setActiveSubCategoryFilter={setActiveSubCategoryFilter}
           selectedBoardId={selectedBoardId}
           setSelectedBoardId={setSelectedBoardId}
           selectedBoard={selectedBoard}
           trackingBoards={trackingBoards}
+          handleOpenDrilldown={handleOpenDrilldown}
+        />
+      )}
+
+      {/* 4b. Vùng Hiển Thị Báo Cáo Cố Định WO Được Chọn */}
+      {selectedReport === 'fixed_wo' && activeFixedWoId && (
+        <DynamicCategoryReport
+          activeCategory={{
+            id: activeFixedWoId,
+            name: fixedWoStats?.name || 'Báo Cáo Cố Định WO',
+            loai_cong_viec: fixedWoStats?.name || 'Báo Cáo Cố Định WO',
+            sub_categories: [],
+          }}
+          maintSpecial={fixedWoStats}
+          loadingMaint={loadingFixedWoStats}
+          maintSummary={fixedWoStats?.summary || {}}
+          byEmployee={fixedWoStats?.by_employee || []}
+          byGroup={fixedWoStats?.by_group || []}
+          maintActiveTab={maintActiveTab}
+          setMaintActiveTab={setMaintActiveTab}
+          activeSubCategoryFilter="parent"
+          setActiveSubCategoryFilter={() => {}}
+          selectedBoardId=""
+          setSelectedBoardId={() => {}}
+          selectedBoard={null}
+          trackingBoards={[]}
           handleOpenDrilldown={handleOpenDrilldown}
         />
       )}

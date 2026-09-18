@@ -8,7 +8,11 @@ export default function ReportSelectorCards({
   setSelectedReport,
   activeCategory,
   setActiveCategoryId,
-  maintSummary = {}
+  maintSummary = {},
+  fixedWoReports = [],
+  activeFixedWoId,
+  setActiveFixedWoId,
+  fixedWoSummary = {},
 }) {
   const categoriesList = (reportCategories && reportCategories.length > 0) ? reportCategories : [
     {
@@ -21,6 +25,156 @@ export default function ReportSelectorCards({
 
   return (
     <div style={{ marginBottom: '24px' }}>
+      {/* 1. Thẻ Báo Cáo Cố Định WO (Nằm ở TRÊN Danh Mục Loại Báo Cáo, không đặt tên header theo yêu cầu) */}
+      {fixedWoReports && fixedWoReports.length > 0 && (
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+          gap: '14px',
+          marginBottom: '20px'
+        }}>
+          {fixedWoReports.map((rep) => {
+            const isSelected = selectedReport === 'fixed_wo' && activeFixedWoId === rep.id;
+            const repSummary = (isSelected && fixedWoSummary?.total != null)
+              ? fixedWoSummary
+              : (rep.summary || { total: 0, closed: 0, pending: 0, overdue: 0, completion_rate: 0 });
+
+            const totalTasks = repSummary.total ?? 0;
+            const closedTasks = repSummary.closed ?? 0;
+            const pendingTasks = repSummary.pending ?? 0;
+            const overdueTasks = repSummary.overdue ?? 0;
+            const rateVal = repSummary.completion_rate != null 
+              ? repSummary.completion_rate 
+              : (totalTasks > 0 ? Math.round((closedTasks / totalTasks) * 1000) / 10 : 0);
+
+            return (
+              <div 
+                key={rep.id}
+                onClick={() => {
+                  setSelectedReport('fixed_wo');
+                  setActiveFixedWoId(rep.id);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  padding: '16px 18px',
+                  borderRadius: 'var(--radius-lg)',
+                  border: isSelected ? '2px solid #f59e0b' : '1px solid var(--border-color)',
+                  background: isSelected 
+                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.04) 100%)' 
+                    : 'var(--bg-secondary)',
+                  boxShadow: isSelected ? '0 4px 16px -2px rgba(245, 158, 11, 0.25)' : 'var(--shadow-sm)',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  position: 'relative',
+                  minHeight: '158px'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span 
+                      className={`badge ${isSelected ? 'badge-warning' : 'badge-neutral'}`}
+                      style={{ gap: '5px', fontWeight: 700, fontSize: '0.75rem' }}
+                    >
+                      {isSelected ? <CheckCircle2 size={13} /> : <FileSpreadsheet size={13} />}
+                      {isSelected ? 'Đang Xem' : 'Chọn Báo Cáo'}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      📌 Cố định {rep.total_wos?.toLocaleString()} WO
+                    </span>
+                  </div>
+
+                  <h4 style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: 800, 
+                    color: isSelected ? '#d97706' : 'var(--text-primary)', 
+                    marginBottom: '14px', 
+                    lineHeight: 1.45,
+                    minHeight: '44px',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>
+                    {rep.name}
+                  </h4>
+                </div>
+
+                {/* Mini KPI summary row: TỔNG - ĐÃ ĐÓNG - TỒN - TỈ LỆ ĐÓNG - QUÁ HẠN */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: '4px',
+                  padding: '10px 8px',
+                  background: isSelected ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg-tertiary)',
+                  borderRadius: 'var(--radius-md)',
+                  textAlign: 'center',
+                  border: '1px solid',
+                  borderColor: isSelected ? 'rgba(245, 158, 11, 0.25)' : 'transparent'
+                }}>
+                  <div title="Tổng số công việc khớp trong log dữ liệu">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      TỔNG
+                    </span>
+                    <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {totalTasks.toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc đã hoàn thành đóng">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--success-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      ĐÃ ĐÓNG
+                    </span>
+                    <strong style={{ fontSize: '0.86rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {closedTasks.toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc còn tồn chưa đóng">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      TỒN
+                    </span>
+                    <strong style={{ fontSize: '0.86rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {pendingTasks.toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Tỉ lệ hoàn thành đóng công việc">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--brand-primary)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      TỈ LỆ ĐÓNG
+                    </span>
+                    <strong style={{ fontSize: '0.86rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {rateVal}%
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc bị quá hạn">
+                    <span style={{ 
+                      fontSize: '0.62rem', 
+                      color: overdueTasks > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', 
+                      display: 'block', 
+                      fontWeight: 700, 
+                      marginBottom: '2px' 
+                    }}>
+                      QUÁ HẠN
+                    </span>
+                    <strong style={{ 
+                      fontSize: '0.86rem', 
+                      color: overdueTasks > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', 
+                      fontFamily: 'var(--font-mono)' 
+                    }}>
+                      {overdueTasks.toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 2. Header Danh Mục Loại Báo Cáo */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
@@ -49,7 +203,7 @@ export default function ReportSelectorCards({
         </span>
       </div>
 
-      {/* Report Selector Cards Grid */}
+      {/* 3. Grid Danh Mục Loại Báo Cáo */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
@@ -90,7 +244,8 @@ export default function ReportSelectorCards({
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                position: 'relative'
+                position: 'relative',
+                minHeight: '158px'
               }}
             >
               <div>
@@ -112,7 +267,12 @@ export default function ReportSelectorCards({
                   fontWeight: 800, 
                   color: isSelected ? 'var(--brand-primary)' : 'var(--text-primary)', 
                   marginBottom: '14px', 
-                  lineHeight: 1.45 
+                  lineHeight: 1.45,
+                  minHeight: '44px',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
                 }}>
                   {cat.name}
                 </h4>

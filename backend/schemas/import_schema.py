@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 
 class ImportLogResponse(BaseModel):
@@ -20,6 +20,12 @@ class ImportLogResponse(BaseModel):
     status: str
     progress_percent: int
     error_message: Optional[str] = None
+
+    @field_serializer("imported_at")
+    def serialize_imported_at(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
 
 class FilterOptionsResponse(BaseModel):

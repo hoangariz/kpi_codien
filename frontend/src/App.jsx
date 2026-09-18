@@ -5,6 +5,7 @@ import Header from './components/Header';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import SearchPage from './pages/SearchPage';
+import CsdbPage from './pages/CsdbPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,10 @@ export default function App() {
       if (!window.location.pathname.includes('/search')) {
         window.history.pushState({}, '', '/search');
       }
+    } else if (tab === 'csdb') {
+      if (!window.location.pathname.includes('/csdb')) {
+        window.history.pushState({}, '', '/csdb');
+      }
     } else {
       if (window.location.pathname !== '/' || window.location.hash) {
         window.history.pushState({}, '', '/');
@@ -92,6 +97,8 @@ export default function App() {
         setActiveTab('admin');
       } else if (path.includes('/search') || hash.includes('search')) {
         setActiveTab('search');
+      } else if (path.includes('/csdb') || hash.includes('csdb')) {
+        setActiveTab('csdb');
       } else {
         setActiveTab('dashboard');
       }
@@ -131,6 +138,8 @@ export default function App() {
                 <AdminPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
               ) : activeTab === 'search' ? (
                 <SearchPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
+              ) : activeTab === 'csdb' ? (
+                <CsdbPage />
               ) : (
                 <DashboardPage />
               )}

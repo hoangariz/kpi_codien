@@ -16,6 +16,7 @@ from backend.api.router_meta import router as meta_router
 from backend.api.router_settings import router as settings_router
 from backend.api.router_tracking import router as tracking_router
 from backend.api.router_report_categories import router as reports_router
+from backend.api.router_fixed_wo import router as fixed_wo_router
 
 # Create database tables automatically (including report_categories)
 Base.metadata.create_all(bind=engine)
@@ -116,6 +117,7 @@ app.include_router(meta_router)
 app.include_router(settings_router)
 app.include_router(tracking_router)
 app.include_router(reports_router)
+app.include_router(fixed_wo_router)
 
 
 @app.get("/api/health")

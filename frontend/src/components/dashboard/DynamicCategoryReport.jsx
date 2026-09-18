@@ -17,7 +17,7 @@ export default function DynamicCategoryReport({
   byGroup = [],
   maintActiveTab = 'employee',
   setMaintActiveTab,
-  activeSubCategoryFilter = 'all',
+  activeSubCategoryFilter = 'parent',
   setActiveSubCategoryFilter,
   selectedBoardId = '',
   setSelectedBoardId,
@@ -80,60 +80,12 @@ export default function DynamicCategoryReport({
                 <span className="badge badge-success" style={{ gap: '4px', fontSize: '0.78rem', padding: '2px 9px', fontWeight: 700 }}>
                   <Calendar size={12} /> {formatMonthDisplay(maintSpecial?.active_month)}
                 </span>
-                {selectedBoard && (
-                  <span style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    gap: '5px',
-                    padding: '2px 9px', 
-                    borderRadius: '12px', 
-                    background: 'rgba(139, 92, 246, 0.15)', 
-                    color: '#8b5cf6', 
-                    fontSize: '0.78rem', 
-                    fontWeight: 700 
-                  }}>
-                    📌 Đang lọc: {selectedBoard.name} ({selectedBoard.task_count} WO)
-                    <button 
-                      onClick={() => setSelectedBoardId('')}
-                      style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: '0 2px', fontWeight: 800, fontSize: '1rem', lineHeight: 1 }}
-                      title="Bỏ lọc bảng này"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
+
               </div>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Bảng tính chi tiết và điều phối nhiệm vụ theo từng Nhân viên & Nhóm
               </span>
             </div>
-          </div>
-
-          {/* Tracking board selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Bảng theo dõi:</span>
-            <select
-              className="select-filter"
-              value={selectedBoardId}
-              onChange={(e) => setSelectedBoardId(e.target.value)}
-              style={{
-                padding: '7px 12px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: selectedBoardId ? '#8b5cf6' : 'var(--text-primary)',
-                borderColor: selectedBoardId ? '#8b5cf6' : 'var(--border-color)',
-                background: selectedBoardId ? 'rgba(139, 92, 246, 0.08)' : 'var(--bg-secondary)',
-                borderRadius: 'var(--radius-md)',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="">Toàn bộ công việc</option>
-              {(trackingBoards || []).map(b => (
-                <option key={b.id} value={b.id}>
-                  📌 {b.name} ({b.task_count} WO)
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -162,39 +114,7 @@ export default function DynamicCategoryReport({
               Chọn đầu việc con:
             </span>
 
-            {/* Tab: Tất Cả */}
-            <button
-              onClick={() => setActiveSubCategoryFilter('all')}
-              style={{
-                padding: '6px 14px',
-                fontSize: '0.82rem',
-                borderRadius: '20px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                border: activeSubCategoryFilter === 'all' ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
-                background: activeSubCategoryFilter === 'all' ? 'var(--brand-primary)' : 'var(--bg-tertiary)',
-                color: activeSubCategoryFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: activeSubCategoryFilter === 'all' ? '0 2px 8px rgba(2, 132, 199, 0.3)' : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>📊 Tất Cả</span>
-              <span style={{
-                padding: '1px 6px',
-                borderRadius: '10px',
-                background: activeSubCategoryFilter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)',
-                color: activeSubCategoryFilter === 'all' ? '#ffffff' : 'var(--text-primary)',
-                fontSize: '0.72rem',
-                fontWeight: 800
-              }}>
-                {1 + subCategoriesList.length} bảng
-              </span>
-            </button>
-
-            {/* Tab: Bảng Mẹ Tổng Hợp */}
+            {/* Tab: Tất Cả (Bảng Mẹ) */}
             <button
               onClick={() => setActiveSubCategoryFilter('parent')}
               style={{
@@ -213,7 +133,7 @@ export default function DynamicCategoryReport({
                 transition: 'all 0.15s ease'
               }}
             >
-              <span>🏛️ Bảng Mẹ</span>
+              <span>🏛️ Tất Cả</span>
               <span style={{
                 padding: '1px 6px',
                 borderRadius: '10px',
@@ -289,85 +209,10 @@ export default function DynamicCategoryReport({
         />
       )}
 
-      {/* Case 2: Sub-categories exist & filter is 'all' -> Render Parent Table + All Child Tables */}
-      {subCategoriesList.length > 0 && activeSubCategoryFilter === 'all' && (
-        <>
-          {/* Parent Table */}
-          <MaintenanceSpreadsheetTable
-            title={`BẢNG MẸ: ${categoryTitle}`}
-            badgeText="BẢNG MẸ TỔNG HỢP"
-            badgeType="badge-info"
-            isChild={false}
-            summary={maintSummary}
-            byEmployee={byEmployee}
-            byGroup={byGroup}
-            activeTab={maintActiveTab}
-            onTabChange={setMaintActiveTab}
-            onDrilldown={handleOpenDrilldown}
-            exportFilename={`Bao_cao_me_${maintSpecial?.active_month || '2026-09'}`}
-          />
-
-          {/* Separator Section for Child Tables */}
-          <div style={{ margin: '36px 0 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', background: 'rgba(2, 132, 199, 0.15)', color: 'var(--brand-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Layers size={22} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                  Bảng Thống Kê Các Đầu Việc Con ({subCategoriesList.length} bảng con)
-                </h3>
-              </div>
-            </div>
-          </div>
-
-          {/* Child Tables List */}
-          {subCategoriesList.map((sub) => {
-            const icon = sub.keyword === 'CONDITIONER' ? '❄️ ' :
-                         sub.keyword === 'GENERATOR' ? '⚡ ' :
-                         sub.keyword === 'VENTILATION' ? '🌀 ' :
-                         sub.is_other ? '📦 ' : '🔧 ';
-            return (
-              <MaintenanceSpreadsheetTable
-                key={sub.id}
-                title={`${icon}BẢNG CON: ${sub.name}`}
-                badgeText={sub.is_other ? 'BẢNG KHÁC' : `TỪ KHÓA: ${sub.keyword}`}
-                badgeType={sub.is_other ? 'badge-neutral' : 'badge-primary'}
-                isChild={true}
-                keyword={sub.keyword}
-                isOther={sub.is_other}
-                summary={sub.summary || {}}
-                byEmployee={sub.by_employee || []}
-                byGroup={sub.by_group || []}
-                activeTab={maintActiveTab}
-                onTabChange={setMaintActiveTab}
-                onDrilldown={handleOpenDrilldown}
-                subCategoryContext={{
-                  subCategoryId: sub.id,
-                  subKeyword: sub.is_other ? null : sub.keyword,
-                  isSubOther: sub.is_other,
-                  subCategoryName: sub.name,
-                  allSubKeywords: subCategoriesList.map(s => s.keyword).filter(Boolean)
-                }}
-                exportFilename={`Bao_cao_con_${sub.keyword || 'khac'}_${maintSpecial?.active_month || '2026-09'}`}
-              />
-            );
-          })}
-        </>
-      )}
 
       {/* Case 3: Sub-categories exist & filter is 'parent' -> Render Parent Table Only */}
       {subCategoriesList.length > 0 && activeSubCategoryFilter === 'parent' && (
         <div>
-          <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button
-              className="btn btn-outline"
-              onClick={() => setActiveSubCategoryFilter('all')}
-              style={{ fontSize: '0.84rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
-            >
-              <ArrowLeft size={15} /> Quay lại xem tất cả các bảng
-            </button>
-          </div>
           <MaintenanceSpreadsheetTable
             title={`BẢNG MẸ: ${categoryTitle}`}
             badgeText="BẢNG MẸ TỔNG HỢP"
@@ -397,10 +242,10 @@ export default function DynamicCategoryReport({
             <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button
                 className="btn btn-outline"
-                onClick={() => setActiveSubCategoryFilter('all')}
+                onClick={() => setActiveSubCategoryFilter('parent')}
                 style={{ fontSize: '0.84rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
               >
-                <ArrowLeft size={15} /> Quay lại xem tất cả các bảng ({1 + subCategoriesList.length} bảng)
+                <ArrowLeft size={15} /> Quay lại tất cả
               </button>
             </div>
             <MaintenanceSpreadsheetTable

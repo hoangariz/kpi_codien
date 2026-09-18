@@ -110,14 +110,33 @@ export default function SearchPage({ onNavigateToDashboard }) {
   });
 
   const latestImport = importLogs && importLogs.length > 0 ? importLogs[0] : null;
-  const lastDataUpdate = latestImport?.imported_at ? new Date(latestImport.imported_at) : null;
+  const lastDataUpdate = latestImport?.imported_at || null;
 
-  const formatDataTimestamp = (dt) => {
+  const parseUtcDate = (val) => {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    const str = String(val).trim();
+    const iso = str.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(str)
+      ? str
+      : (str.includes('T') ? str + 'Z' : str.replace(' ', 'T') + 'Z');
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? new Date(str) : d;
+  };
+
+  const formatDataTimestamp = (val) => {
+    const dt = parseUtcDate(val);
     if (!dt || isNaN(dt.getTime())) return 'Chưa xác định';
-    // Server stores UTC, display in GMT+7
-    const gmt7 = new Date(dt.getTime() + 7 * 60 * 60 * 1000);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(gmt7.getUTCDate())}/${pad(gmt7.getUTCMonth() + 1)}/${gmt7.getUTCFullYear()} lúc ${pad(gmt7.getUTCHours())}:${pad(gmt7.getUTCMinutes())}`;
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(dt);
+    const get = (type) => parts.find((p) => p.type === type)?.value || '';
+    return `${get('day')}/${get('month')}/${get('year')} lúc ${get('hour')}:${get('minute')}`;
   };
 
   // Fetch categories for task type filter
@@ -406,7 +425,7 @@ export default function SearchPage({ onNavigateToDashboard }) {
                   }
                   value={searchQuery}
                   onChange={(e) => handleSearchInputChange(e.target.value)}
-                  rows={Math.max(lineCount, 1)}
+                  rows={Math.max(lineCount, 3)}
                   style={{
                     flex: '1 1 auto',
                     width: 0,

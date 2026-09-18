@@ -3,11 +3,12 @@ import {
   Activity, 
   LayoutDashboard, 
   Search,
-  Settings, 
   Sun, 
   Moon, 
   RefreshCw,
-  Calendar
+  Calendar,
+  Database,
+  Sparkles
 } from 'lucide-react';
 
 export default function Header({ 
@@ -59,16 +60,36 @@ export default function Header({
             title="Tra cứu công việc theo Mã WO, Mã Trạm, FT và ghi chú"
           >
             <Search size={16} />
-            <span>Tra Cứu & Chi Tiết WO</span>
+            <span>Tra Cứu WO</span>
           </button>
 
+          {/* CSDL Tab – Coming Soon */}
           <button
-            className={`header-nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('admin')}
-            title="Quản trị bảng báo cáo, hệ thống và cấu hình"
+            className={`header-nav-btn ${activeTab === 'csdb' ? 'active' : ''}`}
+            onClick={() => setActiveTab('csdb')}
+            title="CSDL Trạm & MPĐ — Đang phát triển"
+            style={{ position: 'relative' }}
           >
-            <Settings size={16} />
-            <span>Quản Trị</span>
+            <Database size={16} />
+            <span>CSDL Trạm / MPĐ</span>
+            {/* Pulsing badge */}
+            <span style={{
+              position: 'absolute',
+              top: '-4px',
+              right: '-6px',
+              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+              color: '#fff',
+              fontSize: '0.55rem',
+              fontWeight: 800,
+              padding: '1px 5px',
+              borderRadius: '8px',
+              letterSpacing: '0.03em',
+              whiteSpace: 'nowrap',
+              animation: 'pulse-badge 2s ease-in-out infinite',
+              boxShadow: '0 0 6px rgba(245, 158, 11, 0.6)'
+            }}>
+              SOON
+            </span>
           </button>
         </nav>
       </div>
@@ -110,6 +131,14 @@ export default function Header({
           </button>
         )}
       </div>
+
+      {/* Keyframe animation via style tag */}
+      <style>{`
+        @keyframes pulse-badge {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.1); }
+        }
+      `}</style>
     </header>
   );
 }

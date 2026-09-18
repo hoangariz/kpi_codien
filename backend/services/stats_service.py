@@ -387,7 +387,7 @@ def get_special_maintenance_stats(
     def compute_breakdown_for_condition(condition):
         emp_res = db.query(
             Employee.id.label("id"),
-            func.coalesce(Employee.name, "Khác (Chưa gán NV)").label("key_name"),
+            func.coalesce(Employee.name, "Khác").label("key_name"),
             func.count(Task.ma_cong_viec).label("total"),
             func.sum(case((Task.trang_thai == "Đóng", 1), else_=0)).label("closed"),
             func.sum(case((Task.trang_thai != "Đóng", 1), else_=0)).label("pending"),
@@ -504,10 +504,10 @@ def get_special_maintenance_stats(
             cd_tc = r.cd_tu_choi or 0
             ov_tc = r.overdue_tu_choi or 0
             rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
-            is_other = (r.id is None or r.key_name == "Khác (Chưa gán NV)")
+            is_other = (r.id is None or r.key_name == "Khác")
             item = {
                 "id": r.id,
-                "key_name": "Khác (Chưa gán NV)" if is_other else r.key_name,
+                "key_name": "Khác" if is_other else r.key_name,
                 "is_other": is_other,
                 "total": tot,
                 "closed": cl,

@@ -65,7 +65,7 @@ export default function HighPriorityBoardSection({
       {trackingBoards && trackingBoards.length > 0 ? (
         <div>
           {/* Tab selector between boards */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
               Chọn bảng theo dõi:
             </span>
@@ -74,7 +74,7 @@ export default function HighPriorityBoardSection({
               return (
                 <button
                   key={b.id}
-                  onClick={() => setActiveHighBoardId(String(b.id))}
+                  onClick={() => setActiveHighBoardId(isActive ? '' : String(b.id))}
                   className={`btn ${isActive ? 'btn-primary' : 'btn-outline'}`}
                   style={{
                     padding: '5px 14px',
@@ -106,6 +106,9 @@ export default function HighPriorityBoardSection({
             })}
           </div>
 
+          {/* Stats strip + Table: only shown when a board is selected */}
+          {activeHighBoardId && (
+            <>
           {/* Quick summary stats strip for active board */}
           <div style={{
             display: 'grid',
@@ -114,7 +117,8 @@ export default function HighPriorityBoardSection({
             padding: '12px 16px',
             background: 'var(--bg-tertiary)',
             borderRadius: 'var(--radius-md)',
-            marginBottom: '16px'
+            marginBottom: '16px',
+            marginTop: '14px'
           }}>
             <div>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', fontWeight: 600 }}>TỔNG WO THEO DÕI</span>
@@ -399,6 +403,8 @@ export default function HighPriorityBoardSection({
               </table>
             )}
           </div>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ textAlign: 'center', padding: '24px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>

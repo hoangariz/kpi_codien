@@ -222,7 +222,12 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
                 Đồng Bộ File Thành Công!
               </h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                File: {importStatus.file_name} • Thời điểm: {new Date(importStatus.imported_at).toLocaleString('vi-VN')}
+                File: {importStatus.file_name} • Thời điểm: {(() => {
+                  const s = String(importStatus.imported_at || '').trim();
+                  const iso = s.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(s) ? s : (s.includes('T') ? s + 'Z' : s.replace(' ', 'T') + 'Z');
+                  const dt = new Date(iso);
+                  return isNaN(dt.getTime()) ? importStatus.imported_at : dt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+                })()}
               </p>
             </div>
           </div>

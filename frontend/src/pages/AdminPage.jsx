@@ -35,6 +35,7 @@ import { statsApi } from '../api/statsApi';
 import { trackingApi } from '../api/trackingApi';
 import { metaApi } from '../api/metaApi';
 import { reportCategoryApi } from '../api/reportCategoryApi';
+import { fixedWoApi } from '../api/fixedWoApi';
 
 export default function AdminPage({ onNavigateToDashboard }) {
   const queryClient = useQueryClient();
@@ -279,6 +280,81 @@ export default function AdminPage({ onNavigateToDashboard }) {
     queryFn: metaApi.getFilters,
   });
   const taskTypesList = filterOptions?.task_types || [];
+
+  // ==========================================
+  // Fixed WO Reports State & Mutations
+  // ==========================================
+  const [fixedWoName, setFixedWoName] = useState('');
+  const [fixedWoDesc, setFixedWoDesc] = useState('');
+  const [fixedWoCodesText, setFixedWoCodesText] = useState('');
+  const [editingFixedWo, setEditingFixedWo] = useState(null);
+  const [editFixedWoName, setEditFixedWoName] = useState('');
+  const [editFixedWoDesc, setEditFixedWoDesc] = useState('');
+  const [editFixedWoMode, setEditFixedWoMode] = useState('keep'); // 'keep' | 'append' | 'replace'
+  const [editFixedWoCodesText, setEditFixedWoCodesText] = useState('');
+
+  // Viewing WOs Modal
+  const [viewingFixedWo, setViewingFixedWo] = useState(null);
+  const [viewWoSearch, setViewWoSearch] = useState('');
+  const [viewWoFilter, setViewWoFilter] = useState('all'); // 'all' | 'matched' | 'unmatched'
+
+  const { data: fixedWoReports, isLoading: loadingFixedWo, refetch: refetchFixedWo } = useQuery({
+    queryKey: ['admin-fixed-wo-reports'],
+    queryFn: fixedWoApi.getReports,
+  });
+
+  const { data: viewingWoData, isLoading: loadingViewingWo } = useQuery({
+    queryKey: ['fixed-wo-codes', viewingFixedWo?.id, viewWoSearch, viewWoFilter],
+    queryFn: () => fixedWoApi.listWoCodes(viewingFixedWo.id, {
+      search: viewWoSearch.trim() || undefined,
+      matched_only: viewWoFilter === 'matched' ? true : viewWoFilter === 'unmatched' ? false : undefined,
+    }),
+    enabled: Boolean(viewingFixedWo?.id),
+  });
+
+  const createFixedWoMutation = useMutation({
+    mutationFn: (data) => fixedWoApi.createReport(data),
+    onSuccess: (res) => {
+      setFixedWoName('');
+      setFixedWoDesc('');
+      setFixedWoCodesText('');
+      refetchFixedWo();
+      queryClient.invalidateQueries({ queryKey: ['admin-fixed-wo-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['fixed-wo-reports'] });
+      alert(`Đã tạo thành công danh mục báo cáo cố định "${res.name}" với ${res.total_wos} mã WO!`);
+    },
+    onError: (err) => {
+      alert('Lỗi tạo danh mục báo cáo cố định: ' + (err.response?.data?.detail || err.message));
+    }
+  });
+
+  const updateFixedWoMutation = useMutation({
+    mutationFn: ({ id, data }) => fixedWoApi.updateReport(id, data),
+    onSuccess: (res) => {
+      setEditingFixedWo(null);
+      refetchFixedWo();
+      queryClient.invalidateQueries({ queryKey: ['admin-fixed-wo-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['fixed-wo-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['fixed-wo-stats', res.id] });
+      alert(`Đã cập nhật danh mục báo cáo "${res.name}" thành công!`);
+    },
+    onError: (err) => {
+      alert('Lỗi cập nhật danh mục báo cáo: ' + (err.response?.data?.detail || err.message));
+    }
+  });
+
+  const deleteFixedWoMutation = useMutation({
+    mutationFn: (id) => fixedWoApi.deleteReport(id),
+    onSuccess: () => {
+      refetchFixedWo();
+      queryClient.invalidateQueries({ queryKey: ['admin-fixed-wo-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['fixed-wo-reports'] });
+      alert('Đã xóa danh mục báo cáo cố định thành công!');
+    },
+    onError: (err) => {
+      alert('Lỗi xóa danh mục báo cáo cố định: ' + (err.response?.data?.detail || err.message));
+    }
+  });
 
   // Fetch tracking boards
   const { data: trackingBoards, isLoading: loadingBoards, refetch: refetchBoards } = useQuery({
@@ -600,8 +676,13 @@ export default function AdminPage({ onNavigateToDashboard }) {
 
   const formatDate = (d) => {
     if (!d) return '--';
-    const dt = new Date(d);
-    return isNaN(dt) ? d : dt.toLocaleString('vi-VN');
+    if (d instanceof Date) return isNaN(d.getTime()) ? '--' : d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const str = String(d).trim();
+    const iso = str.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(str)
+      ? str
+      : (str.includes('T') ? str + 'Z' : str.replace(' ', 'T') + 'Z');
+    const dt = new Date(iso);
+    return isNaN(dt.getTime()) ? d : dt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   };
 
   const formatBytes = (bytes) => {
@@ -625,6 +706,13 @@ export default function AdminPage({ onNavigateToDashboard }) {
       icon: Layers,
       color: '#0284c7',
       badge: reportCategories ? `${reportCategories.length} danh mục` : null,
+    },
+    {
+      id: 'fixed_wo_reports',
+      label: 'Quản Lý Danh Mục Loại Báo Cáo Cố định WO',
+      icon: FileSpreadsheet,
+      color: '#f59e0b',
+      badge: fixedWoReports ? `${fixedWoReports.length} danh mục` : null,
     },
     {
       id: 'boards',
@@ -1476,6 +1564,338 @@ export default function AdminPage({ onNavigateToDashboard }) {
           </table>
         </div>
       </div>
+      )}
+
+      {/* 2.5. Quản Lý Danh Mục Loại Báo Cáo Cố Định WO Card */}
+      {(activeAdminNav === 'all' || activeAdminNav === 'fixed_wo_reports') && (
+        <div 
+          id="admin-sec-fixed-wo"
+          className="table-card" 
+          style={{ 
+            padding: '24px', 
+            marginBottom: '28px',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
+            background: 'var(--bg-secondary)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.14)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileSpreadsheet size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                  Quản Lý Danh Mục Loại Báo Cáo Cố định WO
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Tạo các bảng báo cáo theo danh sách mã WO cố định được import. Hệ thống tự động tham chiếu dữ liệu sang bảng log để thống kê theo Cụm và Nhân viên.
+                </p>
+              </div>
+            </div>
+            {fixedWoReports && (
+              <span className="badge badge-warning" style={{ fontSize: '0.78rem', fontWeight: 700, padding: '4px 10px' }}>
+                {fixedWoReports.length} danh mục cố định
+              </span>
+            )}
+          </div>
+
+          {/* Form tạo báo cáo cố định WO mới */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const cleanName = fixedWoName.trim();
+              const codes = parseTaskCodes(fixedWoCodesText);
+              if (!cleanName) {
+                alert('Vui lòng nhập tên bảng báo cáo cố định!');
+                return;
+              }
+              if (codes.length === 0) {
+                alert('Vui lòng nhập hoặc dán ít nhất 1 mã WO vào ô import!');
+                return;
+              }
+              createFixedWoMutation.mutate({
+                name: cleanName,
+                description: fixedWoDesc.trim() || undefined,
+                wo_codes: codes,
+              });
+            }}
+            style={{
+              background: 'var(--bg-tertiary)',
+              padding: '20px 22px',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '22px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              border: '1px solid rgba(245, 158, 11, 0.25)'
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              {/* Tên bảng */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+                  TÊN BẢNG BÁO CÁO CỐ ĐỊNH <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="select-filter"
+                  placeholder="VD: Danh Mục WO Tồn Tháng 08 Cần Xử Lý, Danh Mục WO Ưu Tiên Cao..."
+                  value={fixedWoName}
+                  onChange={(e) => setFixedWoName(e.target.value)}
+                  style={{ width: '100%', padding: '9px 13px', fontSize: '0.88rem' }}
+                  required
+                />
+              </div>
+
+              {/* Mô tả */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+                  MÔ TẢ / GHI CHÚ
+                </label>
+                <input
+                  type="text"
+                  className="select-filter"
+                  placeholder="Ghi chú mục đích của danh mục báo cáo này..."
+                  value={fixedWoDesc}
+                  onChange={(e) => setFixedWoDesc(e.target.value)}
+                  style={{ width: '100%', padding: '9px 13px', fontSize: '0.88rem' }}
+                />
+              </div>
+            </div>
+
+            {/* Ô import mã WO */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+                  Ô IMPORT MÃ WO CỐ ĐỊNH <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {fixedWoCodesText.trim() && (
+                    <span className="badge badge-info" style={{ fontSize: '0.75rem', padding: '2px 8px', fontWeight: 700 }}>
+                      ✓ Đã nhận diện {parseTaskCodes(fixedWoCodesText).length.toLocaleString()} mã WO
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        if (text) {
+                          setFixedWoCodesText(prev => prev ? prev + '\n' + text : text);
+                        }
+                      } catch {
+                        alert('Trình duyệt chưa cấp quyền đọc clipboard. Vui lòng bấm Ctrl + V vào ô bên dưới để dán.');
+                      }
+                    }}
+                    style={{ padding: '3px 8px', fontSize: '0.74rem' }}
+                  >
+                    📋 Dán từ clipboard
+                  </button>
+                  {fixedWoCodesText && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setFixedWoCodesText('')}
+                      style={{ padding: '3px 8px', fontSize: '0.74rem', color: 'var(--danger-dark)' }}
+                    >
+                      Xóa trắng
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <textarea
+                className="select-filter"
+                rows={6}
+                value={fixedWoCodesText}
+                onChange={(e) => setFixedWoCodesText(e.target.value)}
+                placeholder="Dán danh sách mã WO vào đây (hỗ trợ hàng nghìn đến hàng chục nghìn mã WO).&#10;Hệ thống tự động nhận diện mã phân cách bởi xuống dòng, dấu phẩy, chấm phẩy hoặc khoảng trắng...&#10;VD:&#10;WO_CC_SCVT_20260701_170374882&#10;WO_CC_SCVT_20260704_170502557&#10;WO_CC_SCVT_20260704_170540785"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  fontSize: '0.85rem',
+                  fontFamily: 'var(--font-mono)',
+                  resize: 'vertical',
+                  lineHeight: 1.5
+                }}
+              />
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                * Hỗ trợ copy nguyên cột mã công việc từ file Excel và dán trực tiếp. Trùng lặp và khoảng trắng sẽ được tự động lọc sạch.
+              </span>
+            </div>
+
+            {/* Submit button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={createFixedWoMutation.isPending || !fixedWoName.trim() || parseTaskCodes(fixedWoCodesText).length === 0}
+                style={{
+                  padding: '9px 24px',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  gap: '8px',
+                  background: '#f59e0b',
+                  borderColor: '#f59e0b',
+                  color: '#ffffff'
+                }}
+              >
+                <Plus size={16} />
+                {createFixedWoMutation.isPending 
+                  ? 'Đang tạo và lưu WO...' 
+                  : `Tạo Báo Cáo Cố Định (${parseTaskCodes(fixedWoCodesText).length.toLocaleString()} WO)`}
+              </button>
+            </div>
+          </form>
+
+          {/* Bảng danh sách các báo cáo cố định WO */}
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+            <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '45px', textAlign: 'center' }}>STT</th>
+                  <th style={{ minWidth: '220px', textAlign: 'left' }}>Tên Báo Cáo Cố Định WO</th>
+                  <th style={{ width: '140px', textAlign: 'center' }}>Tổng WO Nạp</th>
+                  <th style={{ width: '140px', textAlign: 'center' }}>Khớp Trong Log</th>
+                  <th style={{ width: '130px', textAlign: 'center' }}>Tỉ Lệ Đóng</th>
+                  <th style={{ width: '130px', textAlign: 'center' }}>Tiến Độ (Đã/Tồn/Quá)</th>
+                  <th style={{ width: '140px', textAlign: 'center' }}>Ngày Tạo</th>
+                  <th style={{ width: '170px', textAlign: 'center' }}>Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingFixedWo ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                      Đang tải danh sách báo cáo cố định...
+                    </td>
+                  </tr>
+                ) : !fixedWoReports || fixedWoReports.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                      Chưa có danh mục báo cáo cố định WO nào. Hãy nhập thông tin và danh sách mã WO ở trên để tạo mới.
+                    </td>
+                  </tr>
+                ) : (
+                  fixedWoReports.map((rep, idx) => {
+                    const matched = rep.matched_wos || 0;
+                    const totalWos = rep.total_wos || 0;
+                    const unmatched = Math.max(0, totalWos - matched);
+                    const smm = rep.summary || { total: 0, closed: 0, pending: 0, overdue: 0, completion_rate: 0 };
+                    return (
+                      <tr key={rep.id} className="excel-row">
+                        <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                              {rep.name}
+                            </strong>
+                            {rep.description && (
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                {rep.description}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="badge badge-neutral" style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.82rem' }}>
+                            {totalWos.toLocaleString()} WO
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span className="badge badge-success" style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.78rem' }}>
+                              ✓ {matched.toLocaleString()} khớp log
+                            </span>
+                            {unmatched > 0 && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                ({unmatched.toLocaleString()} chưa có trong log)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ 
+                            fontWeight: 800, 
+                            fontFamily: 'var(--font-mono)',
+                            color: (smm.completion_rate >= 80) ? 'var(--success-dark)' : 'var(--brand-primary)' 
+                          }}>
+                            {smm.completion_rate}%
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}>
+                            <span style={{ color: 'var(--success-dark)', fontWeight: 700 }} title="Đã hoàn thành đóng">
+                              {smm.closed.toLocaleString()}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)' }}>/</span>
+                            <span style={{ color: 'var(--warning-dark)', fontWeight: 700 }} title="Đang tồn">
+                              {smm.pending.toLocaleString()}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)' }}>/</span>
+                            <span style={{ color: 'var(--danger-dark)', fontWeight: 700 }} title="Quá hạn">
+                              {smm.overdue.toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {formatDate(rep.created_at)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => {
+                                setViewingFixedWo(rep);
+                                setViewWoSearch('');
+                                setViewWoFilter('all');
+                              }}
+                              title="Xem danh sách mã WO"
+                              style={{ padding: '4px 8px', fontSize: '0.74rem', gap: '4px' }}
+                            >
+                              <Eye size={13} /> Xem WO
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => {
+                                setEditingFixedWo(rep);
+                                setEditFixedWoName(rep.name);
+                                setEditFixedWoDesc(rep.description || '');
+                                setEditFixedWoMode('keep');
+                                setEditFixedWoCodesText('');
+                              }}
+                              title="Chỉnh sửa báo cáo"
+                              style={{ padding: '4px 8px', fontSize: '0.74rem', gap: '4px' }}
+                            >
+                              <Pencil size={13} /> Sửa
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => {
+                                if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục báo cáo cố định "${rep.name}"?`)) {
+                                  deleteFixedWoMutation.mutate(rep.id);
+                                }
+                              }}
+                              title="Xóa danh mục báo cáo cố định"
+                              style={{ padding: '4px 8px', fontSize: '0.74rem', color: 'var(--danger-dark)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* 3. Quản Lý Bảng WO Cần Theo Dõi Card */}
@@ -3086,6 +3506,404 @@ export default function AdminPage({ onNavigateToDashboard }) {
                 >
                   <Save size={15} />
                   {updateCategoryMutation.isPending ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Xem Danh Sách Mã WO của Báo Cáo Cố Định */}
+      {viewingFixedWo && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setViewingFixedWo(null)}
+          style={{ zIndex: 100 }}
+        >
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '850px', 
+              width: '94vw', 
+              maxHeight: '90vh', 
+              display: 'flex', 
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
+              borderRadius: 'var(--radius-xl)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 22px',
+              background: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="badge badge-warning" style={{ fontSize: '0.8rem', fontWeight: 800, padding: '4px 10px', gap: '5px' }}>
+                  <FileSpreadsheet size={14} /> Danh Sách Mã WO
+                </span>
+                <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>
+                  {viewingFixedWo.name}
+                </strong>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-outline btn-icon"
+                onClick={() => setViewingFixedWo(null)}
+                style={{ width: '30px', height: '30px', borderRadius: '50%' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Stat Strip & Search */}
+            <div style={{ padding: '14px 22px', background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', fontWeight: 600 }}>TỔNG MÃ WO NẠP</span>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                    {(viewingWoData?.total_wos ?? viewingFixedWo.total_wos ?? 0).toLocaleString()}
+                  </strong>
+                </div>
+
+                <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--success-dark)', display: 'block', fontWeight: 600 }}>KHỚP TRONG LOG HIỆN TẠI</span>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+                    {(viewingWoData?.matched_count ?? viewingFixedWo.matched_wos ?? 0).toLocaleString()}
+                  </strong>
+                </div>
+
+                <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 600 }}>CHƯA THẤY TRONG LOG</span>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                    {(viewingWoData?.unmatched_count ?? Math.max(0, (viewingFixedWo.total_wos || 0) - (viewingFixedWo.matched_wos || 0))).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Search & Filter pills */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: '220px', maxWidth: '360px' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    className="select-filter"
+                    placeholder="Tìm mã WO..."
+                    value={viewWoSearch}
+                    onChange={(e) => setViewWoSearch(e.target.value)}
+                    style={{ width: '100%', padding: '6px 12px 6px 32px', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    className={`btn ${viewWoFilter === 'all' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setViewWoFilter('all')}
+                    style={{ padding: '5px 12px', fontSize: '0.76rem' }}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewWoFilter === 'matched' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setViewWoFilter('matched')}
+                    style={{ padding: '5px 12px', fontSize: '0.76rem', color: viewWoFilter === 'matched' ? '#fff' : 'var(--success-dark)' }}
+                  >
+                    ✓ Đã khớp log
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewWoFilter === 'unmatched' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setViewWoFilter('unmatched')}
+                    style={{ padding: '5px 12px', fontSize: '0.76rem', color: viewWoFilter === 'unmatched' ? '#fff' : 'var(--warning-dark)' }}
+                  >
+                    Chưa khớp
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body: List of WO codes */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px' }}>
+              {loadingViewingWo ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  Đang tải danh sách mã WO...
+                </div>
+              ) : !viewingWoData?.items || viewingWoData.items.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  Không tìm thấy mã WO nào phù hợp bộ lọc.
+                </div>
+              ) : (
+                <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '50px', textAlign: 'center' }}>STT</th>
+                      <th style={{ textAlign: 'left' }}>Mã Công Việc (WO Code)</th>
+                      <th style={{ width: '180px', textAlign: 'center' }}>Đối Soát Trong Log</th>
+                      <th style={{ width: '130px', textAlign: 'center' }}>Trạng Thái</th>
+                      <th style={{ width: '150px', textAlign: 'left' }}>Ghi Chú</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewingWoData.items.map((it, idx) => (
+                      <tr key={it.ma_cong_viec} className="excel-row">
+                        <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                          {idx + 1}
+                        </td>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--brand-primary)', fontSize: '0.86rem' }}>
+                          {it.ma_cong_viec}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {it.is_matched ? (
+                            <span className="badge badge-success" style={{ fontSize: '0.74rem', padding: '2px 8px' }}>
+                              ✓ Đã có trong log
+                            </span>
+                          ) : (
+                            <span className="badge badge-neutral" style={{ fontSize: '0.74rem', padding: '2px 8px', color: 'var(--text-muted)' }}>
+                              Không có trong log
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {it.is_matched ? (
+                            <span className={`badge ${it.trang_thai === 'Đóng' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                              {it.trang_thai || 'Đóng'}
+                            </span>
+                          ) : (
+                            <span className="badge badge-warning" style={{ fontSize: '0.75rem', padding: '2px 8px', fontWeight: 700 }}>
+                              Đã giao FT
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '0.82rem', color: !it.is_matched ? 'var(--brand-primary)' : 'var(--text-secondary)', fontWeight: !it.is_matched ? 700 : 400 }}>
+                          {it.ghi_chu || (!it.is_matched ? '(IS KL)' : '--')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '12px 22px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Hiển thị tối đa 1,000 mã WO trên trang xem nhanh
+              </span>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setViewingFixedWo(null)}
+                style={{ padding: '6px 16px', fontSize: '0.82rem' }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Chỉnh Sửa Báo Cáo Cố Định WO */}
+      {editingFixedWo && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setEditingFixedWo(null)}
+          style={{ zIndex: 100 }}
+        >
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '680px', 
+              width: '94vw', 
+              maxHeight: '92vh', 
+              display: 'flex', 
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
+              borderRadius: 'var(--radius-xl)',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              padding: '16px 22px',
+              background: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Pencil size={18} style={{ color: '#f59e0b' }} />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+                  Chỉnh Sửa Báo Cáo Cố Định: "{editingFixedWo.name}"
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-icon"
+                onClick={() => setEditingFixedWo(null)}
+                style={{ width: '30px', height: '30px', borderRadius: '50%' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const cleanName = editFixedWoName.trim();
+                if (!cleanName) {
+                  alert('Vui lòng nhập tên bảng báo cáo cố định!');
+                  return;
+                }
+
+                const payload = {
+                  name: cleanName,
+                  description: editFixedWoDesc.trim() || undefined,
+                };
+
+                if (editFixedWoMode === 'replace') {
+                  const codes = parseTaskCodes(editFixedWoCodesText);
+                  if (codes.length === 0) {
+                    alert('Vui lòng nhập ít nhất 1 mã WO để thay thế!');
+                    return;
+                  }
+                  payload.wo_codes = codes;
+                } else if (editFixedWoMode === 'append') {
+                  const codes = parseTaskCodes(editFixedWoCodesText);
+                  if (codes.length === 0) {
+                    alert('Vui lòng nhập ít nhất 1 mã WO cần bổ sung!');
+                    return;
+                  }
+                  payload.wo_codes_to_add = codes;
+                }
+
+                updateFixedWoMutation.mutate({
+                  id: editingFixedWo.id,
+                  data: payload,
+                });
+              }}
+              style={{ padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  TÊN BẢNG BÁO CÁO CỐ ĐỊNH <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="select-filter"
+                  value={editFixedWoName}
+                  onChange={(e) => setEditFixedWoName(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.88rem' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  MÔ TẢ / GHI CHÚ
+                </label>
+                <textarea
+                  className="select-filter"
+                  value={editFixedWoDesc}
+                  onChange={(e) => setEditFixedWoDesc(e.target.value)}
+                  rows={2}
+                  placeholder="Ghi chú mục đích báo cáo..."
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Lựa chọn cập nhật mã WO */}
+              <div style={{ background: 'var(--bg-tertiary)', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-primary)' }}>
+                  CẬP NHẬT DANH SÁCH MÃ WO (Hiện có: {editingFixedWo.total_wos?.toLocaleString()} WO)
+                </label>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: editFixedWoMode !== 'keep' ? '14px' : '0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="editWoMode"
+                      value="keep"
+                      checked={editFixedWoMode === 'keep'}
+                      onChange={() => setEditFixedWoMode('keep')}
+                    />
+                    <span>Giữ nguyên danh sách mã WO hiện tại</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="editWoMode"
+                      value="append"
+                      checked={editFixedWoMode === 'append'}
+                      onChange={() => setEditFixedWoMode('append')}
+                    />
+                    <span>Bổ sung thêm các mã WO mới vào danh mục này</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="editWoMode"
+                      value="replace"
+                      checked={editFixedWoMode === 'replace'}
+                      onChange={() => setEditFixedWoMode('replace')}
+                    />
+                    <span>Thay thế toàn bộ bằng danh sách mã WO mới</span>
+                  </label>
+                </div>
+
+                {editFixedWoMode !== 'keep' && (
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        {editFixedWoMode === 'append' ? 'Nhập mã WO cần bổ sung thêm:' : 'Nhập danh sách mã WO mới thay thế:'}
+                      </span>
+                      {editFixedWoCodesText.trim() && (
+                        <span className="badge badge-info" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                          ✓ {parseTaskCodes(editFixedWoCodesText).length.toLocaleString()} mã WO
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      className="select-filter"
+                      rows={5}
+                      value={editFixedWoCodesText}
+                      onChange={(e) => setEditFixedWoCodesText(e.target.value)}
+                      placeholder="Dán các mã WO vào đây (phân cách bằng xuống dòng, dấu phẩy, khoảng trắng)..."
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setEditingFixedWo(null)}
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={updateFixedWoMutation.isPending || !editFixedWoName.trim()}
+                  style={{ padding: '8px 20px', gap: '6px', fontWeight: 700, background: '#f59e0b', borderColor: '#f59e0b', color: '#fff' }}
+                >
+                  <Save size={15} />
+                  {updateFixedWoMutation.isPending ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </button>
               </div>
             </form>
