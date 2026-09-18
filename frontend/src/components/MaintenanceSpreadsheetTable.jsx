@@ -160,6 +160,7 @@ export default function MaintenanceSpreadsheetTable({
       <>
           {/* Quick Clickable Metric Strip (Compact) */}
           <div 
+            className="table-metric-strip"
             style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', 
@@ -323,8 +324,13 @@ export default function MaintenanceSpreadsheetTable({
             </div>
           </div>
 
+          {/* Mobile swipe hint banner */}
+          <div className="mobile-swipe-hint">
+            <span>👈 Vuốt ngang bảng để xem đầy đủ các cột chỉ tiêu 👉</span>
+          </div>
+
           {/* Excel Table */}
-          <div style={{ overflowX: 'auto', borderBottom: '1px solid var(--border-color)' }}>
+          <div className="excel-table-scroll-wrapper" style={{ overflowX: 'auto', borderBottom: '1px solid var(--border-color)', WebkitOverflowScrolling: 'touch' }}>
             <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead>
                 <tr>

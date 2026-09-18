@@ -13,6 +13,7 @@ export default function ReportSelectorCards({
   activeFixedWoId,
   setActiveFixedWoId,
   fixedWoSummary = {},
+  onSelectReport,
 }) {
   const categoriesList = (reportCategories && reportCategories.length > 0) ? reportCategories : [
     {
@@ -27,12 +28,15 @@ export default function ReportSelectorCards({
     <div style={{ marginBottom: '24px' }}>
       {/* 1. Thẻ Báo Cáo Cố Định WO (Nằm ở TRÊN Danh Mục Loại Báo Cáo, không đặt tên header theo yêu cầu) */}
       {fixedWoReports && fixedWoReports.length > 0 && (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-          gap: '14px',
-          marginBottom: '20px'
-        }}>
+        <div 
+          className="report-cards-grid"
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+            gap: '14px',
+            marginBottom: '20px'
+          }}
+        >
           {fixedWoReports.map((rep) => {
             const isSelected = selectedReport === 'fixed_wo' && activeFixedWoId === rep.id;
             const repSummary = (isSelected && fixedWoSummary?.total != null)
@@ -50,9 +54,11 @@ export default function ReportSelectorCards({
             return (
               <div 
                 key={rep.id}
+                className="report-selector-card"
                 onClick={() => {
                   setSelectedReport('fixed_wo');
                   setActiveFixedWoId(rep.id);
+                  if (onSelectReport) onSelectReport('fixed_wo', rep.id);
                 }}
                 style={{
                   cursor: 'pointer',
@@ -102,17 +108,20 @@ export default function ReportSelectorCards({
                 </div>
 
                 {/* Mini KPI summary row: TỔNG - ĐÃ ĐÓNG - TỒN - TỈ LỆ ĐÓNG - QUÁ HẠN */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(5, 1fr)',
-                  gap: '4px',
-                  padding: '10px 8px',
-                  background: isSelected ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg-tertiary)',
-                  borderRadius: 'var(--radius-md)',
-                  textAlign: 'center',
-                  border: '1px solid',
-                  borderColor: isSelected ? 'rgba(245, 158, 11, 0.25)' : 'transparent'
-                }}>
+                <div 
+                  className="card-kpi-summary-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
+                    gap: '4px',
+                    padding: '10px 8px',
+                    background: isSelected ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg-tertiary)',
+                    borderRadius: 'var(--radius-md)',
+                    textAlign: 'center',
+                    border: '1px solid',
+                    borderColor: isSelected ? 'rgba(245, 158, 11, 0.25)' : 'transparent'
+                  }}
+                >
                   <div title="Tổng số công việc khớp trong log dữ liệu">
                     <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
                       TỔNG
@@ -204,11 +213,14 @@ export default function ReportSelectorCards({
       </div>
 
       {/* 3. Grid Danh Mục Loại Báo Cáo */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-        gap: '14px' 
-      }}>
+      <div 
+        className="report-cards-grid"
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+          gap: '14px' 
+        }}
+      >
         {categoriesList.map((cat) => {
           const isSelected = selectedReport === 'maintenance' && activeCategory?.id === cat.id;
           const catSummary = (cat.id === activeCategory?.id && maintSummary.total != null)
@@ -226,10 +238,12 @@ export default function ReportSelectorCards({
           return (
             <div 
               key={cat.id}
+              className="report-selector-card"
               onClick={() => {
                 setSelectedReport('maintenance');
                 setActiveCategoryId(cat.id);
                 statsApi.clearMaintenanceCache();
+                if (onSelectReport) onSelectReport('maintenance', cat.id);
               }}
               style={{
                 cursor: 'pointer',
@@ -279,17 +293,20 @@ export default function ReportSelectorCards({
               </div>
 
               {/* Mini KPI summary row: TỔNG - ĐÃ ĐÓNG - TỒN - TỈ LỆ ĐÓNG - QUÁ HẠN */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
-                gap: '4px',
-                padding: '10px 8px',
-                background: isSelected ? 'rgba(2, 132, 199, 0.08)' : 'var(--bg-tertiary)',
-                borderRadius: 'var(--radius-md)',
-                textAlign: 'center',
-                border: '1px solid',
-                borderColor: isSelected ? 'rgba(2, 132, 199, 0.2)' : 'transparent'
-              }}>
+              <div 
+                className="card-kpi-summary-row"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: '4px',
+                  padding: '10px 8px',
+                  background: isSelected ? 'rgba(2, 132, 199, 0.08)' : 'var(--bg-tertiary)',
+                  borderRadius: 'var(--radius-md)',
+                  textAlign: 'center',
+                  border: '1px solid',
+                  borderColor: isSelected ? 'rgba(2, 132, 199, 0.2)' : 'transparent'
+                }}
+              >
                 <div title="Tổng số công việc">
                   <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
                     TỔNG

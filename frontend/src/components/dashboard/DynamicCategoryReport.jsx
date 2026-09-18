@@ -43,6 +43,21 @@ export default function DynamicCategoryReport({
 
   const categoryTitle = activeCategory?.name || maintSpecial?.target_task_type || 'Báo Cáo Cơ Điện';
 
+  const handleSelectSubCategory = (subId) => {
+    setActiveSubCategoryFilter(subId);
+    setTimeout(() => {
+      const tableEl = document.querySelector('.excel-table-container');
+      if (tableEl) {
+        const rect = tableEl.getBoundingClientRect();
+        if (rect.top < 70) {
+          const navOffset = window.innerWidth <= 768 ? 60 : 76;
+          const targetPos = rect.top + window.pageYOffset - navOffset;
+          window.scrollTo({ top: Math.max(0, targetPos), behavior: 'smooth' });
+        }
+      }
+    }, 70);
+  };
+
   return (
     <div style={{ marginBottom: '32px' }}>
       {/* Header Banner Báo Cáo */}
@@ -116,7 +131,7 @@ export default function DynamicCategoryReport({
 
             {/* Tab: Tất Cả (Bảng Mẹ) */}
             <button
-              onClick={() => setActiveSubCategoryFilter('parent')}
+              onClick={() => handleSelectSubCategory('parent')}
               style={{
                 padding: '6px 14px',
                 fontSize: '0.82rem',
@@ -156,7 +171,7 @@ export default function DynamicCategoryReport({
               return (
                 <button
                   key={sub.id}
-                  onClick={() => setActiveSubCategoryFilter(String(sub.id))}
+                  onClick={() => handleSelectSubCategory(String(sub.id))}
                   title={sub.keyword ? `Từ khóa: ${sub.keyword}` : sub.name}
                   style={{
                     padding: '6px 14px',
@@ -242,7 +257,7 @@ export default function DynamicCategoryReport({
             <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button
                 className="btn btn-outline"
-                onClick={() => setActiveSubCategoryFilter('parent')}
+                onClick={() => handleSelectSubCategory('parent')}
                 style={{ fontSize: '0.84rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
               >
                 <ArrowLeft size={15} /> Quay lại tất cả

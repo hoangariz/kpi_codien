@@ -219,6 +219,26 @@ export default function DashboardPage() {
   const byEmployee = maintSpecial?.by_employee || [];
   const byGroup = maintSpecial?.by_group || [];
 
+  // Smooth scroll down to table section when a report card is clicked
+  const scrollToReport = () => {
+    setTimeout(() => {
+      const section = document.getElementById('report-detail-section');
+      if (section) {
+        const navOffset = window.innerWidth <= 768 ? 60 : 76;
+        const targetPos = section.getBoundingClientRect().top + window.pageYOffset - navOffset;
+        window.scrollTo({
+          top: Math.max(0, targetPos),
+          behavior: 'smooth'
+        });
+
+        // Trigger gentle highlight pulse animation
+        section.classList.remove('section-scroll-highlight');
+        void section.offsetWidth; // force browser reflow
+        section.classList.add('section-scroll-highlight');
+      }
+    }, 90);
+  };
+
   return (
     <div>
       {/* 1. Mục: WO Trong Trạng Thái Theo Dõi Cao */}
@@ -257,11 +277,13 @@ export default function DashboardPage() {
         activeFixedWoId={activeFixedWoId}
         setActiveFixedWoId={setActiveFixedWoId}
         fixedWoSummary={fixedWoStats?.summary || {}}
+        onSelectReport={scrollToReport}
       />
 
       {/* 4. Vùng Hiển Thị Báo Cáo Chuyên Sâu Theo Danh Mục Được Chọn */}
-      {selectedReport === 'maintenance' && (
-        <DynamicCategoryReport
+      <div id="report-detail-section" style={{ scrollMarginTop: '80px', borderRadius: 'var(--radius-lg)' }}>
+        {selectedReport === 'maintenance' && (
+          <DynamicCategoryReport
           activeCategory={activeCategory}
           maintSpecial={maintSpecial}
           loadingMaint={loadingMaint}
@@ -316,6 +338,7 @@ export default function DashboardPage() {
           setTimelineDays={setTimelineDays}
         />
       )}
+      </div>
 
       {/* 6. Drilldown Modal */}
       {drilldownFilter && (

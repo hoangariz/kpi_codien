@@ -97,6 +97,7 @@ export default function Header({
       {/* Right: Date, Theme, Refresh */}
       <div className="header-right">
         <div 
+          className="header-date"
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
