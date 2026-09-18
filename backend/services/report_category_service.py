@@ -10,6 +10,9 @@ from backend.schemas.report_category_schema import ReportCategoryCreate, ReportC
 from backend.services.settings_service import get_current_month_setting
 
 
+CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
+
+
 def _parse_filter_values(raw: Optional[str]) -> List[str]:
     """Deserialize filter_values JSON string → list. Returns [] on error."""
     if not raw:
@@ -40,7 +43,7 @@ def _build_type_conditions(cat, db: Session):
         upper_values = [v.upper().strip() for v in values]
         sys_ids = db.query(SystemModel.id).filter(
             func.upper(func.trim(SystemModel.name)).in_(upper_values)
-        ).subquery()
+        ).scalar_subquery()
         return [Task.system_id.in_(sys_ids)]
     else:
         # by_loai (default): lọc theo loai_cong_viec IN values
@@ -93,7 +96,7 @@ def get_report_categories(
         if include_summary:
             base_conds = _build_type_conditions(cat, db)
             if not base_conds:
-                item["summary"] = None
+                item["summary"] = {"total": 0, "closed": 0, "pending": 0, "overdue": 0, "completion_rate": 0.0}
                 # Still process sub_categories
                 item["sub_categories"] = [
                     {
