@@ -1,5 +1,15 @@
 node_modules/
+*.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+kpi_codien.db
 venv/
 __pycache__/
+
+# Excel & Uploads
+uploads/
+*.xlsx
+*.xls
+*.csv

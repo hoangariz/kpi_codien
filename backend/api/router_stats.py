@@ -97,6 +97,8 @@ def stats_maintenance_tasks(
     filter_id: Optional[int] = None,
     is_other: bool = Query(False),
     search: Optional[str] = None,
+    day: Optional[int] = Query(None),
+    max_day: Optional[int] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(10000, ge=1, le=50000),
     sort_by: str = Query("thoi_diem_yeu_cau_ket_thuc"),
@@ -105,7 +107,7 @@ def stats_maintenance_tasks(
 ):
     """
     Drilldown list of tasks for the special maintenance report.
-    Returns exact tasks matching table number clicked (total, closed, pending, overdue, closed_today, closed_last_7_days).
+    Returns exact tasks matching table number clicked (total, closed, pending, overdue, closed_today, closed_last_7_days, closed_day, closed_up_to_max).
     """
     return get_special_maintenance_tasks(
         db=db,
@@ -118,6 +120,8 @@ def stats_maintenance_tasks(
         filter_id=filter_id,
         is_other=is_other,
         search=search,
+        day=day,
+        max_day=max_day,
         page=page,
         page_size=page_size,
         sort_by=sort_by,

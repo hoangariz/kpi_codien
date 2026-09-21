@@ -49,3 +49,4 @@ for idx, r in enumerate(stats['by_group']):
     print(f"{idx+1:<4} | {r['key_name']:<35} | {r['total']:<6} | {r['closed']:<6} | {r['pending']:<6} | {r['overdue']:<8} | {r['closed_today']:<8} | {r['closed_last_7_days']:<8} | {r['completion_rate']}%")
 
 db.close()
+

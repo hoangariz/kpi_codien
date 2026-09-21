@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 from pydantic import BaseModel, ConfigDict, field_serializer
 
 
@@ -13,11 +13,17 @@ class FixedWoSummary(BaseModel):
     cho_cd_tiep_nhan: int = 0
     ft_hoan_thanh: int = 0
     completion_rate: float = 0.0
+    daily_closed: Optional[Dict[str, int]] = {}
+    closed_up_to_max_day: Optional[int] = 0
+    nsld: Optional[float] = 0.0
+    max_day: Optional[int] = 1
+    days_list: Optional[List[int]] = []
 
 
 class FixedWoBreakdownItem(BaseModel):
     id: Optional[int] = None
     key_name: str
+    group_name: Optional[str] = None
     is_other: bool = False
     total: int = 0
     closed: int = 0
@@ -36,6 +42,9 @@ class FixedWoBreakdownItem(BaseModel):
     da_giao_ft: int = 0
     ft_dang_thuc_hien: int = 0
     other: int = 0
+    daily_closed: Optional[Dict[str, int]] = {}
+    closed_up_to_max_day: Optional[int] = 0
+    nsld: Optional[float] = 0.0
 
 
 class FixedWoReportCreate(BaseModel):
@@ -88,3 +97,5 @@ class FixedWoStatsResponse(BaseModel):
     summary: FixedWoSummary
     by_employee: List[FixedWoBreakdownItem] = []
     by_group: List[FixedWoBreakdownItem] = []
+    max_day: Optional[int] = 1
+    days_list: Optional[List[int]] = []

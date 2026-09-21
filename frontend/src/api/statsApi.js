@@ -272,6 +272,32 @@ export const statsApi = {
         const s = (t.trang_thai || '').toLowerCase();
         return s.includes('cd từ chối') || s.includes('cđ từ chối');
       });
+    } else if (params.metric === 'closed_day' && params.day != null) {
+      const targetDay = Number(params.day);
+      const [yStr, mStr] = activeMonth.split('-');
+      const yInt = parseInt(yStr, 10);
+      const mInt = parseInt(mStr, 10);
+      items = items.filter(t => {
+        if (!isClosedStatus(t.trang_thai)) return false;
+        const dateStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
+        if (!dateStr) return false;
+        const d = new Date(String(dateStr).replace(' ', 'T'));
+        if (isNaN(d.getTime())) return false;
+        return d.getFullYear() === yInt && (d.getMonth() + 1) === mInt && d.getDate() === targetDay;
+      });
+    } else if (params.metric === 'closed_up_to_max' && params.max_day != null) {
+      const maxD = Number(params.max_day);
+      const [yStr, mStr] = activeMonth.split('-');
+      const yInt = parseInt(yStr, 10);
+      const mInt = parseInt(mStr, 10);
+      items = items.filter(t => {
+        if (!isClosedStatus(t.trang_thai)) return false;
+        const dateStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
+        if (!dateStr) return false;
+        const d = new Date(String(dateStr).replace(' ', 'T'));
+        if (isNaN(d.getTime())) return false;
+        return d.getFullYear() === yInt && (d.getMonth() + 1) === mInt && d.getDate() >= 1 && d.getDate() <= maxD;
+      });
     } else if (params.metric === 'overdue_tu_choi') {
       items = items.filter(t => {
         const s = (t.trang_thai || '').toLowerCase();

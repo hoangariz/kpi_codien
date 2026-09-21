@@ -1,4 +1,6 @@
 import re
+import calendar
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Union
 from sqlalchemy.orm import Session
@@ -212,6 +214,26 @@ def get_fixed_wo_stats(
 
     active_month = target_month or get_current_month_setting(db)
 
+    try:
+        y_str, m_str = active_month.split("-")
+        y_int = int(y_str)
+        m_int = int(m_str)
+    except Exception:
+        now_dt = datetime.utcnow()
+        active_month = now_dt.strftime("%Y-%m")
+        y_int = now_dt.year
+        m_int = now_dt.month
+
+    now_vn = datetime.utcnow() + timedelta(hours=7)
+    cur_ym = now_vn.strftime("%Y-%m")
+    if active_month == cur_ym:
+        max_day = max(1, now_vn.day - 1)
+    elif active_month < cur_ym:
+        max_day = calendar.monthrange(y_int, m_int)[1]
+    else:
+        max_day = 1
+    days_list = list(range(1, 32))
+
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
     seven_days_ago = today_start - timedelta(days=7)
@@ -222,6 +244,47 @@ def get_fixed_wo_stats(
 
     # Condition: task is in this report's WOs
     condition = Task.ma_cong_viec.in_(wo_subquery)
+
+    # Query closed tasks for daily breakdown
+    closed_tasks_records = db.query(
+        Task.assigned_to_id,
+        Task.group_id,
+        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong).label("closed_time")
+    ).filter(
+        condition,
+        Task.trang_thai.in_(CLOSED_STATUSES),
+        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None
+    ).all()
+
+    emp_daily = defaultdict(lambda: defaultdict(int))
+    grp_daily = defaultdict(lambda: defaultdict(int))
+    total_daily = defaultdict(int)
+
+    for aid, gid, ctime in closed_tasks_records:
+        if isinstance(ctime, str):
+            try:
+                ctime = datetime.fromisoformat(ctime.replace(" ", "T"))
+            except Exception:
+                ctime = None
+        if ctime and ctime.year == y_int and ctime.month == m_int:
+            d = ctime.day
+            if 1 <= d <= 31:
+                ekey = aid if aid is not None else "other"
+                gkey = gid if gid is not None else "other"
+                emp_daily[ekey][d] += 1
+                grp_daily[gkey][d] += 1
+                total_daily[d] += 1
+
+    # Employee group mapping
+    emp_groups = db.query(Task.assigned_to_id, Group.name)\
+        .join(Group, Task.group_id == Group.id)\
+        .filter(condition, Task.assigned_to_id != None)\
+        .group_by(Task.assigned_to_id, Group.name)\
+        .all()
+    emp_to_group = {}
+    for aid, gname in emp_groups:
+        if aid not in emp_to_group:
+            emp_to_group[aid] = gname
 
     # 1. Overall Summary
     overall_agg = db.query(
@@ -311,6 +374,10 @@ def get_fixed_wo_stats(
     pending_count = (overall_agg.pending or 0 if overall_agg else 0) + unmatched_count
     completion_rate = round((closed_count / total_wos * 100), 1) if total_wos > 0 else 0.0
 
+    summary_d_closed = {str(d): total_daily.get(d, 0) for d in range(1, 32)}
+    summary_sum_c = sum(total_daily.get(d, 0) for d in range(1, max_day + 1))
+    summary_nsld = round(summary_sum_c / max_day, 2) if max_day > 0 else 0.0
+
     summary = {
         "total": total_wos,
         "closed": closed_count,
@@ -321,6 +388,11 @@ def get_fixed_wo_stats(
         "cho_cd_tiep_nhan": cho_cd_count,
         "ft_hoan_thanh": ft_ht_count,
         "completion_rate": completion_rate,
+        "daily_closed": summary_d_closed,
+        "closed_up_to_max_day": summary_sum_c,
+        "nsld": summary_nsld,
+        "max_day": max_day,
+        "days_list": days_list,
     }
 
     # 2. Breakdown by Employee
@@ -444,9 +516,14 @@ def get_fixed_wo_stats(
         ov_tc = r.overdue_tu_choi or 0
         rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
         is_other = (r.id is None or r.key_name == "Khác")
+        ekey = r.id if (r.id is not None and not is_other) else "other"
+        d_closed = {str(d): emp_daily[ekey].get(d, 0) for d in range(1, 32)}
+        sum_c = sum(emp_daily[ekey].get(d, 0) for d in range(1, max_day + 1))
+        emp_nsld = round(sum_c / max_day, 2) if max_day > 0 else 0.0
         item = {
             "id": r.id,
             "key_name": "Khác" if is_other else r.key_name,
+            "group_name": "Khác" if is_other else emp_to_group.get(r.id, "Chưa phân cụm"),
             "is_other": is_other,
             "total": tot,
             "closed": cl,
@@ -461,6 +538,9 @@ def get_fixed_wo_stats(
             "cd_tu_choi": cd_tc,
             "overdue_tu_choi": ov_tc,
             "completion_rate": rate,
+            "daily_closed": d_closed,
+            "closed_up_to_max_day": sum_c,
+            "nsld": emp_nsld,
             "dong": cl,
             "da_giao_ft": r.da_giao_ft or 0,
             "ft_dang_thuc_hien": r.ft_dang_thuc_hien or 0,
@@ -482,6 +562,7 @@ def get_fixed_wo_stats(
             other_emp = {
                 "id": None,
                 "key_name": "Khác",
+                "group_name": "Khác",
                 "is_other": True,
                 "total": unmatched_count,
                 "closed": 0,
@@ -496,6 +577,9 @@ def get_fixed_wo_stats(
                 "cd_tu_choi": 0,
                 "overdue_tu_choi": 0,
                 "completion_rate": 0.0,
+                "daily_closed": {str(d): 0 for d in range(1, max_day + 1)},
+                "closed_up_to_max_day": 0,
+                "nsld": 0.0,
                 "dong": 0,
                 "da_giao_ft": unmatched_count,
                 "ft_dang_thuc_hien": 0,
@@ -627,9 +711,14 @@ def get_fixed_wo_stats(
         ov_tc = r.overdue_tu_choi or 0
         rate = round((cl / tot * 100), 1) if tot > 0 else 0.0
         is_other = (r.id is None or r.key_name == "Khác")
+        gkey = r.id if (r.id is not None and not is_other) else "other"
+        d_closed = {str(d): grp_daily[gkey].get(d, 0) for d in range(1, 32)}
+        sum_c = sum(grp_daily[gkey].get(d, 0) for d in range(1, max_day + 1))
+        grp_nsld = round(sum_c / max_day, 2) if max_day > 0 else 0.0
         item = {
             "id": r.id,
             "key_name": "Khác" if is_other else r.key_name,
+            "group_name": "Khác (Chưa phân cụm)" if is_other else r.key_name,
             "is_other": is_other,
             "total": tot,
             "closed": cl,
@@ -644,6 +733,9 @@ def get_fixed_wo_stats(
             "cd_tu_choi": cd_tc,
             "overdue_tu_choi": ov_tc,
             "completion_rate": rate,
+            "daily_closed": d_closed,
+            "closed_up_to_max_day": sum_c,
+            "nsld": grp_nsld,
             "dong": cl,
             "da_giao_ft": r.da_giao_ft or 0,
             "ft_dang_thuc_hien": r.ft_dang_thuc_hien or 0,
@@ -665,6 +757,7 @@ def get_fixed_wo_stats(
             other_grp = {
                 "id": None,
                 "key_name": "Khác",
+                "group_name": "Khác",
                 "is_other": True,
                 "total": unmatched_count,
                 "closed": 0,
@@ -679,6 +772,9 @@ def get_fixed_wo_stats(
                 "cd_tu_choi": 0,
                 "overdue_tu_choi": 0,
                 "completion_rate": 0.0,
+                "daily_closed": {str(d): 0 for d in range(1, max_day + 1)},
+                "closed_up_to_max_day": 0,
+                "nsld": 0.0,
                 "dong": 0,
                 "da_giao_ft": unmatched_count,
                 "ft_dang_thuc_hien": 0,
@@ -700,6 +796,8 @@ def get_fixed_wo_stats(
         "summary": summary,
         "by_employee": by_employee,
         "by_group": by_group,
+        "max_day": max_day,
+        "days_list": days_list,
     }
 
 
@@ -711,6 +809,9 @@ def get_fixed_wo_tasks(
     filter_id: Optional[int] = None,
     is_other: bool = False,
     search: Optional[str] = None,
+    day: Optional[int] = None,
+    max_day: Optional[int] = None,
+    target_month: Optional[str] = None,
     page: int = 1,
     page_size: int = 10000,
     sort_by: str = "thoi_diem_yeu_cau_ket_thuc",
@@ -723,6 +824,7 @@ def get_fixed_wo_tasks(
     from backend.schemas.task_schema import TaskListItem
     from backend.models.note import TaskNote
     from backend.models.history import TaskHistory
+    from backend.services.settings_service import get_current_month_setting
     import math
 
     now = datetime.utcnow()
@@ -768,6 +870,36 @@ def get_fixed_wo_tasks(
             Task.trang_thai.in_(CLOSED_STATUSES),
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
+        )
+    elif metric == "closed_day" and day is not None:
+        active_m = target_month or get_current_month_setting(db)
+        try:
+            y_i, m_i = int(active_m.split("-")[0]), int(active_m.split("-")[1])
+        except Exception:
+            now_u = datetime.utcnow()
+            y_i, m_i = now_u.year, now_u.month
+        target_dt_start = datetime(y_i, m_i, day, 0, 0, 0)
+        target_dt_end = target_dt_start + timedelta(days=1)
+        query = query.filter(
+            Task.trang_thai.in_(CLOSED_STATUSES),
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= target_dt_start,
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < target_dt_end,
+        )
+    elif metric == "closed_up_to_max" and max_day is not None:
+        active_m = target_month or get_current_month_setting(db)
+        try:
+            y_i, m_i = int(active_m.split("-")[0]), int(active_m.split("-")[1])
+        except Exception:
+            now_u = datetime.utcnow()
+            y_i, m_i = now_u.year, now_u.month
+        target_dt_start = datetime(y_i, m_i, 1, 0, 0, 0)
+        target_dt_end = datetime(y_i, m_i, max_day, 0, 0, 0) + timedelta(days=1)
+        query = query.filter(
+            Task.trang_thai.in_(CLOSED_STATUSES),
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= target_dt_start,
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < target_dt_end,
         )
     elif metric == "cho_cd_tiep_nhan":
         query = query.filter(

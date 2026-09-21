@@ -95,6 +95,9 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
           filter_id: filterInfo.filterId ?? null,
           is_other: Boolean(filterInfo.isOther),
           search: searchTerm.trim() || undefined,
+          day: filterInfo.day || undefined,
+          max_day: filterInfo.max_day || undefined,
+          month: filterInfo.activeMonth || undefined,
           sort_by: sortKey,
           sort_order: sortOrder,
           page: 1,
@@ -116,6 +119,8 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
         sub_keyword: filterInfo.subKeyword || undefined,
         is_sub_other: Boolean(filterInfo.isSubOther),
         all_sub_keywords: filterInfo.allSubKeywords || undefined,
+        day: filterInfo.day || undefined,
+        max_day: filterInfo.max_day || undefined,
         search: searchTerm.trim() || undefined,
         sort_by: sortKey,
         sort_order: sortOrder,
@@ -145,7 +150,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       'Mô tả',
       'Trạng thái',
       'Nhóm điều phối',
-      'Nhân viên thực hiện',
+      'Nhân viên',
       'Thời điểm bắt đầu thực hiện',
       'Thời điểm yêu cầu kết thúc',
       'Thời gian còn lại (H)',
@@ -227,7 +232,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
               <span>Chỉ tiêu: </span>
               <span className={`badge ${
                 filterInfo.metric === 'overdue' ? 'badge-danger' : 
-                filterInfo.metric === 'closed' ? 'badge-success' : 
+                filterInfo.metric === 'closed' || filterInfo.metric === 'closed_day' || filterInfo.metric === 'closed_up_to_max' ? 'badge-success' : 
                 filterInfo.metric === 'pending' ? 'badge-warning' : 
                 filterInfo.metric === 'cho_cd_tiep_nhan' ? 'badge-purple' :
                 filterInfo.metric === 'ft_hoan_thanh' ? 'badge-cyan' :
@@ -417,9 +422,9 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                   <th 
                     onClick={() => handleSort('employee_assigned_name')}
                     style={{ width: '140px', minWidth: '130px', maxWidth: '170px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Nhân viên thực hiện"
+                    title="Nhấn để sắp xếp theo Nhân viên"
                   >
-                    Nhân viên thực hiện {renderSortIndicator('employee_assigned_name')}
+                    Nhân viên {renderSortIndicator('employee_assigned_name')}
                   </th>
 
                   <th 

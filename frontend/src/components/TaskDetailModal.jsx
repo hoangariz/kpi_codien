@@ -303,7 +303,7 @@ export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
           {/* Key metadata grid (Full sheet information) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
             <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhân Viên Thực Hiện (FT)</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhân viên (FT)</span>
               <strong style={{ fontSize: '0.92rem', color: 'var(--brand-primary)' }}>
                 {task.employee_assigned_name || 'Chưa gán'}
               </strong>

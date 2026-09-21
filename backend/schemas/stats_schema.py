@@ -59,6 +59,12 @@ class MaintenanceStatItem(BaseModel):
     closed_last_7_days: int # Đóng tuần vừa qua
     completion_rate: float # Tỉ lệ đóng (%)
 
+    # Daily stats & NSLĐ
+    group_name: Optional[str] = None
+    daily_closed: Optional[Dict[str, int]] = {}
+    closed_up_to_max_day: Optional[int] = 0
+    nsld: Optional[float] = 0.0
+
     # Tương thích ngược & thống kê trạng thái chi tiết
     dong: int = 0
     da_giao_ft: int = 0
@@ -82,6 +88,8 @@ class MaintenanceSpecialResponse(BaseModel):
     by_group: List[MaintenanceStatItem]
     sub_categories: Optional[List[Dict[str, Any]]] = []
     sub_categories_stats: Optional[List[Dict[str, Any]]] = []
+    max_day: Optional[int] = None
+    days_list: Optional[List[int]] = []
 
 
 class TimelineItem(BaseModel):

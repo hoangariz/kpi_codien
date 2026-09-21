@@ -154,18 +154,20 @@ export default function DashboardPage() {
   }, [maintSpecial?.active_month, maintSpecial?.target_task_type]);
 
   // Modals handlers
-  const handleOpenDrilldown = (metric, metricLabel, row = null, subContext = null) => {
+  const handleOpenDrilldown = (metric, metricLabel, row = null, subContext = null, extraParams = {}) => {
+    const fType = extraParams?.filterType || (row ? (row.filterType || maintActiveTab) : 'all');
     if (selectedReport === 'fixed_wo') {
       const isOtherRow = Boolean(row?.is_other || row?.key_name === 'Khác' || (row && row.id == null));
       setDrilldownFilter({
         fixedWoReportId: activeFixedWoId,
         metric,
         metricLabel,
-        filterType: row ? maintActiveTab : 'all',
+        filterType: fType,
         filterId: row?.id ?? null,
         isOther: isOtherRow,
         targetName: row ? row.key_name : (fixedWoStats?.name || 'Báo Cáo Cố Định'),
         activeMonth: fixedWoStats?.active_month,
+        ...extraParams,
       });
       return;
     }
@@ -173,7 +175,7 @@ export default function DashboardPage() {
     setDrilldownFilter({
       metric,
       metricLabel,
-      filterType: row ? maintActiveTab : 'all',
+      filterType: fType,
       filterId: row?.id ?? null,
       isOther: Boolean(row?.is_other),
       targetName: row ? row.key_name : (subContext?.subCategoryName || 'Toàn Bộ Báo Cáo'),
@@ -188,6 +190,7 @@ export default function DashboardPage() {
       isSubOther: subContext?.isSubOther,
       allSubKeywords: subContext?.allSubKeywords,
       subCategoryName: subContext?.subCategoryName,
+      ...extraParams,
     });
   };
 

@@ -260,7 +260,7 @@ export default function TasksPage({ initialFilters = {} }) {
                 <th>Mã Công Việc</th>
                 <th>Loại Công Việc</th>
                 <th>Trạng Thái</th>
-                <th>Nhân Viên Thực Hiện</th>
+                <th>Nhân viên</th>
                 <th>Nhóm Điều Phối</th>
                 <th>Hạn Kết Thúc</th>
                 <th style={{ textAlign: 'center' }}>Theo Dõi</th>
