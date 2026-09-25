@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Cable,
-  Layers,
   Users,
   FolderKanban,
   Search,
@@ -10,26 +9,16 @@ import {
   RotateCcw,
   CheckCircle2,
   Clock,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  Box,
-  Calendar,
-  Eye,
   FileSpreadsheet
 } from 'lucide-react';
 
 import { codinhApi } from '../api/codinhApi';
 import { importsApi } from '../api/importsApi';
-import { tasksApi } from '../api/tasksApi';
-import TaskDetailModal from '../components/TaskDetailModal';
 import { formatDataTimestamp } from '../utils/dateFormat';
 import { formatGroupName } from '../utils/groupFormat';
 
 export default function CodinhPage() {
-  const queryClient = useQueryClient();
-
-  // Active view tab: 'employee' | 'group' | 'wos'
+  // Active view tab: 'employee' | 'group'
   const [currentTab, setCurrentTab] = useState('employee');
 
   // Filter & Search states
@@ -37,18 +26,9 @@ export default function CodinhPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState('desc');
-  const [selectedGroupFilter, setSelectedGroupFilter] = useState('ALL');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'CLOSED' | 'OVERDUE'
-  const [selectedFtFilter, setSelectedFtFilter] = useState('');
-
-  // Expanded WO rows in detail view
-  const [expandedWos, setExpandedWos] = useState({});
-
-  // Modal detail task
-  const [selectedDetailTask, setSelectedDetailTask] = useState(null);
 
   // 1. Fetch categories for CĐBR
-  const { data: categories = [], isLoading: loadingCategories } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ['codinh-categories'],
     queryFn: () => codinhApi.getCategories(null, true),
   });
@@ -70,7 +50,7 @@ export default function CodinhPage() {
     enabled: effectiveCatId !== null,
   });
 
-  // 3. Fetch latest import log for data freshness timestamp
+  // 3. Fallback import log if backend doesn't provide codinh-specific timestamp
   const { data: importLogs } = useQuery({
     queryKey: ['import-logs-latest'],
     queryFn: () => importsApi.getImportLogs(5),
@@ -81,7 +61,17 @@ export default function CodinhPage() {
     (importLogs || []).find((l) => l.is_active === 1) ||
     (importLogs || []).find((l) => l.status === 'COMPLETED') ||
     (importLogs && importLogs.length > 0 ? importLogs[0] : null);
-  const lastDataUpdate = latestImport?.imported_at || null;
+
+  // Exact GMT+7 data timestamp from backend or formatted locally
+  const lastDataUpdateStr = useMemo(() => {
+    if (statsData?.last_data_update_vn) {
+      return statsData.last_data_update_vn;
+    }
+    if (latestImport?.imported_at) {
+      return formatDataTimestamp(latestImport.imported_at);
+    }
+    return null;
+  }, [statsData, latestImport]);
 
   // Reset search and sort on tab change
   useEffect(() => {
@@ -110,39 +100,6 @@ export default function CodinhPage() {
     );
   };
 
-  // Toggle single WO row expansion
-  const toggleWoExpand = (woCode) => {
-    setExpandedWos((prev) => ({
-      ...prev,
-      [woCode]: !prev[woCode],
-    }));
-  };
-
-  // Expand all / Collapse all WOs
-  const handleToggleAllWos = (expand) => {
-    if (!statsData?.wos) return;
-    const next = {};
-    if (expand) {
-      statsData.wos.forEach((w) => {
-        if (w.cabinets && w.cabinets.length > 0) {
-          next[w.ma_cong_viec] = true;
-        }
-      });
-    }
-    setExpandedWos(next);
-  };
-
-  // Open Task Detail Modal
-  const handleOpenTaskDetail = async (ma_cong_viec) => {
-    try {
-      const detail = await tasksApi.getTaskDetail(ma_cong_viec);
-      setSelectedDetailTask(detail);
-    } catch (err) {
-      console.error('Failed to load task detail:', err);
-      alert('Không thể tải chi tiết công việc: ' + (err.response?.data?.detail || err.message));
-    }
-  };
-
   const activeCategory = statsData?.active_category;
   const summary = statsData?.summary || {
     total_wos: 0,
@@ -165,12 +122,12 @@ export default function CodinhPage() {
   const sortedEmployees = useMemo(() => {
     if (!statsData?.by_employee) return [];
     let list = statsData.by_employee.filter((emp) => {
-      if (selectedGroupFilter !== 'ALL' && emp.group_name !== selectedGroupFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const mName = (emp.key_name || '').toLowerCase().includes(q);
         const mGrp = (emp.group_name || '').toLowerCase().includes(q);
-        if (!mName && !mGrp) return false;
+        const mShort = formatGroupName(emp.group_name || '').toLowerCase().includes(q);
+        if (!mName && !mGrp && !mShort) return false;
       }
       return true;
     });
@@ -182,6 +139,8 @@ export default function CodinhPage() {
         let cmp = 0;
         if (sortKey === 'key_name') {
           cmp = (a.key_name || '').localeCompare(b.key_name || '', 'vi');
+        } else if (sortKey === 'group_name') {
+          cmp = formatGroupName(a.group_name || '').localeCompare(formatGroupName(b.group_name || ''), 'vi');
         } else {
           cmp = Number(a[sortKey] ?? 0) - Number(b[sortKey] ?? 0);
         }
@@ -189,17 +148,17 @@ export default function CodinhPage() {
       });
     }
     return list;
-  }, [statsData, selectedGroupFilter, searchQuery, sortKey, sortOrder]);
+  }, [statsData, searchQuery, sortKey, sortOrder]);
 
-  // Filtered & Sorted Groups
+  // Filtered & Sorted Groups (Abbreviated group codes like overview)
   const sortedGroups = useMemo(() => {
     if (!statsData?.by_group) return [];
     let list = statsData.by_group.filter((grp) => {
-      if (selectedGroupFilter !== 'ALL' && grp.key_name !== selectedGroupFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
+        const raw = (grp.key_name || '').toLowerCase();
         const short = formatGroupName(grp.key_name).toLowerCase();
-        if (!(grp.key_name || '').toLowerCase().includes(q) && !short.includes(q)) return false;
+        if (!raw.includes(q) && !short.includes(q)) return false;
       }
       return true;
     });
@@ -218,46 +177,7 @@ export default function CodinhPage() {
       });
     }
     return list;
-  }, [statsData, selectedGroupFilter, searchQuery, sortKey, sortOrder]);
-
-  // Filtered & Sorted WOs
-  const sortedWos = useMemo(() => {
-    if (!statsData?.wos) return [];
-    let list = statsData.wos.filter((w) => {
-      if (selectedFtFilter && w.employee_assigned_name !== selectedFtFilter) return false;
-      if (selectedGroupFilter !== 'ALL' && w.group_name !== selectedGroupFilter) return false;
-      if (selectedStatusFilter === 'PENDING' && w.is_closed) return false;
-      if (selectedStatusFilter === 'CLOSED' && !w.is_closed) return false;
-      if (selectedStatusFilter === 'OVERDUE' && !w.is_overdue) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const mWo = (w.ma_cong_viec || '').toLowerCase().includes(q);
-        const mStation = (w.station_code || '').toLowerCase().includes(q);
-        const mFt = (w.employee_assigned_name || '').toLowerCase().includes(q);
-        const mContent = (w.noi_dung_cong_viec || '').toLowerCase().includes(q);
-        const mCab = (w.cabinets || []).some(
-          (c) =>
-            (c.ma_doi_tuong || '').toLowerCase().includes(q) ||
-            (c.ma_tram || '').toLowerCase().includes(q)
-        );
-        if (!mWo && !mStation && !mFt && !mContent && !mCab) return false;
-      }
-      return true;
-    });
-
-    if (sortKey) {
-      list = [...list].sort((a, b) => {
-        let cmp = 0;
-        if (sortKey === 'ma_cong_viec') cmp = (a.ma_cong_viec || '').localeCompare(b.ma_cong_viec || '');
-        else if (sortKey === 'station_code') cmp = (a.station_code || '').localeCompare(b.station_code || '');
-        else if (sortKey === 'employee_assigned_name') cmp = (a.employee_assigned_name || '').localeCompare(b.employee_assigned_name || '', 'vi');
-        else if (sortKey === 'total_cabinets') cmp = (a.total_cabinets || 0) - (b.total_cabinets || 0);
-        else if (sortKey === 'completed_cabinets') cmp = (a.completed_cabinets || 0) - (b.completed_cabinets || 0);
-        return sortOrder === 'asc' ? cmp : -cmp;
-      });
-    }
-    return list;
-  }, [statsData, selectedFtFilter, selectedGroupFilter, selectedStatusFilter, searchQuery, sortKey, sortOrder]);
+  }, [statsData, searchQuery, sortKey, sortOrder]);
 
   // Export CSV
   const handleExportCSV = () => {
@@ -265,7 +185,7 @@ export default function CodinhPage() {
     let csvLines = [];
     if (currentTab === 'employee') {
       csvLines.push(`BẢNG THỐNG KÊ ${activeCategory?.name || 'CĐBR'} THEO NHÂN VIÊN`);
-      const headers = ['STT', 'Nhân viên', 'Cụm / Nhóm', 'Tổng WO', 'Đã Đóng', '% Đóng', 'Tồn Việc', 'Quá Hạn'];
+      const headers = ['STT', 'Nhân viên', 'Nhóm / Cụm', 'Tổng WO', 'Đã Đóng', '% Đóng', 'Tồn Việc', 'Quá Hạn'];
       if (hasCabinets) headers.push('Tổng Tủ THC', 'Tủ Đã Xong', 'Tủ Chưa Xong', '% Tủ Xong');
       csvLines.push(headers.join(','));
       csvLines.push([
@@ -292,7 +212,7 @@ export default function CodinhPage() {
           ...(hasCabinets ? [r.total_cabinets, r.completed_cabinets, r.pending_cabinets, `${r.cabinet_rate}%`] : [])
         ].join(','));
       });
-    } else if (currentTab === 'group') {
+    } else {
       csvLines.push(`BẢNG THỐNG KÊ ${activeCategory?.name || 'CĐBR'} THEO NHÓM / CỤM`);
       const headers = ['STT', 'Nhóm / Cụm', 'Tổng WO', 'Đã Đóng', '% Đóng', 'Tồn Việc', 'Quá Hạn'];
       if (hasCabinets) headers.push('Tổng Tủ THC', 'Tủ Đã Xong', 'Tủ Chưa Xong', '% Tủ Xong');
@@ -319,24 +239,6 @@ export default function CodinhPage() {
           ...(hasCabinets ? [r.total_cabinets, r.completed_cabinets, r.pending_cabinets, `${r.cabinet_rate}%`] : [])
         ].join(','));
       });
-    } else {
-      csvLines.push(`DANH SÁCH CHI TIẾT CÔNG VIỆC VÀ TỦ CÁP CON`);
-      const headers = ['STT', 'Mã WO', 'Mã Trạm', 'Nhân viên FT', 'Cụm', 'Trạng Thái', 'Quá Hạn', 'Tổng Tủ THC', 'Tủ Đã Xong', 'Mã Các Tủ Con'];
-      csvLines.push(headers.join(','));
-      sortedWos.forEach((w, idx) => {
-        csvLines.push([
-          idx + 1,
-          `"${w.ma_cong_viec}"`,
-          `"${w.station_code || ''}"`,
-          `"${w.employee_assigned_name || ''}"`,
-          `"${formatGroupName(w.group_name) || ''}"`,
-          `"${w.trang_thai || ''}"`,
-          `"${w.is_overdue ? 'Quá hạn' : 'Đúng hạn'}"`,
-          w.total_cabinets || 0,
-          w.completed_cabinets || 0,
-          `"${(w.cabinets || []).map((c) => c.ma_doi_tuong).join('; ')}"`
-        ].join(','));
-      });
     }
 
     const csvContent = '\uFEFF' + csvLines.join('\n');
@@ -352,45 +254,38 @@ export default function CodinhPage() {
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
-      {/* 0. Top Header Banner */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span className="badge badge-purple" style={{ fontSize: '0.78rem', fontWeight: 800, gap: '5px' }}>
-              <Cable size={14} /> CỐ ĐỊNH BĂNG RỘNG (CĐBR)
+      {/* 0. Top Strip: Badge CĐBR, Data freshness GMT+7, Refresh button (No large redundant title banner) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span className="badge badge-purple" style={{ fontSize: '0.8rem', fontWeight: 800, gap: '5px' }}>
+            <Cable size={14} /> CỐ ĐỊNH BĂNG RỘNG (CĐBR)
+          </span>
+
+          {lastDataUpdateStr && (
+            <span
+              style={{
+                fontSize: '0.78rem',
+                color: 'var(--text-muted)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'var(--bg-tertiary)',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+              }}
+            >
+              <Clock size={12} /> Dữ liệu cập nhật đến: {lastDataUpdateStr}
             </span>
-            {lastDataUpdate && (
-              <span
-                style={{
-                  fontSize: '0.78rem',
-                  color: 'var(--text-muted)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'var(--bg-tertiary)',
-                  padding: '3px 8px',
-                  borderRadius: 'var(--radius-full)',
-                }}
-              >
-                <Clock size={12} /> Dữ liệu cập nhật đến: {formatDataTimestamp(lastDataUpdate)}
-              </span>
-            )}
-          </div>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            {activeCategory?.name || 'Báo Cáo Cố Định Băng Rộng'}
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-            Báo cáo tiến độ triển khai & bảo dưỡng chi tiết theo nhân viên (FT), nhóm cụm và đối chiếu tủ cáp con
-          </p>
+          )}
         </div>
 
         <button
           onClick={() => refetchStats()}
           className="btn btn-outline"
-          style={{ fontSize: '0.84rem', padding: '7px 14px', gap: '6px' }}
+          style={{ fontSize: '0.82rem', padding: '6px 14px', gap: '6px' }}
           title="Tải lại số liệu mới nhất"
         >
-          <RotateCcw size={15} /> Làm mới
+          <RotateCcw size={14} /> Làm mới
         </button>
       </div>
 
@@ -428,7 +323,7 @@ export default function CodinhPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    minHeight: '150px',
+                    minHeight: '145px',
                   }}
                 >
                   <div>
@@ -626,13 +521,13 @@ export default function CodinhPage() {
             )}
           </div>
 
-          {/* Toolbar */}
+          {/* Toolbar with exactly 2 tabs: 'employee' and 'group' */}
           <div className="table-toolbar" style={{ padding: '8px 16px' }}>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 className={`btn ${currentTab === 'employee' ? 'btn-primary' : 'btn-outline'}`}
                 onClick={() => setCurrentTab('employee')}
-                style={{ padding: '5px 12px', fontSize: '0.82rem', gap: '5px' }}
+                style={{ padding: '5px 14px', fontSize: '0.82rem', gap: '5px' }}
               >
                 <Users size={14} />
                 Theo Nhân Viên ({sortedEmployees.length})
@@ -641,72 +536,19 @@ export default function CodinhPage() {
               <button
                 className={`btn ${currentTab === 'group' ? 'btn-primary' : 'btn-outline'}`}
                 onClick={() => setCurrentTab('group')}
-                style={{ padding: '5px 12px', fontSize: '0.82rem', gap: '5px' }}
+                style={{ padding: '5px 14px', fontSize: '0.82rem', gap: '5px' }}
               >
                 <FolderKanban size={14} />
                 Theo Nhóm / Cụm ({sortedGroups.length})
               </button>
-
-              <button
-                className={`btn ${currentTab === 'wos' ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setCurrentTab('wos')}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '0.82rem',
-                  gap: '5px',
-                  background: currentTab === 'wos' ? '#8b5cf6' : 'transparent',
-                  borderColor: currentTab === 'wos' ? '#8b5cf6' : 'var(--border-color)',
-                  color: currentTab === 'wos' ? '#fff' : 'var(--text-primary)',
-                }}
-              >
-                <Layers size={14} />
-                Chi Tiết WO & Tủ Con ({sortedWos.length})
-              </button>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* Active FT filter pill if filtered from employee row */}
-              {selectedFtFilter && (
-                <span
-                  className="badge badge-purple"
-                  style={{ fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  FT: {selectedFtFilter}
-                  <span
-                    onClick={() => setSelectedFtFilter('')}
-                    style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '2px' }}
-                  >
-                    ×
-                  </span>
-                </span>
-              )}
-
-              {/* Status filter in WO view */}
-              {currentTab === 'wos' && (
-                <select
-                  value={selectedStatusFilter}
-                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                  style={{
-                    padding: '5px 8px',
-                    fontSize: '0.8rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-tertiary)',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  <option value="ALL">-- Tất cả trạng thái --</option>
-                  <option value="PENDING">Chỉ WO đang tồn</option>
-                  <option value="CLOSED">Chỉ WO đã đóng</option>
-                  <option value="OVERDUE">Chỉ WO quá hạn</option>
-                </select>
-              )}
-
               <div className="search-input-box" style={{ width: '220px' }}>
                 <Search size={14} className="search-icon" />
                 <input
                   type="text"
-                  placeholder={`Tìm ${currentTab === 'employee' ? 'nhân viên' : currentTab === 'group' ? 'nhóm/cụm' : 'WO, tủ, trạm'}...`}
+                  placeholder={`Tìm ${currentTab === 'employee' ? 'nhân viên, cụm' : 'nhóm/cụm'}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ padding: '6px 10px 6px 32px', fontSize: '0.82rem' }}
@@ -740,11 +582,17 @@ export default function CodinhPage() {
                       className="col-name"
                       style={{ textAlign: 'left', width: '1%', whiteSpace: 'nowrap', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('key_name')}
-                      title="Nhấn để sắp xếp theo tên"
+                      title="Nhấn để sắp xếp theo tên nhân viên"
                     >
                       Nhân viên {renderSortIndicator('key_name')}
                     </th>
-                    <th style={{ minWidth: '100px', whiteSpace: 'nowrap' }}>Cụm / Nhóm</th>
+                    <th
+                      style={{ minWidth: '95px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('group_name')}
+                      title="Nhấn để sắp xếp theo cụm"
+                    >
+                      Nhóm / Cụm {renderSortIndicator('group_name')}
+                    </th>
                     <th
                       style={{ width: '75px', minWidth: '75px', background: 'rgba(2, 132, 199, 0.1)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('total_wos')}
@@ -810,7 +658,6 @@ export default function CodinhPage() {
                     <th style={{ width: 'auto', minWidth: '130px', textAlign: 'left', paddingLeft: '14px' }}>
                       Tiến Độ
                     </th>
-                    <th style={{ width: '80px', textAlign: 'center' }}>Chi Tiết</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -860,13 +707,12 @@ export default function CodinhPage() {
                         />
                       </div>
                     </td>
-                    <td style={{ textAlign: 'center' }}>--</td>
                   </tr>
 
                   {/* Data Rows */}
                   {sortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={hasCabinets ? 12 : 9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <td colSpan={hasCabinets ? 11 : 8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         Không tìm thấy nhân viên nào phù hợp bộ lọc tìm kiếm.
                       </td>
                     </tr>
@@ -874,7 +720,7 @@ export default function CodinhPage() {
                     sortedEmployees.map((row, index) => {
                       const isOverdue = row.overdue_wos > 0;
                       return (
-                        <tr key={`emp-${row.employee_id || index}`} className="excel-row">
+                        <tr key={`emp-${row.key_name || index}`} className="excel-row">
                           <td className="cell-num col-stt" style={{ width: '38px', color: 'var(--text-muted)' }}>
                             {row.is_other ? '*' : index + 1}
                           </td>
@@ -933,20 +779,6 @@ export default function CodinhPage() {
                               />
                             </div>
                           </td>
-
-                          <td style={{ textAlign: 'center' }}>
-                            <button
-                              className="btn btn-outline"
-                              style={{ fontSize: '0.72rem', padding: '2px 8px' }}
-                              onClick={() => {
-                                setSelectedFtFilter(row.key_name);
-                                setCurrentTab('wos');
-                              }}
-                              title={`Xem chi tiết WO của ${row.key_name}`}
-                            >
-                              Xem WO
-                            </button>
-                          </td>
                         </tr>
                       );
                     })
@@ -967,11 +799,10 @@ export default function CodinhPage() {
                       className="col-name"
                       style={{ textAlign: 'left', width: '1%', whiteSpace: 'nowrap', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('key_name')}
-                      title="Nhấn để sắp xếp theo tên cụm"
+                      title="Nhấn để sắp xếp theo tên cụm viết tắt"
                     >
                       Nhóm / Cụm {renderSortIndicator('key_name')}
                     </th>
-                    <th style={{ width: '80px', textAlign: 'center', whiteSpace: 'nowrap' }}>Mã Ngắn</th>
                     <th
                       style={{ width: '80px', minWidth: '80px', background: 'rgba(2, 132, 199, 0.1)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('total_wos')}
@@ -1042,7 +873,7 @@ export default function CodinhPage() {
                 <tbody>
                   {/* Summary Row */}
                   <tr className="excel-summary-row">
-                    <td className="col-summary-label" colSpan={3} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                    <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       TỔNG CỘNG:
                     </td>
                     <td className="cell-num" style={{ width: '80px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800 }}>
@@ -1091,7 +922,7 @@ export default function CodinhPage() {
                   {/* Data Rows */}
                   {sortedGroups.length === 0 ? (
                     <tr>
-                      <td colSpan={hasCabinets ? 12 : 9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <td colSpan={hasCabinets ? 11 : 8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         Không tìm thấy cụm nào phù hợp bộ lọc tìm kiếm.
                       </td>
                     </tr>
@@ -1099,19 +930,14 @@ export default function CodinhPage() {
                     sortedGroups.map((row, index) => {
                       const shortName = formatGroupName(row.key_name);
                       return (
-                        <tr key={`grp-${row.group_id || index}`} className="excel-row">
+                        <tr key={`grp-${row.key_name || index}`} className="excel-row">
                           <td className="cell-num col-stt" style={{ width: '38px', color: 'var(--text-muted)' }}>
                             {row.is_other ? '*' : index + 1}
                           </td>
                           <td className="col-name" style={{ width: '1%', whiteSpace: 'nowrap', padding: '3px 12px' }}>
                             <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                              {row.key_name}
-                            </strong>
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span className="badge" style={{ fontSize: '0.74rem', background: 'var(--brand-light)', color: 'var(--brand-primary)', fontWeight: 700 }}>
                               {shortName}
-                            </span>
+                            </strong>
                           </td>
                           <td className="cell-num" style={{ fontWeight: 700, color: 'var(--brand-primary)' }}>
                             {row.total_wos}
@@ -1166,345 +992,7 @@ export default function CodinhPage() {
               </table>
             </div>
           )}
-
-          {/* ======================= TAB 3: CHI TIẾT WO & TỦ CÁP CON (ACCORDION) ======================= */}
-          {currentTab === 'wos' && (
-            <div>
-              {/* Accordion helper banner */}
-              <div
-                style={{
-                  padding: '8px 16px',
-                  background: 'var(--bg-tertiary)',
-                  borderBottom: '1px solid var(--border-color)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '8px',
-                }}
-              >
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                  Hiển thị <strong>{sortedWos.length}</strong> công việc (WO). Bấm <strong style={{ color: '#8b5cf6' }}>[ + ]</strong> để xem danh sách tủ cáp con đối chiếu bên trong WO.
-                </span>
-
-                {hasCabinets && (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      className="btn btn-outline"
-                      style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                      onClick={() => handleToggleAllWos(true)}
-                    >
-                      Mở rộng tất cả tủ
-                    </button>
-                    <button
-                      className="btn btn-outline"
-                      style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                      onClick={() => handleToggleAllWos(false)}
-                    >
-                      Thu gọn tất cả
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="excel-table-scroll-wrapper" style={{ overflowX: 'auto', borderBottom: '1px solid var(--border-color)', WebkitOverflowScrolling: 'touch' }}>
-                <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
-                  <thead>
-                    <tr>
-                      {hasCabinets && <th style={{ width: '36px', textAlign: 'center' }}></th>}
-                      <th className="col-stt" style={{ width: '38px', whiteSpace: 'nowrap' }}>STT</th>
-                      <th
-                        style={{ minWidth: '140px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                        onClick={() => handleSort('ma_cong_viec')}
-                        title="Sắp xếp theo Mã WO"
-                      >
-                        Mã WO {renderSortIndicator('ma_cong_viec')}
-                      </th>
-                      <th
-                        style={{ minWidth: '100px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                        onClick={() => handleSort('station_code')}
-                        title="Sắp xếp theo Mã Trạm"
-                      >
-                        Mã Trạm {renderSortIndicator('station_code')}
-                      </th>
-                      <th
-                        style={{ minWidth: '140px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                        onClick={() => handleSort('employee_assigned_name')}
-                        title="Sắp xếp theo Nhân viên FT"
-                      >
-                        Nhân Viên (FT) {renderSortIndicator('employee_assigned_name')}
-                      </th>
-                      <th style={{ minWidth: '85px', whiteSpace: 'nowrap' }}>Cụm</th>
-                      <th style={{ minWidth: '180px' }}>Loại Việc / Nội Dung</th>
-                      <th style={{ width: '105px', textAlign: 'center', whiteSpace: 'nowrap' }}>Trạng Thái WO</th>
-                      <th style={{ width: '110px', textAlign: 'center', whiteSpace: 'nowrap' }}>Hạn Xử Lý</th>
-                      {hasCabinets && (
-                        <th
-                          style={{ minWidth: '130px', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('completed_cabinets')}
-                          title="Sắp xếp theo số tủ đã xong"
-                        >
-                          Chi Tiết Tủ (THC) {renderSortIndicator('completed_cabinets')}
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedWos.length === 0 ? (
-                      <tr>
-                        <td colSpan={hasCabinets ? 10 : 8} style={{ textAlign: 'center', padding: '28px', color: 'var(--text-muted)' }}>
-                          Không tìm thấy công việc nào phù hợp với bộ lọc tìm kiếm.
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedWos.map((w, idx) => {
-                        const isExpanded = Boolean(expandedWos[w.ma_cong_viec]);
-                        const cabCount = (w.cabinets || []).length;
-                        const isOverdue = w.is_overdue;
-
-                        return (
-                          <React.Fragment key={w.ma_cong_viec || idx}>
-                            <tr
-                              className="excel-row"
-                              style={{
-                                background: isExpanded
-                                  ? 'rgba(139, 92, 246, 0.05)'
-                                  : isOverdue
-                                  ? 'rgba(239, 68, 68, 0.04)'
-                                  : undefined,
-                              }}
-                            >
-                              {hasCabinets && (
-                                <td style={{ textAlign: 'center', padding: '4px' }}>
-                                  {cabCount > 0 ? (
-                                    <button
-                                      onClick={() => toggleWoExpand(w.ma_cong_viec)}
-                                      style={{
-                                        border: 'none',
-                                        background: isExpanded ? '#8b5cf6' : 'var(--bg-tertiary)',
-                                        color: isExpanded ? '#fff' : 'var(--text-primary)',
-                                        width: '20px',
-                                        height: '20px',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                      }}
-                                      title={isExpanded ? 'Thu gọn' : `Mở rộng ${cabCount} tủ con`}
-                                    >
-                                      {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                                    </button>
-                                  ) : (
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>-</span>
-                                  )}
-                                </td>
-                              )}
-
-                              <td className="cell-num col-stt" style={{ width: '38px', color: 'var(--text-muted)' }}>
-                                {idx + 1}
-                              </td>
-
-                              <td>
-                                <span
-                                  onClick={() => handleOpenTaskDetail(w.ma_cong_viec)}
-                                  style={{
-                                    fontWeight: 700,
-                                    fontFamily: 'var(--font-mono)',
-                                    color: isOverdue ? 'var(--danger)' : 'var(--brand-primary)',
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                    textUnderlineOffset: '3px',
-                                  }}
-                                  title="Bấm để xem lịch sử và chi tiết WO"
-                                >
-                                  {w.ma_cong_viec}
-                                </span>
-                              </td>
-
-                              <td>
-                                {w.station_code ? (
-                                  <span className="badge" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', background: 'var(--bg-tertiary)' }}>
-                                    {w.station_code}
-                                  </span>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                )}
-                              </td>
-
-                              <td>
-                                <span style={{ fontWeight: isOverdue ? 800 : 600, color: isOverdue ? 'var(--danger)' : 'var(--text-primary)' }}>
-                                  {w.employee_assigned_name}
-                                </span>
-                              </td>
-
-                              <td>
-                                <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--bg-tertiary)' }}>
-                                  {formatGroupName(w.group_name)}
-                                </span>
-                              </td>
-
-                              <td>
-                                <div
-                                  style={{
-                                    fontSize: '0.8rem',
-                                    color: 'var(--text-primary)',
-                                    maxWidth: '240px',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                  title={w.noi_dung_cong_viec || w.loai_cong_viec}
-                                >
-                                  {w.noi_dung_cong_viec || w.loai_cong_viec}
-                                </div>
-                              </td>
-
-                              <td style={{ textAlign: 'center' }}>
-                                {w.is_closed ? (
-                                  <span className="badge badge-success" style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
-                                    Đã Đóng
-                                  </span>
-                                ) : (
-                                  <span className="badge badge-warning" style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
-                                    {w.trang_thai || 'Đang xử lý'}
-                                  </span>
-                                )}
-                              </td>
-
-                              <td style={{ textAlign: 'center' }}>
-                                {isOverdue ? (
-                                  <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                    <AlertTriangle size={12} /> Quá hạn
-                                  </span>
-                                ) : w.is_closed ? (
-                                  <span style={{ fontSize: '0.74rem', color: 'var(--success)' }}>Đã đóng</span>
-                                ) : (
-                                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Trong hạn</span>
-                                )}
-                              </td>
-
-                              {hasCabinets && (
-                                <td style={{ textAlign: 'center' }}>
-                                  {cabCount > 0 ? (
-                                    <div
-                                      onClick={() => toggleWoExpand(w.ma_cong_viec)}
-                                      style={{
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '5px',
-                                        padding: '2px 8px',
-                                        borderRadius: 'var(--radius-full)',
-                                        background: w.completed_cabinets === cabCount ? 'var(--success-light)' : 'rgba(139, 92, 246, 0.12)',
-                                        color: w.completed_cabinets === cabCount ? 'var(--success-dark)' : '#8b5cf6',
-                                        fontSize: '0.74rem',
-                                        fontWeight: 700,
-                                      }}
-                                      title="Bấm để xem các tủ cáp con"
-                                    >
-                                      <Box size={12} />
-                                      {w.completed_cabinets}/{cabCount} Tủ
-                                    </div>
-                                  ) : (
-                                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>-</span>
-                                  )}
-                                </td>
-                              )}
-                            </tr>
-
-                            {/* Sub-table: Nested Cabinets */}
-                            {hasCabinets && isExpanded && (
-                              <tr style={{ background: 'var(--bg-tertiary)' }}>
-                                <td colSpan={10} style={{ padding: '10px 16px 14px 44px' }}>
-                                  <div
-                                    style={{
-                                      background: 'var(--bg-secondary)',
-                                      borderRadius: 'var(--radius-md)',
-                                      border: '1px solid var(--border-color)',
-                                      padding: '12px',
-                                      boxShadow: 'var(--shadow-sm)',
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                                      <Cable size={14} style={{ color: '#8b5cf6' }} />
-                                      <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                                        Danh Sách Tủ Cáp Con Của WO: {w.ma_cong_viec}
-                                      </strong>
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        ({cabCount} tủ đối chiếu)
-                                      </span>
-                                    </div>
-
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                                      <thead>
-                                        <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                                          <th style={{ padding: '5px 8px', width: '38px' }}>STT</th>
-                                          <th style={{ padding: '5px 8px' }}>Mã Đối Tượng (Tủ THC)</th>
-                                          <th style={{ padding: '5px 8px' }}>Mã Trạm THC</th>
-                                          <th style={{ padding: '5px 8px' }}>Trạng Thái THC</th>
-                                          <th style={{ padding: '5px 8px' }}>Tỉnh / Khu Vực</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {w.cabinets.map((cab, cIdx) => (
-                                          <tr key={cab.id || cIdx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                            <td style={{ padding: '5px 8px', color: 'var(--text-muted)' }}>{cIdx + 1}</td>
-                                            <td style={{ padding: '5px 8px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#8b5cf6' }}>
-                                              {cab.ma_doi_tuong}
-                                            </td>
-                                            <td style={{ padding: '5px 8px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                                              {cab.ma_tram || '-'}
-                                            </td>
-                                            <td style={{ padding: '5px 8px' }}>
-                                              {cab.is_completed ? (
-                                                <span className="badge badge-success" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
-                                                  <CheckCircle2 size={11} /> {cab.trang_thai_thc}
-                                                </span>
-                                              ) : (
-                                                <span className="badge badge-warning" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
-                                                  <Clock size={11} /> {cab.trang_thai_thc || 'Đang thực hiện'}
-                                                </span>
-                                              )}
-                                            </td>
-                                            <td style={{ padding: '5px 8px', color: 'var(--text-muted)' }}>
-                                              {cab.tinh || ''} {cab.khu_vuc ? `(${cab.khu_vuc})` : ''}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
-      )}
-
-      {/* 3. Task Detail Sheet Modal with Notes & History */}
-      {selectedDetailTask && (
-        <TaskDetailModal
-          task={selectedDetailTask}
-          onClose={() => setSelectedDetailTask(null)}
-          onNoteAdded={async (ma_cong_viec) => {
-            try {
-              const updated = await tasksApi.getTaskDetail(ma_cong_viec);
-              setSelectedDetailTask(updated);
-              queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
-            } catch (e) {
-              console.error(e);
-            }
-          }}
-        />
       )}
     </div>
   );

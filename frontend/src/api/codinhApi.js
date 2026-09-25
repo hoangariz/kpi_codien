@@ -42,6 +42,17 @@ export const codinhApi = {
     return res.data;
   },
 
+  // Nạp file gốc WO Cố Định Băng Rộng riêng biệt (không dùng chung với tổng quan)
+  uploadWoFile: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/codinh/wos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
+    });
+    return res.data;
+  },
+
   // Nạp file chi tiết tủ cáp (THC) theo WO
   uploadCabinetFile: async (file, categoryId = null) => {
     const formData = new FormData();
@@ -54,3 +65,4 @@ export const codinhApi = {
     return res.data;
   },
 };
+

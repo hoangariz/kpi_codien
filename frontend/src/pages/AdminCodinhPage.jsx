@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Cable,
@@ -11,24 +11,34 @@ import {
   AlertCircle,
   FileSpreadsheet,
   Search,
-  Filter,
   Check,
   X,
-  ExternalLink,
-  ChevronRight,
-  Database,
-  RefreshCw,
-  ArrowLeft
+  RotateCcw,
+  ArrowLeft,
+  FileCheck,
+  Database
 } from 'lucide-react';
 
 import { codinhApi } from '../api/codinhApi';
-import { importsApi } from '../api/importsApi';
 
 export default function AdminCodinhPage({ onNavigateToCodinh }) {
   const queryClient = useQueryClient();
 
-  // Active navigation tab inside admin: 'reports' | 'upload_cabinets' | 'upload_wo'
-  const [activeTab, setActiveTab] = useState('reports');
+  // Active navigation tab inside admin: 'upload_base_wo' | 'upload_cabinets' | 'reports'
+  const [activeTab, setActiveTab] = useState('upload_base_wo');
+
+  // Base WO file upload state
+  const [baseWoFile, setBaseWoFile] = useState(null);
+  const [isUploadingWo, setIsUploadingWo] = useState(false);
+  const [uploadWoResult, setUploadWoResult] = useState(null);
+  const [uploadWoError, setUploadWoError] = useState(null);
+
+  // Cabinet upload state
+  const [cabinetFile, setCabinetFile] = useState(null);
+  const [selectedTargetCatId, setSelectedTargetCatId] = useState('');
+  const [uploadResult, setUploadResult] = useState(null);
+  const [isUploadingCabinet, setIsUploadingCabinet] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   // Modal create/edit category state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -40,13 +50,6 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
   const [catExcludeClosedPrior, setCatExcludeClosedPrior] = useState(true);
   const [catSearchFilter, setCatSearchFilter] = useState('');
 
-  // Cabinet upload state
-  const [cabinetFile, setCabinetFile] = useState(null);
-  const [selectedTargetCatId, setSelectedTargetCatId] = useState('');
-  const [uploadResult, setUploadResult] = useState(null);
-  const [isUploadingCabinet, setIsUploadingCabinet] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
-
   // Queries
   const { data: categories = [], isLoading: loadingCategories, refetch: refetchCategories } = useQuery({
     queryKey: ['codinh-categories'],
@@ -57,6 +60,60 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
     queryKey: ['codinh-meta-options'],
     queryFn: codinhApi.getMetaOptions,
   });
+
+  // Base WO Upload Submit
+  const handleBaseWoUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!baseWoFile) {
+      alert('Vui lòng chọn file Excel công việc CĐBR (.xlsx, .xls)');
+      return;
+    }
+
+    setIsUploadingWo(true);
+    setUploadWoError(null);
+    setUploadWoResult(null);
+
+    try {
+      const res = await codinhApi.uploadWoFile(baseWoFile);
+      setUploadWoResult(res);
+      setBaseWoFile(null);
+      queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['codinh-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['codinh-meta-options'] });
+    } catch (err) {
+      setUploadWoError(err.response?.data?.detail || err.message);
+    } finally {
+      setIsUploadingWo(false);
+    }
+  };
+
+  // Cabinet Upload Submit
+  const handleCabinetUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!cabinetFile) {
+      alert('Vui lòng chọn file Excel chi tiết tủ cáp (.xlsx, .xls)');
+      return;
+    }
+
+    setIsUploadingCabinet(true);
+    setUploadError(null);
+    setUploadResult(null);
+
+    try {
+      const res = await codinhApi.uploadCabinetFile(
+        cabinetFile,
+        selectedTargetCatId ? Number(selectedTargetCatId) : null
+      );
+      setUploadResult(res);
+      setCabinetFile(null);
+      queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['codinh-categories'] });
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || err.message);
+    } finally {
+      setIsUploadingCabinet(false);
+    }
+  };
 
   // Open modal for Create
   const handleOpenCreate = () => {
@@ -143,7 +200,6 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
     saveCategoryMutation.mutate(payload);
   };
 
-  // Toggle selection in modal
   const handleToggleValue = (val) => {
     if (catSelectedValues.includes(val)) {
       setCatSelectedValues(catSelectedValues.filter(x => x !== val));
@@ -152,42 +208,14 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
     }
   };
 
-  // Cabinet File Upload
-  const handleCabinetUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (!cabinetFile) {
-      alert('Vui lòng chọn file Excel chi tiết tủ cáp (.xlsx, .xls)');
-      return;
-    }
-
-    setIsUploadingCabinet(true);
-    setUploadError(null);
-    setUploadResult(null);
-
-    try {
-      const res = await codinhApi.uploadCabinetFile(
-        cabinetFile,
-        selectedTargetCatId ? Number(selectedTargetCatId) : null
-      );
-      setUploadResult(res);
-      setCabinetFile(null);
-      queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['codinh-categories'] });
-    } catch (err) {
-      setUploadError(err.response?.data?.detail || err.message);
-    } finally {
-      setIsUploadingCabinet(false);
-    }
-  };
-
   const selectableList = catFilterMode === 'by_loai' ? (metaOptions.task_types || []) : (metaOptions.systems || []);
-  const filteredSelectableList = selectableList.filter(item => 
+  const filteredSelectableList = selectableList.filter(item =>
     !catSearchFilter.trim() || item.toLowerCase().includes(catSearchFilter.trim().toLowerCase())
   );
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
-      {/* Top Header & Breadcrumb */}
+      {/* Top Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -196,10 +224,10 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
             </span>
           </div>
           <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Quản Trị Báo Cáo & Nạp Dữ Liệu Tủ Cáp
+            Quản Trị Báo Cáo & Nạp Dữ Liệu CĐBR
           </h2>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            Tạo bảng theo đầu việc / hệ thống và nạp file đối chiếu chi tiết tủ cáp theo mã WO
+            Nạp file công việc riêng biệt cho CĐBR, nạp file đối chiếu tủ cáp con và cấu hình các bảng báo cáo
           </p>
         </div>
 
@@ -214,14 +242,14 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
         )}
       </div>
 
-      {/* Tabs navigation inside Admin */}
+      {/* Tabs navigation */}
       <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px', flexWrap: 'wrap' }}>
         <button
-          className={`btn ${activeTab === 'reports' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setActiveTab('reports')}
-          style={{ padding: '8px 18px', fontSize: '0.86rem', gap: '8px', borderRadius: '8px 8px 0 0' }}
+          className={`btn ${activeTab === 'upload_base_wo' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setActiveTab('upload_base_wo')}
+          style={{ padding: '8px 18px', fontSize: '0.86rem', gap: '8px', borderRadius: '8px 8px 0 0', background: activeTab === 'upload_base_wo' ? '#8b5cf6' : 'transparent', borderColor: activeTab === 'upload_base_wo' ? '#8b5cf6' : 'var(--border-color)' }}
         >
-          <Layers size={16} /> Danh Mục Báo Cáo CĐBR ({categories.length})
+          <Database size={16} /> 1. Nạp File Gốc WO CĐBR (Riêng Biệt)
         </button>
 
         <button
@@ -229,11 +257,303 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
           onClick={() => setActiveTab('upload_cabinets')}
           style={{ padding: '8px 18px', fontSize: '0.86rem', gap: '8px', borderRadius: '8px 8px 0 0', background: activeTab === 'upload_cabinets' ? '#8b5cf6' : 'transparent', borderColor: activeTab === 'upload_cabinets' ? '#8b5cf6' : 'var(--border-color)' }}
         >
-          <Upload size={16} /> Nạp File Chi Tiết Tủ Cáp (THC)
+          <Upload size={16} /> 2. Nạp File Đối Chiếu Tủ Cáp (THC)
+        </button>
+
+        <button
+          className={`btn ${activeTab === 'reports' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setActiveTab('reports')}
+          style={{ padding: '8px 18px', fontSize: '0.86rem', gap: '8px', borderRadius: '8px 8px 0 0' }}
+        >
+          <Layers size={16} /> 3. Danh Mục Báo Cáo CĐBR ({categories.length})
         </button>
       </div>
 
-      {/* ================= TAB 1: DANH MỤC BÁO CÁO CĐBR ================= */}
+      {/* ================= TAB 1: NẠP FILE GỐC WO CĐBR RIÊNG BIỆT ================= */}
+      {activeTab === 'upload_base_wo' && (
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div className="table-card" style={{ padding: '26px 28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-md)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Database size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Nạp File Gốc Công Việc (WO) Cố Định Băng Rộng
+                </h3>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  File này lưu trữ <strong>hoàn toàn riêng biệt</strong> cho CĐBR, <strong>KHÔNG</strong> ghi đè hay ảnh hưởng đến dữ liệu bên Tổng Quan (Cơ điện).
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleBaseWoUploadSubmit}>
+              {/* Dropzone */}
+              <div
+                style={{
+                  border: '2px dashed #8b5cf6',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '36px 24px',
+                  textAlign: 'center',
+                  background: 'rgba(139, 92, 246, 0.03)',
+                  cursor: 'pointer',
+                  marginBottom: '18px',
+                }}
+                onClick={() => document.getElementById('base-wo-file-input').click()}
+              >
+                <FileSpreadsheet size={44} style={{ color: '#8b5cf6', margin: '0 auto 12px auto' }} />
+                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
+                  {baseWoFile ? baseWoFile.name : 'Nhấp hoặc kéo thả file Excel công việc CĐBR vào đây'}
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Định dạng hỗ trợ: .xlsx, .xls • Nhận diện cột Mã công việc, Loại công việc, Nhân viên, Nhóm, Trạng thái...
+                </p>
+                {baseWoFile && (
+                  <div style={{ marginTop: '10px' }}>
+                    <span className="badge badge-success" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
+                      ✓ Đã chọn file: {(baseWoFile.size / (1024 * 1024)).toFixed(2)} MB
+                    </span>
+                  </div>
+                )}
+                <input
+                  id="base-wo-file-input"
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setBaseWoFile(e.target.files[0]);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </div>
+
+              {/* Upload Button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+                {baseWoFile && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setBaseWoFile(null)}
+                    style={{ fontSize: '0.82rem', padding: '8px 16px' }}
+                  >
+                    Hủy chọn
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!baseWoFile || isUploadingWo}
+                  style={{ fontSize: '0.85rem', padding: '8px 24px', background: '#8b5cf6', borderColor: '#8b5cf6' }}
+                >
+                  {isUploadingWo ? 'Đang nạp file WO CĐBR...' : 'Bắt Đầu Nạp File Gốc CĐBR'}
+                </button>
+              </div>
+            </form>
+
+            {/* Error Message */}
+            {uploadWoError && (
+              <div style={{ marginTop: '20px', padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--danger-light)', color: 'var(--danger-dark)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem' }}>
+                <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong>Lỗi nạp file WO CĐBR:</strong> {uploadWoError}
+                </div>
+              </div>
+            )}
+
+            {/* Success Result */}
+            {uploadWoResult && (
+              <div style={{ marginTop: '24px', padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <CheckCircle2 size={22} style={{ color: 'var(--success)' }} />
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                      Nạp Thành Công File Gốc CĐBR!
+                    </h4>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      Dữ liệu đã được nạp riêng vào bảng Cố Định Băng Rộng lúc {uploadWoResult.imported_at_vn}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>TỔNG WO CĐBR</span>
+                    <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {uploadWoResult.total_wos?.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--success-dark)', display: 'block' }}>WO ĐÃ ĐÓNG</span>
+                    <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {uploadWoResult.closed_wos?.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--warning-dark)', display: 'block' }}>WO ĐANG TỒN</span>
+                    <strong style={{ fontSize: '1.25rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {uploadWoResult.pending_wos?.toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= TAB 2: NẠP FILE CHI TIẾT TỦ CÁP ================= */}
+      {activeTab === 'upload_cabinets' && (
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div className="table-card" style={{ padding: '26px 28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-md)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Cable size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Nạp File Chi Tiết Tủ Cáp (THC) Theo Mã WO
+                </h3>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  Hỗ trợ file Excel chứa danh sách các tủ hộp cáp con kèm Mã WO (như file <code>demo_tu_theo_ma_wo_demo.xlsx</code>)
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCabinetUploadSubmit}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px' }}>
+                  Gán vào Bảng Báo Cáo CĐBR:
+                </label>
+                <select
+                  value={selectedTargetCatId}
+                  onChange={(e) => setSelectedTargetCatId(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', fontSize: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
+                >
+                  <option value="">-- Áp dụng cho tất cả WO trùng khớp --</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.loai_cong_viec})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div
+                style={{
+                  border: '2px dashed #8b5cf6',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '36px 24px',
+                  textAlign: 'center',
+                  background: 'rgba(139, 92, 246, 0.03)',
+                  cursor: 'pointer',
+                  marginBottom: '18px',
+                }}
+                onClick={() => document.getElementById('cabinet-file-input').click()}
+              >
+                <FileSpreadsheet size={44} style={{ color: '#8b5cf6', margin: '0 auto 12px auto' }} />
+                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
+                  {cabinetFile ? cabinetFile.name : 'Nhấp hoặc kéo thả file Excel tủ cáp vào đây'}
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Định dạng hỗ trợ: .xlsx, .xls • Tự động nhận diện cột Mã đối tượng, Mã WO, Trạng thái THC
+                </p>
+                {cabinetFile && (
+                  <div style={{ marginTop: '10px' }}>
+                    <span className="badge badge-success" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
+                      ✓ Đã chọn file: {(cabinetFile.size / 1024).toFixed(1)} KB
+                    </span>
+                  </div>
+                )}
+                <input
+                  id="cabinet-file-input"
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setCabinetFile(e.target.files[0]);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+                {cabinetFile && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setCabinetFile(null)}
+                    style={{ fontSize: '0.82rem', padding: '8px 16px' }}
+                  >
+                    Hủy chọn
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!cabinetFile || isUploadingCabinet}
+                  style={{ fontSize: '0.85rem', padding: '8px 24px', background: '#8b5cf6', borderColor: '#8b5cf6' }}
+                >
+                  {isUploadingCabinet ? 'Đang nạp file tủ cáp...' : 'Bắt Đầu Nạp File Tủ Cáp'}
+                </button>
+              </div>
+            </form>
+
+            {uploadError && (
+              <div style={{ marginTop: '20px', padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--danger-light)', color: 'var(--danger-dark)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem' }}>
+                <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong>Lỗi nạp file tủ cáp:</strong> {uploadError}
+                </div>
+              </div>
+            )}
+
+            {uploadResult && (
+              <div style={{ marginTop: '24px', padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <CheckCircle2 size={22} style={{ color: 'var(--success)' }} />
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                      Nạp Thành Công File Tủ Cáp!
+                    </h4>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      Đã lưu trữ {uploadResult.total_cabinets} tủ cáp của {uploadResult.unique_wos} WO lúc {uploadResult.imported_at_vn}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', textAlign: 'center' }}>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>TỔNG SỐ TỦ</span>
+                    <strong style={{ fontSize: '1.25rem', color: '#8b5cf6', fontFamily: 'var(--font-mono)' }}>
+                      {uploadResult.total_cabinets}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--success-dark)', display: 'block' }}>TỦ HOÀN THÀNH</span>
+                    <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {uploadResult.completed_cabinets}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--warning-dark)', display: 'block' }}>CHƯA XONG</span>
+                    <strong style={{ fontSize: '1.25rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {uploadResult.pending_cabinets}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#8b5cf6', display: 'block' }}>TỶ LỆ XONG</span>
+                    <strong style={{ fontSize: '1.25rem', color: '#8b5cf6', fontFamily: 'var(--font-mono)' }}>
+                      {uploadResult.completion_rate}%
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= TAB 3: DANH MỤC BÁO CÁO CĐBR ================= */}
       {activeTab === 'reports' && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -299,28 +619,21 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                       </p>
                     )}
 
-                    <div style={{ background: 'var(--bg-tertiary)', padding: '10px 12px', borderRadius: 'var(--radius-md)', marginBottom: '14px', fontSize: '0.78rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Chế độ lọc:</span>
-                        <strong style={{ color: cat.filter_mode === 'by_system' ? '#8b5cf6' : 'var(--brand-primary)' }}>
-                          {cat.filter_mode === 'by_system' ? 'Theo Hệ Thống' : 'Theo Đầu Việc'}
-                        </strong>
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                      <span className="badge badge-neutral" style={{ fontSize: '0.74rem' }}>
+                        {cat.filter_mode === 'by_system' ? 'Theo Hệ Thống' : 'Theo Đầu Việc'}
+                      </span>
+                      <span className="badge badge-purple" style={{ fontSize: '0.74rem' }}>
+                        {(cat.filter_values || []).length} mục lọc
+                      </span>
+                    </div>
 
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Giá trị:</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {(cat.filter_values || []).map((val, idx) => (
-                            <span key={idx} className="badge badge-neutral" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
-                              {val}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                    <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: '0.78rem', color: 'var(--text-secondary)', maxHeight: '72px', overflowY: 'auto' }}>
+                      {(cat.filter_values || []).join(' • ') || 'Chưa chọn'}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                     <button
                       onClick={() => handleOpenEdit(cat)}
                       className="btn btn-outline"
@@ -345,262 +658,84 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
         </div>
       )}
 
-      {/* ================= TAB 2: NẠP FILE CHI TIẾT TỦ CÁP ================= */}
-      {activeTab === 'upload_cabinets' && (
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div className="table-card" style={{ padding: '26px 28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-md)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Cable size={24} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-                  Nạp File Chi Tiết Tủ Cáp (THC) Theo Mã WO
-                </h3>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                  Hỗ trợ file Excel chứa danh sách các tủ hộp cáp con kèm Mã WO (như file <code>demo_tu_theo_ma_wo_demo.xlsx</code>)
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleCabinetUploadSubmit}>
-              {/* Target Report Category */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Gán vào Bảng Báo Cáo CĐBR:
-                </label>
-                <select
-                  value={selectedTargetCatId}
-                  onChange={(e) => setSelectedTargetCatId(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', fontSize: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
-                >
-                  <option value="">-- Áp dụng cho tất cả WO trùng khớp --</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.loai_cong_viec})</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* File Dropzone */}
-              <div
-                style={{
-                  border: '2px dashed #8b5cf6',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '36px 24px',
-                  textAlign: 'center',
-                  background: 'rgba(139, 92, 246, 0.03)',
-                  cursor: 'pointer',
-                  marginBottom: '18px',
-                  transition: 'background 0.2s ease'
-                }}
-                onClick={() => document.getElementById('cabinet-file-input').click()}
-              >
-                <FileSpreadsheet size={44} style={{ color: '#8b5cf6', margin: '0 auto 12px auto' }} />
-                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
-                  {cabinetFile ? cabinetFile.name : 'Nhấp hoặc kéo thả file Excel tủ cáp vào đây'}
-                </h4>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Định dạng hỗ trợ: .xlsx, .xls • Tự động nhận diện cột Mã đối tượng, Mã WO, Trạng thái THC
-                </p>
-                {cabinetFile && (
-                  <div style={{ marginTop: '10px' }}>
-                    <span className="badge badge-success" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
-                      ✓ Đã chọn file: {(cabinetFile.size / 1024).toFixed(1)} KB
-                    </span>
-                  </div>
-                )}
-                <input
-                  id="cabinet-file-input"
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setCabinetFile(e.target.files[0]);
-                    }
-                  }}
-                  style={{ display: 'none' }}
-                />
-              </div>
-
-              {/* Upload Button */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
-                {cabinetFile && (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => setCabinetFile(null)}
-                    style={{ fontSize: '0.82rem', padding: '8px 16px' }}
-                  >
-                    Hủy chọn
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={!cabinetFile || isUploadingCabinet}
-                  style={{ padding: '9px 24px', fontSize: '0.88rem', gap: '8px', background: '#8b5cf6', borderColor: '#8b5cf6' }}
-                >
-                  {isUploadingCabinet ? (
-                    <>
-                      <div className="spinner" style={{ width: '16px', height: '16px' }} />
-                      Đang xử lý dữ liệu...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={16} /> Nạp Dữ Liệu Tủ Cáp
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-
-            {/* Error Message */}
-            {uploadError && (
-              <div style={{ marginTop: '18px', padding: '14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: 'var(--radius-md)', color: 'var(--danger-dark)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertCircle size={18} />
-                <span>{uploadError}</span>
-              </div>
-            )}
-
-            {/* Success Result Breakdown */}
-            {uploadResult && (
-              <div style={{ marginTop: '20px', padding: '18px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid var(--success)', borderRadius: 'var(--radius-md)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <CheckCircle2 size={20} style={{ color: 'var(--success-dark)' }} />
-                  <strong style={{ color: 'var(--success-dark)', fontSize: '0.98rem' }}>
-                    {uploadResult.message}
-                  </strong>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', fontSize: '0.82rem' }}>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Tổng Tủ Cáp</span>
-                    <strong style={{ fontSize: '1.1rem', color: '#8b5cf6' }}>{uploadResult.total_cabinets?.toLocaleString()}</strong>
-                  </div>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Số Mã WO Khớp</span>
-                    <strong style={{ fontSize: '1.1rem', color: 'var(--brand-primary)' }}>{uploadResult.unique_wos?.toLocaleString()}</strong>
-                  </div>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Tủ Đã Hoàn Thành</span>
-                    <strong style={{ fontSize: '1.1rem', color: 'var(--success-dark)' }}>{uploadResult.completed_cabinets?.toLocaleString()}</strong>
-                  </div>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Tủ Đang Làm / Tồn</span>
-                    <strong style={{ fontSize: '1.1rem', color: 'var(--warning-dark)' }}>{uploadResult.pending_cabinets?.toLocaleString()}</strong>
-                  </div>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Tỉ Lệ Hoàn Thành</span>
-                    <strong style={{ fontSize: '1.1rem', color: 'var(--success-dark)' }}>{uploadResult.completion_rate}%</strong>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '14px', textAlign: 'right' }}>
-                  <button
-                    onClick={onNavigateToCodinh}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.82rem', padding: '6px 14px', gap: '5px' }}
-                  >
-                    Xem kết quả trên bảng CĐBR <ExternalLink size={13} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL TẠO / SỬA BÁO CÁO CĐBR ================= */}
+      {/* Modal Tạo/Sửa Category */}
       {showCategoryModal && (
-        <div className="modal-overlay" onClick={() => setShowCategoryModal(false)}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '680px', width: '92vw', maxHeight: '90vh', overflowY: 'auto', padding: '24px' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', marginBottom: '18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-md)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Layers size={18} />
-                </div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
-                  {editingCategory ? 'Chỉnh Sửa Bảng Báo Cáo CĐBR' : 'Tạo Bảng Báo Cáo CĐBR Mới'}
-                </h3>
-              </div>
-              <button className="btn btn-outline btn-icon" onClick={() => setShowCategoryModal(false)}>
-                <X size={16} />
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', boxShadow: 'var(--shadow-xl)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                {editingCategory ? 'Chỉnh Sửa Bảng Báo Cáo CĐBR' : 'Tạo Bảng Báo Cáo CĐBR Mới'}
+              </h3>
+              <button className="btn-icon" onClick={() => setShowCategoryModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSaveCategorySubmit}>
-              {/* Tên bảng báo cáo */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '4px' }}>
                   Tên Bảng Báo Cáo <span style={{ color: 'var(--danger)' }}>*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Bảo Dưỡng Tủ Hộp Cáp (THC), Bảo Dưỡng Thuê Bao GPON..."
+                  placeholder="Ví dụ: Bảo Dưỡng Tuyến Cáp GPON"
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', fontSize: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
-                  required
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
                 />
               </div>
 
-              {/* Mô tả */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Mô Tả Ngắn:
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '4px' }}>
+                  Mô Tả Báo Cáo (Tùy chọn)
                 </label>
                 <input
                   type="text"
-                  placeholder="Mô tả tóm tắt mục đích bảng báo cáo..."
+                  placeholder="Mô tả ngắn gọn mục đích của bảng báo cáo..."
                   value={catDesc}
                   onChange={(e) => setCatDesc(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.82rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
                 />
               </div>
 
-              {/* Chế độ lọc: Theo Đầu Việc hay Theo Hệ Thống */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '8px' }}>
-                  Cơ Chế Lọc Dữ Liệu:
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px' }}>
+                  Chế Độ Lọc Dữ Liệu
                 </label>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="filterMode"
+                      value="by_loai"
                       checked={catFilterMode === 'by_loai'}
                       onChange={() => {
                         setCatFilterMode('by_loai');
                         setCatSelectedValues([]);
                       }}
                     />
-                    <span>Theo Đầu Việc (Loại công việc)</span>
+                    <span>Theo Loại Công Việc (Đầu việc)</span>
                   </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="filterMode"
+                      value="by_system"
                       checked={catFilterMode === 'by_system'}
                       onChange={() => {
                         setCatFilterMode('by_system');
                         setCatSelectedValues([]);
                       }}
                     />
-                    <span>Theo Hệ Thống</span>
+                    <span>Theo Hệ Thống Quản Lý</span>
                   </label>
                 </div>
               </div>
 
-              {/* Danh sách lựa chọn có ô tìm kiếm */}
               <div style={{ marginBottom: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                    Chọn {catFilterMode === 'by_loai' ? 'Loại Công Việc' : 'Hệ Thống'} Cần Đưa Vào Báo Cáo <span style={{ color: 'var(--danger)' }}>*</span>
+                    Chọn {catFilterMode === 'by_loai' ? 'Loại Công Việc' : 'Hệ Thống'} <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
                   <span style={{ fontSize: '0.75rem', color: 'var(--brand-primary)', fontWeight: 700 }}>
                     Đã chọn {catSelectedValues.length} mục
@@ -659,7 +794,6 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                 </div>
               </div>
 
-              {/* Tùy chọn exclude closed prior months */}
               <div style={{ marginBottom: '22px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', cursor: 'pointer' }}>
                   <input
@@ -671,7 +805,6 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                 </label>
               </div>
 
-              {/* Buttons */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
                 <button
                   type="button"

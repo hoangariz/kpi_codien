@@ -19,6 +19,7 @@ from backend.services.report_category_service import (
     delete_report_category,
 )
 from backend.services.codinh_service import (
+    import_codinh_wos_from_excel,
     import_cabinets_from_excel,
     get_codinh_stats,
     get_codinh_meta_options,
@@ -26,6 +27,7 @@ from backend.services.codinh_service import (
 )
 
 router = APIRouter(prefix="/api/codinh", tags=["Cố Định Băng Rộng"])
+
 
 
 @router.get("/categories", response_model=List[ReportCategoryResponse])
@@ -74,6 +76,42 @@ def remove_codinh_category(cat_id: int, db: Session = Depends(get_db)):
         return {"status": "success", "message": "Đã xóa bảng báo cáo thành công"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/wos/upload")
+async def upload_codinh_wos_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Tải lên file gốc công việc (WO) riêng biệt cho Cố Định Băng Rộng (CĐBR).
+    Lưu trữ độc lập trong codinh_tasks, không dùng chung và không ảnh hưởng dữ liệu Cơ điện/Tổng quan.
+    """
+    valid_exts = (".xlsx", ".xls", ".csv")
+    if not any(file.filename.lower().endswith(ext) for ext in valid_exts):
+        raise HTTPException(
+            status_code=400,
+            detail="Định dạng file không hỗ trợ. Vui lòng tải lên file .xlsx, .xls hoặc .csv"
+        )
+
+    safe_name = f"codinh_wo_{file.filename}"
+    temp_path = UPLOAD_DIR / safe_name
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    try:
+        result = import_codinh_wos_from_excel(
+            db=db,
+            file_path=temp_path,
+            filename=file.filename
+        )
+        return {
+            "status": "success",
+            "message": f"Nạp thành công {result['total_wos']} công việc CĐBR riêng biệt!",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi xử lý file công việc CĐBR: {str(e)}")
 
 
 @router.post("/cabinets/upload")

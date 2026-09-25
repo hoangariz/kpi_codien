@@ -8,6 +8,7 @@ from backend.models.tracking import TrackingBoard, TrackingBoardTask
 from backend.models.report_category import ReportCategory, ReportSubCategory
 from backend.models.fixed_wo_report import FixedWoReport, FixedWoItem
 from backend.models.cabinet import Cabinet
+from backend.models.task_codinh import TaskCodinh
 
 __all__ = [
     "Employee",
@@ -28,5 +29,7 @@ __all__ = [
     "FixedWoReport",
     "FixedWoItem",
     "Cabinet",
+    "TaskCodinh",
 ]
+
 
