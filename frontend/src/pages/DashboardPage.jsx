@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { Database } from 'lucide-react';
 import { statsApi } from '../api/statsApi';
 import { tasksApi } from '../api/tasksApi';
 import { trackingApi } from '../api/trackingApi';
 import { reportCategoryApi } from '../api/reportCategoryApi';
 import { fixedWoApi } from '../api/fixedWoApi';
+import { importsApi } from '../api/importsApi';
 
 import TaskDrilldownModal from '../components/TaskDrilldownModal';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -15,6 +17,7 @@ import ReportSelectorCards from '../components/dashboard/ReportSelectorCards';
 import DynamicCategoryReport from '../components/dashboard/DynamicCategoryReport';
 import OverviewChartsSection from '../components/dashboard/OverviewChartsSection';
 import { formatGroupName } from '../utils/groupFormat';
+import { formatDataTimestamp } from '../utils/dateFormat';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -66,8 +69,15 @@ export default function DashboardPage() {
     enabled: Boolean(activeFixedWoId && selectedReport === 'fixed_wo'),
   });
 
+  // Fetch latest import log for data freshness timestamp
+  const { data: importLogs } = useQuery({
+    queryKey: ['import-logs-latest'],
+    queryFn: () => importsApi.getImportLogs(5),
+    staleTime: 5 * 60 * 1000,
+  });
 
-
+  const latestImport = (importLogs || []).find((l) => l.is_active === 1) || (importLogs || []).find((l) => l.status === 'COMPLETED') || (importLogs && importLogs.length > 0 ? importLogs[0] : null);
+  const lastDataUpdate = latestImport?.imported_at || null;
   // Selected board detail for lower report filter
   const { data: selectedBoardDetail } = useQuery({
     queryKey: ['tracking-board-detail', selectedBoardId],
@@ -246,6 +256,25 @@ export default function DashboardPage() {
 
   return (
     <div>
+      {/* 0. Data Freshness Indicator */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Database size={13} style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+            Dữ liệu cập nhật đến: <strong style={{ color: lastDataUpdate ? 'var(--brand-primary)' : 'var(--text-muted)' }}>{formatDataTimestamp(lastDataUpdate)}</strong>
+          </span>
+        </div>
+      </div>
+
       {/* 1. Mục: WO Trong Trạng Thái Theo Dõi Cao */}
       <HighPriorityBoardSection
         trackingBoards={trackingBoards}
