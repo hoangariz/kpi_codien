@@ -213,49 +213,49 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
       >
         <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>TỔNG CỘNG</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)' }}>
             {summary.total ?? total_valid_records}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.10)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--success-dark)', display: 'block' }}>ĐÃ ĐÓNG</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)' }}>
             {summary.closed ?? 0}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'rgba(245, 158, 11, 0.10)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--warning-dark)', display: 'block' }}>TỒN VIỆC</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--warning-dark)' }}>
             {summary.pending ?? 0}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.10)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--danger-dark)', display: 'block' }}>QUÁ HẠN</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--danger-dark)' }}>
             {summary.overdue ?? 0}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>ĐÓNG HÔM NAY</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)' }}>
             +{summary.closed_today ?? 0}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>ĐÓNG HÔM QUA</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)' }}>
             +{summary.closed_yesterday ?? 0}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>ĐÓNG TUẦN QUA</span>
-          <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)' }}>
             {summary.closed_last_7_days ?? 0}
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>TỈ LỆ ĐÓNG</span>
-          <strong style={{ fontSize: '1.25rem', color: (summary.completion_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.25rem', color: (summary.completion_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)' }}>
             {summary.completion_rate ?? 0}%
           </strong>
         </div>
@@ -309,7 +309,7 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
                 <td className="cell-num cell-week" style={{ fontSize: '0.95rem' }}>
                   {summary.closed_last_7_days ?? 0}
                 </td>
-                <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.9rem' }}>
+                <td style={{ textAlign: 'center', fontWeight: 800, fontSize: '0.9rem' }}>
                   {summary.completion_rate ?? 0}%
                 </td>
                 <td style={{ textAlign: 'center' }}>
@@ -368,7 +368,7 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
                           }} 
                         />
                       </div>
-                      <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', fontWeight: 700, minWidth: '38px', textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, minWidth: '38px', textAlign: 'right' }}>
                         {row.completion_rate}%
                       </span>
                     </div>

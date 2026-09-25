@@ -384,7 +384,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Tổng Công Việc</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>{summary.total ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)' }}>{summary.total ?? 0}</strong>
         </div>
 
         <div 
@@ -394,7 +394,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--success-dark)', display: 'block' }}>Đã Đóng</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>{summary.closed ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)' }}>{summary.closed ?? 0}</strong>
         </div>
 
         <div 
@@ -404,7 +404,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--warning-dark)', display: 'block' }}>Tồn Việc</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>{summary.pending ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)' }}>{summary.pending ?? 0}</strong>
         </div>
 
         <div 
@@ -414,7 +414,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', display: 'block' }}>Quá Hạn</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>{summary.overdue ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)' }}>{summary.overdue ?? 0}</strong>
         </div>
 
         <div 
@@ -424,7 +424,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Nay</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>+{summary.closed_today ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)' }}>+{summary.closed_today ?? 0}</strong>
         </div>
 
         <div 
@@ -434,7 +434,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Qua</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>+{summary.closed_yesterday ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)' }}>+{summary.closed_yesterday ?? 0}</strong>
         </div>
 
         <div 
@@ -444,7 +444,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Tuần Qua</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>{summary.closed_last_7_days ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)' }}>{summary.closed_last_7_days ?? 0}</strong>
         </div>
 
         <div 
@@ -454,7 +454,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'rgba(244, 63, 94, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244, 63, 94, 0.2)' }}
         >
           <span style={{ fontSize: '0.68rem', color: '#e11d48', display: 'block', fontWeight: 700 }}>FT/CĐ Từ Chối</span>
-          <strong style={{ fontSize: '1.15rem', color: '#e11d48', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ fontSize: '1.15rem', color: '#e11d48' }}>
             {summary.tu_choi ?? 0}
             <span 
               onClick={(e) => {
@@ -476,7 +476,7 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'rgba(6, 182, 212, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: '#0891b2', display: 'block', fontWeight: 700 }}>FT Hoàn Thành</span>
-          <strong style={{ fontSize: '1.15rem', color: '#0891b2', fontFamily: 'var(--font-mono)' }}>{summary.ft_hoan_thanh ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: '#0891b2' }}>{summary.ft_hoan_thanh ?? 0}</strong>
         </div>
 
         <div 
@@ -486,12 +486,12 @@ export default function MaintenanceSpreadsheetTable({
           style={{ background: 'rgba(139, 92, 246, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
         >
           <span style={{ fontSize: '0.68rem', color: '#8b5cf6', display: 'block', fontWeight: 700 }}>Chờ CĐ Nhận</span>
-          <strong style={{ fontSize: '1.15rem', color: '#8b5cf6', fontFamily: 'var(--font-mono)' }}>{summary.cho_cd_tiep_nhan ?? 0}</strong>
+          <strong style={{ fontSize: '1.15rem', color: '#8b5cf6' }}>{summary.cho_cd_tiep_nhan ?? 0}</strong>
         </div>
 
         <div style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Tỉ Lệ Đóng</span>
-          <strong style={{ fontSize: '1.15rem', fontFamily: 'var(--font-mono)', color: (summary.completion_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)' }}>
+          <strong style={{ fontSize: '1.15rem', color: (summary.completion_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)' }}>
             {summary.completion_rate ?? 0}%
           </strong>
         </div>
@@ -1055,7 +1055,6 @@ export default function MaintenanceSpreadsheetTable({
                     width: '75px', 
                     fontSize: '0.98rem', 
                     fontWeight: 800, 
-                    fontFamily: 'var(--font-mono)', 
                     color: (summary.completion_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)' 
                   }}
                   title={`Tỉ lệ đóng toàn bộ: ${summary.completion_rate ?? 0}%`}
@@ -1114,7 +1113,7 @@ export default function MaintenanceSpreadsheetTable({
                         }} 
                       />
                     </div>
-                    <span style={{ fontSize: '0.92rem', fontFamily: 'var(--font-mono)', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: 'var(--brand-primary)' }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: 'var(--brand-primary)' }}>
                       {summary.completion_rate ?? 0}%
                     </span>
                   </div>
@@ -1175,7 +1174,6 @@ export default function MaintenanceSpreadsheetTable({
                           width: '75px', 
                           whiteSpace: 'nowrap', 
                           fontWeight: 800, 
-                          fontFamily: 'var(--font-mono)', 
                           color: row.completion_rate >= 80 ? 'var(--success-dark)' : row.completion_rate >= 40 ? 'var(--brand-primary)' : 'var(--warning-dark)'
                         }}
                         title={`Tỉ lệ đóng của ${displayName}: ${row.completion_rate}%`}
@@ -1235,7 +1233,7 @@ export default function MaintenanceSpreadsheetTable({
                               }} 
                             />
                           </div>
-                          <span style={{ fontSize: '0.88rem', fontFamily: 'var(--font-mono)', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: row.completion_rate >= 80 ? 'var(--success-dark)' : 'var(--text-primary)' }}>
+                          <span style={{ fontSize: '0.88rem', fontWeight: 800, minWidth: '46px', textAlign: 'right', color: row.completion_rate >= 80 ? 'var(--success-dark)' : 'var(--text-primary)' }}>
                             {row.completion_rate}%
                           </span>
                         </div>

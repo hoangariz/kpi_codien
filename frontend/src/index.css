@@ -264,7 +264,8 @@ table.excel-table tr.excel-row:hover {
 
 /* Excel Conditional Formatting Cells */
 .cell-num {
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   text-align: center;
   font-weight: 700;
   font-size: 0.92rem;
