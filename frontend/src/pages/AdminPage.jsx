@@ -748,29 +748,16 @@ export default function AdminPage({ onNavigateToDashboard }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            className="btn btn-outline"
-            onClick={() => {
-              window.location.href = '/admincodinh';
-            }}
-            style={{ gap: '6px', borderColor: '#8b5cf6', color: '#8b5cf6', fontWeight: 700 }}
-            title="Quản trị báo cáo Cố Định Băng Rộng và nạp file đối chiếu tủ cáp con"
-          >
-            Quản Trị CĐBR (/admincodinh) ➔
-          </button>
-
-          <button
-            className="btn btn-outline"
-            onClick={() => {
-              if (onNavigateToDashboard) onNavigateToDashboard();
-              else window.location.href = '/';
-            }}
-            style={{ gap: '6px' }}
-          >
-            ⬅ Về Trang Tổng Quan
-          </button>
-        </div>
+        <button
+          className="btn btn-outline"
+          onClick={() => {
+            if (onNavigateToDashboard) onNavigateToDashboard();
+            else window.location.href = '/';
+          }}
+          style={{ gap: '6px' }}
+        >
+          ⬅ Về Trang Tổng Quan
+        </button>
       </div>
 
       {/* 2-Column Grid Layout: Left Navbar + Right Content */}

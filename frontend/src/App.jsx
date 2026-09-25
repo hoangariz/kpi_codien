@@ -154,7 +154,7 @@ export default function App() {
               {activeTab === 'admincodinh' ? (
                 <AdminCodinhPage onNavigateToCodinh={() => handleTabChange('codinh')} />
               ) : activeTab === 'codinh' ? (
-                <CodinhPage onNavigateToAdminCodinh={() => handleTabChange('admincodinh')} />
+                <CodinhPage />
               ) : activeTab === 'admin' ? (
                 <AdminPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
               ) : activeTab === 'search' ? (
