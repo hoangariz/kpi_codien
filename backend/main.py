@@ -32,12 +32,19 @@ def auto_migrate_db():
             "ALTER TABLE tracking_boards ADD COLUMN loai_cong_viec VARCHAR(255)",
             "ALTER TABLE import_logs ADD COLUMN filter_spm INTEGER DEFAULT 1",
             "ALTER TABLE report_categories ADD COLUMN domain VARCHAR(50) DEFAULT 'codien'",
+            "ALTER TABLE import_logs ADD COLUMN domain VARCHAR(50) DEFAULT 'main'",
         ]:
             try:
                 conn.execute(text(col_def))
                 conn.commit()
             except Exception:
                 pass
+
+        try:
+            conn.execute(text("UPDATE import_logs SET domain = 'main' WHERE domain IS NULL"))
+            conn.commit()
+        except Exception:
+            pass
 
         try:
             conn.execute(text("UPDATE report_categories SET domain = 'codien' WHERE domain IS NULL"))

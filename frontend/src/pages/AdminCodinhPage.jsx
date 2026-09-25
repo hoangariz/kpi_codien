@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Cable,
@@ -16,7 +16,13 @@ import {
   RotateCcw,
   ArrowLeft,
   FileCheck,
-  Database
+  Database,
+  Clock,
+  HardDrive,
+  UploadCloud,
+  History,
+  RefreshCw,
+  ArrowRight
 } from 'lucide-react';
 
 import { codinhApi } from '../api/codinhApi';
@@ -27,11 +33,15 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
   // Active navigation tab inside admin: 'upload_base_wo' | 'upload_cabinets' | 'reports'
   const [activeTab, setActiveTab] = useState('upload_base_wo');
 
-  // Base WO file upload state
+  // Base WO file upload & live status state
   const [baseWoFile, setBaseWoFile] = useState(null);
-  const [isUploadingWo, setIsUploadingWo] = useState(false);
-  const [uploadWoResult, setUploadWoResult] = useState(null);
-  const [uploadWoError, setUploadWoError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentImportId, setCurrentImportId] = useState(null);
+  const [importStatus, setImportStatus] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const fileInputRef = useRef(null);
 
   // Cabinet upload state
   const [cabinetFile, setCabinetFile] = useState(null);
@@ -61,29 +71,144 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
     queryFn: codinhApi.getMetaOptions,
   });
 
-  // Base WO Upload Submit
-  const handleBaseWoUploadSubmit = async (e) => {
+  const { data: importLogs = [], isLoading: loadingLogs, refetch: refetchLogs } = useQuery({
+    queryKey: ['codinh-import-logs'],
+    queryFn: () => codinhApi.getImportLogs(50),
+    refetchInterval: uploading ? 1500 : 12000,
+  });
+
+  // Poll for progress when currentImportId exists and status is PROCESSING or PENDING
+  useEffect(() => {
+    let timer = null;
+    if (currentImportId && (!importStatus || ['PENDING', 'PROCESSING'].includes(importStatus.status))) {
+      timer = setInterval(async () => {
+        try {
+          const status = await codinhApi.getImportStatus(currentImportId);
+          setImportStatus(status);
+          if (['COMPLETED', 'FAILED'].includes(status.status)) {
+            clearInterval(timer);
+            setUploading(false);
+            queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['codinh-import-logs'] });
+            queryClient.invalidateQueries({ queryKey: ['codinh-categories'] });
+            queryClient.invalidateQueries({ queryKey: ['codinh-meta-options'] });
+          }
+        } catch (err) {
+          console.error('Error polling codinh import status:', err);
+        }
+      }, 1200);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [currentImportId, importStatus]);
+
+  const formatDate = (d) => {
+    if (!d) return '--';
+    if (d instanceof Date) return isNaN(d.getTime()) ? '--' : d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const str = String(d).trim();
+    const iso = str.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(str)
+      ? str
+      : (str.includes('T') ? str + 'Z' : str.replace(' ', 'T') + 'Z');
+    const dt = new Date(iso);
+    return isNaN(dt.getTime()) ? d : dt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  };
+
+  const formatBytes = (bytes) => {
+    if (!bytes || bytes <= 0) return '--';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const validateAndSetBaseWoFile = (f) => {
+    const name = f.name.toLowerCase();
+    if (!name.endsWith('.xlsx') && !name.endsWith('.xls') && !name.endsWith('.csv')) {
+      alert('Vui lòng chọn file định dạng Excel (.xlsx, .xls) hoặc .csv');
+      return;
+    }
+    setBaseWoFile(f);
+    setImportStatus(null);
+    setErrorMessage('');
+    setUploadProgress(0);
+  };
+
+  const handleDrop = (e) => {
     e.preventDefault();
+    setIsDragging(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) validateAndSetBaseWoFile(dropped);
+  };
+
+  // Base WO Upload Submit with Chunked Upload & Progress Bar
+  const handleBaseWoUploadSubmit = async (e) => {
+    if (e) e.preventDefault();
     if (!baseWoFile) {
-      alert('Vui lòng chọn file Excel công việc CĐBR (.xlsx, .xls)');
+      alert('Vui lòng chọn file Excel công việc CĐBR (.xlsx, .xls, .csv)');
       return;
     }
 
-    setIsUploadingWo(true);
-    setUploadWoError(null);
-    setUploadWoResult(null);
+    setUploading(true);
+    setErrorMessage('');
+    setImportStatus(null);
+    setUploadProgress(0);
 
     try {
-      const res = await codinhApi.uploadWoFile(baseWoFile);
-      setUploadWoResult(res);
-      setBaseWoFile(null);
+      const res = await codinhApi.uploadWoFile(baseWoFile, (progress) => {
+        setUploadProgress(progress);
+      });
+      setCurrentImportId(res.id);
+      setImportStatus(res);
+      refetchLogs();
+    } catch (err) {
+      setUploading(false);
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (err.message || 'Lỗi tải file');
+      setErrorMessage(msg + '\n\nMẹo: Nếu gặp sự cố mạng hoặc timeout, hệ thống sẽ tự động chia nhỏ file (chunked) và gửi lại từng phần.');
+    }
+  };
+
+  // Kích hoạt / Nạp lại file CĐBR cũ
+  const handleActivateFile = async (log) => {
+    const ok = window.confirm(
+      `Xác nhận nạp lại dữ liệu từ file "${log.file_name}" cho Cố Định Băng Rộng?\n\nToàn bộ dữ liệu công việc CĐBR hiện tại trong database sẽ được thay thế bằng dữ liệu của file này.`
+    );
+    if (!ok) return;
+
+    setUploading(true);
+    setErrorMessage('');
+    setCurrentImportId(log.id);
+    setImportStatus({ status: 'PROCESSING', progress_percent: 5, file_name: log.file_name });
+
+    try {
+      await codinhApi.activateFile(log.id);
+      refetchLogs();
       queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
       queryClient.invalidateQueries({ queryKey: ['codinh-categories'] });
       queryClient.invalidateQueries({ queryKey: ['codinh-meta-options'] });
     } catch (err) {
-      setUploadWoError(err.response?.data?.detail || err.message);
-    } finally {
-      setIsUploadingWo(false);
+      setUploading(false);
+      alert('Lỗi kích hoạt lại file CĐBR: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  // Xoá file CĐBR cũ khỏi hệ thống
+  const handleDeleteFile = async (log) => {
+    const isAct = log.is_active === 1;
+    const msg = isAct 
+      ? `CẢNH BÁO: File "${log.file_name}" đang là file dữ liệu ĐANG SỬ DỤNG của CĐBR!\nNếu xoá, toàn bộ công việc CĐBR hiện tại trong hệ thống sẽ bị xoá trống.\n\nBạn có chắc chắn muốn xoá không?`
+      : `Bạn có chắc chắn muốn xoá vĩnh viễn file "${log.file_name}" khỏi máy chủ và cơ sở dữ liệu?`;
+
+    if (!window.confirm(msg)) return;
+
+    try {
+      await codinhApi.deleteFile(log.id);
+      refetchLogs();
+      queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['codinh-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['codinh-meta-options'] });
+    } catch (err) {
+      alert('Lỗi xoá file: ' + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -271,7 +396,7 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
 
       {/* ================= TAB 1: NẠP FILE GỐC WO CĐBR RIÊNG BIỆT ================= */}
       {activeTab === 'upload_base_wo' && (
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
           <div className="table-card" style={{ padding: '26px 28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-md)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -282,122 +407,416 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                   Nạp File Gốc Công Việc (WO) Cố Định Băng Rộng
                 </h3>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                  File này lưu trữ <strong>hoàn toàn riêng biệt</strong> cho CĐBR, <strong>KHÔNG</strong> ghi đè hay ảnh hưởng đến dữ liệu bên Tổng Quan (Cơ điện).
+                  File này lưu trữ <strong>hoàn toàn riêng biệt</strong> cho CĐBR, <strong>KHÔNG</strong> ghi đè hay ảnh hưởng đến dữ liệu bên Tổng Quan (Cơ điện). Hệ thống hỗ trợ xử lý file lớn với cơ chế Chunked Upload, tự động quét tìm dòng tiêu đề.
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleBaseWoUploadSubmit}>
-              {/* Dropzone */}
-              <div
-                style={{
-                  border: '2px dashed #8b5cf6',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '36px 24px',
-                  textAlign: 'center',
-                  background: 'rgba(139, 92, 246, 0.03)',
-                  cursor: 'pointer',
-                  marginBottom: '18px',
+            {/* Drag & Drop Zone */}
+            <div
+              className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: '2px dashed #8b5cf6',
+                borderRadius: 'var(--radius-lg)',
+                padding: '36px 24px',
+                textAlign: 'center',
+                background: isDragging ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.03)',
+                cursor: 'pointer',
+                marginBottom: '18px',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const selected = e.target.files?.[0];
+                  if (selected) validateAndSetBaseWoFile(selected);
                 }}
-                onClick={() => document.getElementById('base-wo-file-input').click()}
-              >
-                <FileSpreadsheet size={44} style={{ color: '#8b5cf6', margin: '0 auto 12px auto' }} />
-                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
-                  {baseWoFile ? baseWoFile.name : 'Nhấp hoặc kéo thả file Excel công việc CĐBR vào đây'}
-                </h4>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Định dạng hỗ trợ: .xlsx, .xls • Nhận diện cột Mã công việc, Loại công việc, Nhân viên, Nhóm, Trạng thái...
-                </p>
-                {baseWoFile && (
-                  <div style={{ marginTop: '10px' }}>
-                    <span className="badge badge-success" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
-                      ✓ Đã chọn file: {(baseWoFile.size / (1024 * 1024)).toFixed(2)} MB
-                    </span>
-                  </div>
-                )}
-                <input
-                  id="base-wo-file-input"
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setBaseWoFile(e.target.files[0]);
-                    }
-                  }}
-                  style={{ display: 'none' }}
-                />
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+              />
+
+              <div style={{ width: '56px', height: '56px', margin: '0 auto 12px', background: 'rgba(139, 92, 246, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                <UploadCloud size={30} />
               </div>
 
-              {/* Upload Button */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
-                {baseWoFile && (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => setBaseWoFile(null)}
-                    style={{ fontSize: '0.82rem', padding: '8px 16px' }}
-                  >
-                    Hủy chọn
-                  </button>
-                )}
+              {baseWoFile ? (
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)', border: '1px solid #8b5cf6', marginBottom: '8px' }}>
+                    <FileSpreadsheet size={16} style={{ color: '#8b5cf6' }} />
+                    <strong style={{ fontSize: '0.9rem' }}>{baseWoFile.name}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      ({(baseWoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Bấm để chọn file khác hoặc kéo thả file mới vào đây
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>
+                    Kéo và thả file Excel vào đây, hoặc <span style={{ color: '#8b5cf6', textDecoration: 'underline' }}>chọn từ máy tính</span>
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Định dạng hỗ trợ: .xlsx, .xls, .csv • Tự động quét tìm cột Mã công việc, Loại công việc, Nhân viên, Trạng thái...
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Upload Button */}
+            {baseWoFile && !uploading && (!importStatus || importStatus.status !== 'PROCESSING') && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginBottom: '16px' }}>
                 <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={!baseWoFile || isUploadingWo}
-                  style={{ fontSize: '0.85rem', padding: '8px 24px', background: '#8b5cf6', borderColor: '#8b5cf6' }}
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setBaseWoFile(null);
+                    setImportStatus(null);
+                    setErrorMessage('');
+                  }}
+                  style={{ fontSize: '0.82rem', padding: '8px 16px' }}
                 >
-                  {isUploadingWo ? 'Đang nạp file WO CĐBR...' : 'Bắt Đầu Nạp File Gốc CĐBR'}
+                  Hủy chọn
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleBaseWoUploadSubmit}
+                  style={{ fontSize: '0.86rem', padding: '8px 24px', background: '#8b5cf6', borderColor: '#8b5cf6', gap: '8px' }}
+                >
+                  <Database size={16} /> Bắt Đầu Xử Lý & Đồng Bộ Dữ Liệu CĐBR
                 </button>
               </div>
-            </form>
+            )}
+
+            {/* Live Processing Card */}
+            {uploading && (
+              <div 
+                style={{ 
+                  background: 'var(--bg-secondary)', 
+                  padding: '24px', 
+                  borderRadius: 'var(--radius-lg)', 
+                  border: '1px solid var(--border-color)',
+                  marginBottom: '20px',
+                  boxShadow: 'var(--shadow-md)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock size={18} className="spin" style={{ color: '#8b5cf6' }} />
+                    <strong style={{ fontSize: '0.9rem' }}>
+                      {importStatus?.status === 'PROCESSING' || importStatus?.status === 'PENDING'
+                        ? 'Đang đọc và đồng bộ dữ liệu vào bảng Cố Định Băng Rộng...'
+                        : uploadProgress < 100
+                          ? `Đang tải lên file CĐBR (${uploadProgress}%)...`
+                          : 'Đang chuẩn bị xử lý dữ liệu CĐBR...'
+                      }
+                    </strong>
+                  </div>
+                  <span style={{ fontWeight: 800, color: '#8b5cf6' }}>
+                    {importStatus?.progress_percent || uploadProgress || 10}%
+                  </span>
+                </div>
+
+                <div className="progress-bar-outer" style={{ height: '8px', background: 'var(--bg-tertiary)', borderRadius: '999px', overflow: 'hidden', marginBottom: '10px' }}>
+                  <div 
+                    className="progress-bar-inner" 
+                    style={{ 
+                      width: `${importStatus?.progress_percent || uploadProgress || 10}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #8b5cf6, #a855f7)',
+                      borderRadius: '999px',
+                      transition: 'width 0.3s ease'
+                    }} 
+                  />
+                </div>
+
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Hệ thống đang chuẩn hóa danh mục, đọc các dòng Excel (quét tiêu đề tự động), ghi vết lịch sử. Quá trình xử lý chạy ngầm và không làm gián đoạn các thao tác khác.
+                </p>
+              </div>
+            )}
+
+            {/* Completion Report Card */}
+            {importStatus && importStatus.status === 'COMPLETED' && (
+              <div 
+                style={{ 
+                  background: 'var(--bg-secondary)', 
+                  padding: '24px', 
+                  borderRadius: 'var(--radius-lg)', 
+                  border: '1px solid var(--success)',
+                  marginBottom: '20px',
+                  boxShadow: 'var(--shadow-md)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--success-light)', color: 'var(--success-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.08rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                      Đồng Bộ File CĐBR Thành Công!
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                      File: <strong>{importStatus.file_name}</strong> • Thời điểm: {formatDate(importStatus.imported_at)}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Tổng Dòng Gốc</span>
+                    <strong style={{ fontSize: '1.25rem', fontFamily: 'var(--font-mono)' }}>{(importStatus.total_rows || 0).toLocaleString()}</strong>
+                  </div>
+
+                  <div style={{ background: 'var(--success-light)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--success-dark)' }}>
+                    <span style={{ fontSize: '0.72rem', display: 'block' }}>Thêm Mới</span>
+                    <strong style={{ fontSize: '1.25rem', fontFamily: 'var(--font-mono)' }}>{(importStatus.inserted_count || 0).toLocaleString()}</strong>
+                  </div>
+
+                  <div style={{ background: 'rgba(139, 92, 246, 0.12)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center', color: '#8b5cf6' }}>
+                    <span style={{ fontSize: '0.72rem', display: 'block' }}>Cập Nhật</span>
+                    <strong style={{ fontSize: '1.25rem', fontFamily: 'var(--font-mono)' }}>{(importStatus.updated_count || 0).toLocaleString()}</strong>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Giữ Nguyên</span>
+                    <strong style={{ fontSize: '1.25rem', fontFamily: 'var(--font-mono)' }}>{(importStatus.unchanged_count || 0).toLocaleString()}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setBaseWoFile(null);
+                      setImportStatus(null);
+                    }}
+                    style={{ fontSize: '0.84rem' }}
+                  >
+                    Upload File Khác
+                  </button>
+                  {onNavigateToCodinh && (
+                    <button
+                      className="btn btn-primary"
+                      onClick={onNavigateToCodinh}
+                      style={{ fontSize: '0.84rem', background: '#8b5cf6', borderColor: '#8b5cf6', gap: '6px' }}
+                    >
+                      Xem Bảng Báo Cáo CĐBR <ArrowRight size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Error Message */}
-            {uploadWoError && (
-              <div style={{ marginTop: '20px', padding: '14px 18px', borderRadius: 'var(--radius-md)', background: 'var(--danger-light)', color: 'var(--danger-dark)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem' }}>
-                <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+            {(errorMessage || (importStatus && importStatus.status === 'FAILED')) && (
+              <div 
+                style={{ 
+                  background: 'var(--danger-light)', 
+                  color: 'var(--danger-dark)', 
+                  padding: '16px 20px', 
+                  borderRadius: 'var(--radius-lg)', 
+                  marginBottom: '20px' 
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <AlertCircle size={20} />
+                  <strong style={{ fontSize: '0.92rem' }}>Đã xảy ra lỗi trong quá trình xử lý file CĐBR!</strong>
+                </div>
+                <p style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap', margin: '0 0 12px 0' }}>
+                  {importStatus?.error_message || errorMessage}
+                </p>
                 <div>
-                  <strong>Lỗi nạp file WO CĐBR:</strong> {uploadWoError}
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setErrorMessage('');
+                      setImportStatus(null);
+                      handleBaseWoUploadSubmit();
+                    }}
+                    style={{ 
+                      borderColor: 'var(--danger)', 
+                      color: 'var(--danger-dark)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    <RefreshCw size={14} /> Thử Lại
+                  </button>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Success Result */}
-            {uploadWoResult && (
-              <div style={{ marginTop: '24px', padding: '20px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                  <CheckCircle2 size={22} style={{ color: 'var(--success)' }} />
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: 'var(--success-dark)' }}>
-                      Nạp Thành Công File Gốc CĐBR!
-                    </h4>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      Dữ liệu đã được nạp riêng vào bảng Cố Định Băng Rộng lúc {uploadWoResult.imported_at_vn}
-                    </span>
-                  </div>
+          {/* Lịch Sử Các File Đã Nạp Lên CĐBR Table */}
+          <div className="table-card" style={{ marginTop: '28px', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '34px', height: '34px', borderRadius: 'var(--radius-md)', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <HardDrive size={18} />
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>TỔNG WO CĐBR</span>
-                    <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {uploadWoResult.total_wos?.toLocaleString()}
-                    </strong>
-                  </div>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--success-dark)', display: 'block' }}>WO ĐÃ ĐÓNG</span>
-                    <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
-                      {uploadWoResult.closed_wos?.toLocaleString()}
-                    </strong>
-                  </div>
-                  <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--warning-dark)', display: 'block' }}>WO ĐANG TỒN</span>
-                    <strong style={{ fontSize: '1.25rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
-                      {uploadWoResult.pending_wos?.toLocaleString()}
-                    </strong>
-                  </div>
+                <div>
+                  <h3 style={{ fontSize: '1.02rem', fontWeight: 700, margin: 0 }}>
+                    Lịch Sử Các File Đã Nạp Lên CĐBR (Quản Lý Lưu Trữ)
+                  </h3>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                    Dữ liệu riêng biệt của CĐBR. Bạn có thể <strong>Sử dụng lại file cũ</strong> để nạp lại dữ liệu hoặc <strong>Xoá file</strong> giải phóng dung lượng.
+                  </p>
                 </div>
               </div>
-            )}
+              <button 
+                className="btn btn-outline" 
+                onClick={() => refetchLogs && refetchLogs()}
+                style={{ padding: '5px 12px', fontSize: '0.78rem', gap: '5px' }}
+              >
+                <RefreshCw size={13} /> Làm mới
+              </button>
+            </div>
+
+            <div className="table-responsive">
+              <table className="data-table" style={{ fontSize: '0.82rem' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '45px', textAlign: 'center' }}>ID</th>
+                    <th>Tên File</th>
+                    <th>Thời Điểm Nạp</th>
+                    <th style={{ textAlign: 'center' }}>Dung Lượng</th>
+                    <th style={{ textAlign: 'center' }}>Tổng Dòng</th>
+                    <th style={{ textAlign: 'center' }}>Đã Nạp</th>
+                    <th style={{ textAlign: 'center' }}>Trạng Thái</th>
+                    <th style={{ textAlign: 'center', width: '180px' }}>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(importLogs || []).map((log) => {
+                    const isActive = log.is_active === 1;
+                    const isProcessing = log.status === 'PROCESSING' || log.status === 'PENDING';
+
+                    return (
+                      <tr 
+                        key={log.id}
+                        style={{
+                          background: isActive ? 'rgba(139, 92, 246, 0.06)' : undefined
+                        }}
+                      >
+                        <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>#{log.id}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <FileSpreadsheet size={15} style={{ color: isActive ? '#8b5cf6' : 'var(--text-muted)' }} />
+                            <strong>{log.file_name}</strong>
+                          </div>
+                        </td>
+                        <td>{formatDate(log.imported_at)}</td>
+                        <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+                          {formatBytes(log.file_size_bytes)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>{log.total_rows?.toLocaleString() || '--'}</td>
+                        <td style={{ textAlign: 'center', color: 'var(--success-dark)', fontWeight: 600 }}>
+                          {log.inserted_count?.toLocaleString() || '--'}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {isActive ? (
+                            <span className="badge badge-success" style={{ gap: '4px', fontSize: '0.72rem' }}>
+                              <CheckCircle2 size={12} /> Đang Sử Dụng
+                            </span>
+                          ) : isProcessing ? (
+                            <span className="badge badge-info" style={{ gap: '4px', fontSize: '0.72rem' }}>
+                              <Clock size={12} className="spin" /> Đang Nạp ({log.progress_percent || 0}%)
+                            </span>
+                          ) : log.status === 'FAILED' ? (
+                            <span 
+                              className="badge badge-danger" 
+                              style={{ fontSize: '0.72rem', cursor: 'pointer', gap: '3px' }}
+                              title={log.error_message ? `Bấm để xem chi tiết lỗi: ${log.error_message}` : 'Xử lý thất bại. Bấm để xem.'}
+                              onClick={() => {
+                                alert(`Chi tiết lỗi của file "${log.file_name}":\n\n${log.error_message || 'Không có mô tả lỗi cụ thể.'}`);
+                              }}
+                            >
+                              <AlertCircle size={11} /> Thất bại ℹ️
+                            </span>
+                          ) : (
+                            <span className="badge badge-neutral" style={{ fontSize: '0.72rem' }}>Đã lưu trữ</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            {/* Nút Thử lại khi file lỗi */}
+                            {log.status === 'FAILED' && (
+                              <button
+                                className="btn btn-outline"
+                                onClick={() => handleActivateFile(log)}
+                                title="Thử nạp lại file này"
+                                style={{ 
+                                  padding: '3px 8px', 
+                                  fontSize: '0.72rem', 
+                                  gap: '4px', 
+                                  color: 'var(--warning-dark)',
+                                  borderColor: 'rgba(217, 119, 6, 0.4)'
+                                }}
+                              >
+                                <RotateCcw size={12} /> Thử Lại
+                              </button>
+                            )}
+
+                            {/* Nút Sử dụng lại file này */}
+                            {!isActive && log.status === 'COMPLETED' && (
+                              <button
+                                className="btn btn-outline"
+                                onClick={() => handleActivateFile(log)}
+                                title="Nạp lại dữ liệu từ file này vào Database CĐBR"
+                                style={{ 
+                                  padding: '3px 8px', 
+                                  fontSize: '0.72rem', 
+                                  gap: '4px', 
+                                  color: '#8b5cf6',
+                                  borderColor: 'rgba(139, 92, 246, 0.3)'
+                                }}
+                              >
+                                <RotateCcw size={12} /> Sử Dụng Lại
+                              </button>
+                            )}
+
+                            {/* Nút Xoá file */}
+                            <button
+                              className="btn btn-outline"
+                              onClick={() => handleDeleteFile(log)}
+                              title="Xoá vĩnh viễn file này khỏi máy chủ và database CĐBR"
+                              style={{ 
+                                padding: '3px 8px', 
+                                fontSize: '0.72rem', 
+                                gap: '4px', 
+                                color: 'var(--danger-dark)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)'
+                              }}
+                            >
+                              <Trash2 size={12} /> Xoá
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {(!importLogs || importLogs.length === 0) && (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        Chưa có file nào được tải lên cho Cố Định Băng Rộng.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

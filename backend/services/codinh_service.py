@@ -16,6 +16,7 @@ from backend.models.report_category import ReportCategory, ReportSubCategory
 from backend.models.cabinet import Cabinet
 from backend.models.settings import SystemSetting
 from backend.models.import_log import ImportLog
+from backend.models.task_note import TaskNote
 from backend.services.settings_service import get_current_month_setting
 
 CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
@@ -73,62 +74,107 @@ def _get_setting(db: Session, key: str, default: Optional[str] = None) -> Option
 def import_codinh_wos_from_excel(
     db: Session,
     file_path: Union[str, Path],
-    filename: str
+    filename: str,
+    import_id: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Parse separate base WO Excel file for Cố Định Băng Rộng (CĐBR) and save into codinh_tasks table.
     Completely isolated from the main dashboard (Cơ điện) tasks table.
+    Uses resilient parsing matching etl_service.py: calamine/openpyxl, 25-row header scan, BOM strip, column synonyms.
     """
     path_obj = Path(file_path)
     if not path_obj.exists():
         raise FileNotFoundError(f"File {file_path} không tồn tại")
 
-    # Detect header row in first 15 rows
-    df_preview = pd.read_excel(path_obj, header=None, nrows=15)
-    header_row_idx = 0
-    for idx, row in df_preview.iterrows():
-        row_strs = [str(x).strip().lower() for x in row.values if pd.notna(x)]
-        if any("mã công việc" in s or "ma cong viec" in s or s == "wo" for s in row_strs):
-            header_row_idx = idx
-            break
+    import_record = None
+    if import_id:
+        import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
+        if import_record:
+            import_record.status = "PROCESSING"
+            import_record.progress_percent = 15
+            db.commit()
 
-    df = pd.read_excel(path_obj, header=header_row_idx)
+    file_path_str = str(path_obj)
+    file_path_lower = file_path_str.lower()
+    if file_path_lower.endswith(".csv"):
+        df = pd.read_csv(file_path_str, low_memory=False, encoding_errors="replace")
+    elif file_path_lower.endswith(".xls"):
+        try:
+            df = pd.read_excel(file_path_str, engine="xlrd")
+        except Exception:
+            try:
+                df = pd.read_excel(file_path_str)
+            except Exception as ex:
+                raise ValueError(f"Không thể đọc file .xls (Excel 97-2003): {ex}")
+    else:
+        try:
+            import calamine
+            df = pd.read_excel(file_path_str, engine="calamine")
+        except Exception:
+            try:
+                df = pd.read_excel(file_path_str, engine="openpyxl", engine_kwargs={"read_only": True, "data_only": True})
+            except Exception:
+                df = pd.read_excel(file_path_str, engine="openpyxl")
 
-    # Detect columns
+    if import_record:
+        import_record.total_rows = len(df)
+        import_record.progress_percent = 30
+        db.commit()
+
+    # Normalize column headers (strip spaces, replace non-breaking spaces, remove BOM)
+    df.columns = [re.sub(r'\s+', ' ', str(c).strip().replace('\ufeff', '')) for c in df.columns]
+
+    # Auto-detect real header row in first 25 rows
+    has_macv = any(str(c).strip().lower() in ("mã công việc", "mã cv", "ma cong viec", "wo") for c in df.columns)
+    if not has_macv:
+        header_idx = None
+        for r_idx in range(min(25, len(df))):
+            row_vals = [str(val).strip().lower() for val in df.iloc[r_idx].dropna()]
+            if any(v in ("mã công việc", "mã cv", "ma cong viec", "wo") for v in row_vals):
+                header_idx = r_idx
+                break
+
+        if header_idx is not None:
+            new_cols = [str(c).strip() for c in df.iloc[header_idx].values]
+            df = df.iloc[header_idx + 1:].reset_index(drop=True)
+            df.columns = [re.sub(r'\s+', ' ', str(c).strip().replace('\ufeff', '')) for c in new_cols]
+
+    # Detect columns with synonyms
     col_map = {}
     for c in df.columns:
         c_low = str(c).strip().lower()
-        if "mã công việc" in c_low or "ma cong viec" in c_low or c_low == "wo":
-            col_map["ma_cong_viec"] = c
-        elif "loại công việc" in c_low or "loai cong viec" in c_low:
-            col_map["loai_cong_viec"] = c
-        elif "nội dung" in c_low or "noi dung" in c_low:
-            col_map["noi_dung_cong_viec"] = c
-        elif "ghi chú" in c_low or "ghi chu" in c_low:
-            col_map["ghi_chu"] = c
-        elif "trạng thái" in c_low or "trang thai" in c_low:
-            col_map["trang_thai"] = c
-        elif "hệ thống" in c_low or "he thong" in c_low:
-            col_map["he_thong"] = c
-        elif "nhân viên thực hiện" in c_low or "nhan vien thuc hien" in c_low or c_low == "ft":
-            col_map["nhan_vien"] = c
-        elif "nhóm điều phối" in c_low or "nhom dieu phoi" in c_low or "cụm" in c_low or "nhóm" in c_low:
-            col_map["nhom"] = c
-        elif "mã trạm" in c_low or "ma tram" in c_low or "trạm" in c_low:
-            col_map["ma_tram"] = c
-        elif "thời điểm tạo" in c_low or "thoi diem tao" in c_low or "ngày tạo" in c_low:
-            col_map["thoi_diem_tao"] = c
-        elif "yêu cầu kết thúc" in c_low or "hạn hoàn thành" in c_low or "han hoan thanh" in c_low:
-            col_map["thoi_diem_yeu_cau_ket_thuc"] = c
-        elif "thời gian còn lại" in c_low or "thoi gian con lai" in c_low:
-            col_map["thoi_gian_con_lai"] = c
-        elif "ft hoàn thành" in c_low or "ft hoan thanh" in c_low:
-            col_map["thoi_diem_ft_hoan_thanh"] = c
-        elif "cđ đóng" in c_low or "cd dong" in c_low or "thời điểm đóng" in c_low:
-            col_map["thoi_diem_cd_dong"] = c
+        if any(k in c_low for k in ("mã công việc", "mã cv", "ma cong viec", "ma_cong_viec")) or c_low == "wo":
+            if "ma_cong_viec" not in col_map: col_map["ma_cong_viec"] = c
+        elif any(k in c_low for k in ("loại công việc", "loai cong viec", "loai_cong_viec")):
+            if "loai_cong_viec" not in col_map: col_map["loai_cong_viec"] = c
+        elif any(k in c_low for k in ("nội dung công việc", "noi dung cong viec", "nội dung", "noi dung")):
+            if "noi_dung_cong_viec" not in col_map: col_map["noi_dung_cong_viec"] = c
+        elif any(k in c_low for k in ("ghi chú", "ghi chu", "mô tả", "mo ta")):
+            if "ghi_chu" not in col_map: col_map["ghi_chu"] = c
+        elif any(k in c_low for k in ("trạng thái", "trang thai")):
+            if "trang_thai" not in col_map: col_map["trang_thai"] = c
+        elif any(k in c_low for k in ("hệ thống", "he thong")):
+            if "he_thong" not in col_map: col_map["he_thong"] = c
+        elif any(k in c_low for k in ("nhân viên thực hiện", "nhan vien thuc hien", "người thực hiện", "nhân viên", "nhan vien")) or c_low == "ft":
+            if "nhan_vien" not in col_map: col_map["nhan_vien"] = c
+        elif any(k in c_low for k in ("nhóm điều phối", "nhom dieu phoi", "cụm", "cum", "nhóm", "nhom")):
+            if "nhom" not in col_map: col_map["nhom"] = c
+        elif any(k in c_low for k in ("mã trạm", "ma tram", "trạm", "tram")):
+            if "ma_tram" not in col_map: col_map["ma_tram"] = c
+        elif any(k in c_low for k in ("thời điểm tạo", "thoi diem tao", "ngày tạo")):
+            if "thoi_diem_tao" not in col_map: col_map["thoi_diem_tao"] = c
+        elif any(k in c_low for k in ("thời điểm yêu cầu kết thúc", "yêu cầu kết thúc", "hạn hoàn thành", "han hoan thanh")):
+            if "thoi_diem_yeu_cau_ket_thuc" not in col_map: col_map["thoi_diem_yeu_cau_ket_thuc"] = c
+        elif any(k in c_low for k in ("thời gian còn lại", "thoi gian con lai")):
+            if "thoi_gian_con_lai" not in col_map: col_map["thoi_gian_con_lai"] = c
+        elif any(k in c_low for k in ("ft hoàn thành", "ft hoan thanh")):
+            if "thoi_diem_ft_hoan_thanh" not in col_map: col_map["thoi_diem_ft_hoan_thanh"] = c
+        elif any(k in c_low for k in ("cđ đóng", "cd dong", "thời điểm đóng")):
+            if "thoi_diem_cd_dong" not in col_map: col_map["thoi_diem_cd_dong"] = c
 
     if "ma_cong_viec" not in col_map:
-        raise ValueError("File Excel thiếu cột bắt buộc 'Mã công việc'!")
+        avail = ", ".join(list(df.columns)[:8])
+        raise ValueError(f"File thiếu cột bắt buộc 'Mã công việc'. Các cột tìm thấy: [{avail}]. Vui lòng kiểm tra lại file!")
 
     # Clean DataFrame
     df_valid = df[df[col_map["ma_cong_viec"]].notna()].copy()
@@ -140,6 +186,10 @@ def import_codinh_wos_from_excel(
     records_to_insert = []
     closed_cnt = 0
     pending_cnt = 0
+
+    if import_record:
+        import_record.progress_percent = 50
+        db.commit()
 
     for _, row in df_valid.iterrows():
         ma_cv = row["ma_cong_viec_clean"]
@@ -189,6 +239,10 @@ def import_codinh_wos_from_excel(
             "updated_at": now,
         })
 
+    if import_record:
+        import_record.progress_percent = 70
+        db.commit()
+
     # Clear old codinh_tasks and insert new
     db.query(TaskCodinh).delete(synchronize_session=False)
     db.commit()
@@ -207,6 +261,38 @@ def import_codinh_wos_from_excel(
     _set_setting(db, "codinh_last_import_wo_filename", filename)
     _set_setting(db, "codinh_last_import_wo_count", str(len(records_to_insert)))
 
+    # Update ImportLog
+    if import_record:
+        # Deactivate previous active codinh imports
+        db.query(ImportLog).filter(ImportLog.domain == "codinh", ImportLog.id != import_record.id).update({"is_active": 0})
+        import_record.total_rows = len(df)
+        import_record.inserted_count = len(records_to_insert)
+        import_record.status = "COMPLETED"
+        import_record.progress_percent = 100
+        import_record.is_active = 1
+        db.commit()
+    else:
+        # Create an ImportLog record if none was provided
+        try:
+            db.query(ImportLog).filter(ImportLog.domain == "codinh").update({"is_active": 0})
+            file_size = path_obj.stat().st_size if path_obj.exists() else 0
+            new_log = ImportLog(
+                file_name=filename,
+                stored_filename=path_obj.name,
+                file_size_bytes=file_size,
+                is_active=1,
+                imported_at=now,
+                total_rows=len(df),
+                inserted_count=len(records_to_insert),
+                status="COMPLETED",
+                progress_percent=100,
+                domain="codinh",
+            )
+            db.add(new_log)
+            db.commit()
+        except Exception:
+            db.rollback()
+
     return {
         "filename": filename,
         "total_wos": len(records_to_insert),
@@ -214,6 +300,31 @@ def import_codinh_wos_from_excel(
         "pending_wos": pending_cnt,
         "imported_at_vn": vn_time_str,
     }
+
+
+def process_codinh_wos_import(import_id: int, file_path: str):
+    """Background ETL processor for CĐBR file imports."""
+    from backend.database import SessionLocal
+    db = SessionLocal()
+    try:
+        import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
+        if not import_record:
+            return
+        import_codinh_wos_from_excel(
+            db=db,
+            file_path=file_path,
+            filename=import_record.file_name,
+            import_id=import_id
+        )
+    except Exception as ex:
+        db.rollback()
+        import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
+        if import_record:
+            import_record.status = "FAILED"
+            import_record.error_message = str(ex)
+            db.commit()
+    finally:
+        db.close()
 
 
 def import_cabinets_from_excel(
@@ -750,3 +861,252 @@ def get_codinh_meta_options(db: Session) -> Dict[str, List[str]]:
         .order_by(SystemModel.name.asc()).all()
     ]
     return {"task_types": types, "systems": systems}
+
+
+def get_codinh_drilldown_tasks(
+    db: Session,
+    category_id: Optional[int] = None,
+    metric: str = "total",
+    filter_type: Optional[str] = None,
+    target_name: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_order: str = "asc",
+    page: int = 1,
+    page_size: int = 20000,
+) -> Dict[str, Any]:
+    """
+    Get drilldown tasks for CĐBR matching the exact metric and row (employee or group) clicked.
+    Enriched with child cabinets (THC) and notes.
+    """
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+    yesterday_start = today_start - timedelta(days=1)
+
+    # 1. Fetch category
+    query_cat = db.query(ReportCategory).filter(ReportCategory.domain == "codinh")
+    if category_id:
+        cat = query_cat.filter(ReportCategory.id == category_id).first()
+    else:
+        cat = query_cat.order_by(ReportCategory.is_default.desc(), ReportCategory.sort_order.asc()).first()
+    if not cat:
+        cat = db.query(ReportCategory).first()
+
+    mode = (cat.filter_mode or "by_loai").strip() if cat else "by_loai"
+    values = _parse_filter_values(cat.filter_values) if cat else []
+    if not values and cat and cat.loai_cong_viec and not cat.loai_cong_viec.startswith("["):
+        values = [cat.loai_cong_viec]
+
+    has_dedicated_tasks = db.query(TaskCodinh).count() > 0
+
+    if has_dedicated_tasks:
+        q = db.query(TaskCodinh)
+        if values:
+            if mode == "by_system":
+                q = q.filter(func.upper(TaskCodinh.he_thong).in_([v.upper().strip() for v in values]))
+            else:
+                q = q.filter(TaskCodinh.loai_cong_viec.in_(values))
+
+        if cat and cat.exclude_closed_prior_months:
+            active_month = get_current_month_setting(db)
+            try:
+                y, m = active_month.split("-")
+                m_start = datetime(int(y), int(m), 1, 0, 0, 0)
+                q = q.filter(
+                    or_(
+                        ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                        func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong) >= m_start,
+                        TaskCodinh.thoi_diem_tao >= m_start
+                    )
+                )
+            except Exception:
+                pass
+
+        # Target filter (Employee or Group)
+        if filter_type == "employee" and target_name:
+            if target_name in ("Chưa gán", "Khác", "*"):
+                q = q.filter(or_(TaskCodinh.nhan_vien == None, TaskCodinh.nhan_vien == "", TaskCodinh.nhan_vien == "Chưa gán"))
+            else:
+                q = q.filter(TaskCodinh.nhan_vien == target_name)
+        elif filter_type == "group" and target_name:
+            if target_name in ("Chưa phân nhóm", "Khác", "*"):
+                q = q.filter(or_(TaskCodinh.nhom == None, TaskCodinh.nhom == "", TaskCodinh.nhom == "Chưa phân nhóm"))
+            else:
+                q = q.filter(TaskCodinh.nhom == target_name)
+
+        # Metric filter
+        m_low = (metric or "total").lower()
+        if m_low in ("closed", "da_dong", "dong"):
+            q = q.filter(TaskCodinh.trang_thai.in_(CLOSED_STATUSES))
+        elif m_low in ("pending", "ton", "ton_viec"):
+            q = q.filter(~TaskCodinh.trang_thai.in_(CLOSED_STATUSES))
+        elif m_low in ("overdue", "qua_han", "tre_han"):
+            q = q.filter(
+                ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                or_(
+                    TaskCodinh.thoi_gian_con_lai < 0,
+                    and_(TaskCodinh.thoi_diem_yeu_cau_ket_thuc.isnot(None), TaskCodinh.thoi_diem_yeu_cau_ket_thuc < now)
+                )
+            )
+        elif m_low in ("closed_today", "dong_hom_nay"):
+            q = q.filter(
+                TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong) >= today_start
+            )
+        elif m_low in ("closed_yesterday", "dong_hom_qua"):
+            q = q.filter(
+                TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong) >= yesterday_start,
+                func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong) < today_start
+            )
+        elif m_low in ("cabinet_total", "total_cabinets", "tu_thc"):
+            cab_wos = db.query(Cabinet.ma_wo).distinct().scalar_subquery()
+            q = q.filter(TaskCodinh.ma_cong_viec.in_(cab_wos))
+        elif m_low in ("cabinet_completed", "completed_cabinets", "tu_xong"):
+            comp_wos = db.query(Cabinet.ma_wo).filter(
+                Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
+                ~Cabinet.trang_thai_thc.ilike("%đang%")
+            ).distinct().scalar_subquery()
+            q = q.filter(TaskCodinh.ma_cong_viec.in_(comp_wos))
+        elif m_low in ("cabinet_pending", "pending_cabinets", "tu_ton"):
+            pend_wos = db.query(Cabinet.ma_wo).filter(
+                or_(
+                    ~Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
+                    Cabinet.trang_thai_thc.ilike("%đang%")
+                )
+            ).distinct().scalar_subquery()
+            q = q.filter(TaskCodinh.ma_cong_viec.in_(pend_wos))
+
+        # Search filter
+        if search and search.strip():
+            s_val = f"%{search.strip()}%"
+            cab_search_wos = db.query(Cabinet.ma_wo).filter(Cabinet.ma_doi_tuong.ilike(s_val)).distinct().scalar_subquery()
+            q = q.filter(
+                or_(
+                    TaskCodinh.ma_cong_viec.ilike(s_val),
+                    TaskCodinh.ma_tram.ilike(s_val),
+                    TaskCodinh.nhan_vien.ilike(s_val),
+                    TaskCodinh.nhom.ilike(s_val),
+                    TaskCodinh.noi_dung_cong_viec.ilike(s_val),
+                    TaskCodinh.ghi_chu.ilike(s_val),
+                    TaskCodinh.loai_cong_viec.ilike(s_val),
+                    TaskCodinh.ma_cong_viec.in_(cab_search_wos)
+                )
+            )
+
+        # Sorting
+        sort_col = getattr(TaskCodinh, sort_by, None) if sort_by else TaskCodinh.thoi_diem_yeu_cau_ket_thuc
+        if sort_col is not None:
+            q = q.order_by(asc(sort_col) if sort_order == "asc" else desc(sort_col))
+        else:
+            q = q.order_by(desc(TaskCodinh.thoi_diem_yeu_cau_ket_thuc))
+
+        total = q.count()
+        offset = (page - 1) * page_size
+        rows = q.offset(offset).limit(page_size).all()
+
+        wo_keys = [r.ma_cong_viec for r in rows]
+
+        # Fetch child cabinets
+        cabs_map = defaultdict(list)
+        if wo_keys:
+            cabs = db.query(Cabinet).filter(Cabinet.ma_wo.in_(wo_keys)).all()
+            for c in cabs:
+                is_comp = "hoàn thành" in (c.trang_thai_thc or "").lower() and "đang" not in (c.trang_thai_thc or "").lower()
+                cabs_map[c.ma_wo].append({
+                    "id": c.id,
+                    "ma_doi_tuong": c.ma_doi_tuong,
+                    "ma_tram": c.ma_tram or "",
+                    "trang_thai_thc": c.trang_thai_thc or "Đang thực hiện bảo dưỡng",
+                    "trang_thai_wo": c.trang_thai_wo or "",
+                    "is_completed": is_comp,
+                })
+
+        # Fetch latest notes
+        notes_map = {}
+        if wo_keys:
+            all_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content)\
+                .filter(TaskNote.ma_cong_viec.in_(wo_keys))\
+                .order_by(TaskNote.created_at.desc())\
+                .all()
+            for k, c in all_notes:
+                if k not in notes_map:
+                    notes_map[k] = c
+
+        items = []
+        for r in rows:
+            is_closed = r.trang_thai in CLOSED_STATUSES
+            is_overdue = not is_closed and (
+                (r.thoi_gian_con_lai is not None and r.thoi_gian_con_lai < 0) or
+                (r.thoi_diem_yeu_cau_ket_thuc and r.thoi_diem_yeu_cau_ket_thuc < now)
+            )
+            wo_cabs = cabs_map.get(r.ma_cong_viec, [])
+            comp_cabs = sum(1 for c in wo_cabs if c["is_completed"])
+            items.append({
+                "ma_cong_viec": r.ma_cong_viec,
+                "loai_cong_viec": r.loai_cong_viec or "",
+                "noi_dung_cong_viec": r.noi_dung_cong_viec or "",
+                "ghi_chu": r.ghi_chu or "",
+                "trang_thai": r.trang_thai or "Chưa rõ",
+                "employee_assigned_name": r.nhan_vien or "Chưa gán",
+                "group_name": r.nhom or "Chưa phân nhóm",
+                "station_code": r.ma_tram or "",
+                "thoi_diem_tao": r.thoi_diem_tao.isoformat() if r.thoi_diem_tao else None,
+                "thoi_diem_yeu_cau_ket_thuc": r.thoi_diem_yeu_cau_ket_thuc.isoformat() if r.thoi_diem_yeu_cau_ket_thuc else None,
+                "thoi_gian_con_lai": r.thoi_gian_con_lai,
+                "thoi_diem_ft_hoan_thanh": r.thoi_diem_ft_hoan_thanh.isoformat() if r.thoi_diem_ft_hoan_thanh else None,
+                "thoi_diem_cd_dong": r.thoi_diem_cd_dong.isoformat() if r.thoi_diem_cd_dong else None,
+                "latest_note": notes_map.get(r.ma_cong_viec),
+                "is_overdue": is_overdue,
+                "total_cabinets": len(wo_cabs),
+                "completed_cabinets": comp_cabs,
+                "pending_cabinets": len(wo_cabs) - comp_cabs,
+                "cabinets": wo_cabs,
+            })
+
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": max(1, (total + page_size - 1) // page_size),
+            "items": items,
+        }
+
+    return {"total": 0, "page": 1, "page_size": page_size, "total_pages": 1, "items": []}
+
+
+def get_codinh_import_logs(db: Session, limit: int = 50) -> List[ImportLog]:
+    """Get list of past imports specifically for CĐBR."""
+    return db.query(ImportLog).filter(ImportLog.domain == "codinh").order_by(desc(ImportLog.imported_at)).limit(limit).all()
+
+
+def activate_codinh_import(db: Session, import_id: int) -> ImportLog:
+    """Reload/activate a past CĐBR import file."""
+    log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
+    if not log:
+        raise ValueError("Không tìm thấy bản ghi import CĐBR")
+    from backend.config import UPLOAD_DIR
+    file_path = UPLOAD_DIR / log.stored_filename
+    if not file_path.exists():
+        raise ValueError("File vật lý không còn tồn tại trên máy chủ")
+    import_codinh_wos_from_excel(db, file_path, log.file_name, import_id=log.id)
+    return log
+
+
+def delete_codinh_import(db: Session, import_id: int) -> bool:
+    """Delete a past CĐBR import log and file from disk."""
+    log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
+    if not log:
+        raise ValueError("Không tìm thấy bản ghi import CĐBR")
+    from backend.config import UPLOAD_DIR
+    file_path = UPLOAD_DIR / log.stored_filename
+    if file_path.exists():
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
+    if log.is_active == 1:
+        db.query(TaskCodinh).delete()
+    db.delete(log)
+    db.commit()
+    return True

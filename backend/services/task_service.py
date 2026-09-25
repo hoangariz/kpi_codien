@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy import desc, asc, or_, and_, func
 from sqlalchemy.orm import Session, joinedload
 
-from backend.models import Task, TaskHistory, TaskNote, Employee, Group, SystemModel, Unit, Station
+from backend.models import Task, TaskHistory, TaskNote, Employee, Group, SystemModel, Unit, Station, TaskCodinh
 from backend.schemas.task_schema import TaskListItem, PaginatedTasksResponse, TaskDetailResponse, NoteResponse, HistoryResponse
 
 
@@ -182,10 +182,57 @@ def get_tasks_paginated(
 
 
 def get_task_detail(db: Session, ma_cong_viec: str) -> Optional[TaskDetailResponse]:
-    """Get full task details including history timeline and notes."""
+    """Get full task details including history timeline and notes. Checks Task and falls back to TaskCodinh."""
     task = db.query(Task).filter(Task.ma_cong_viec == ma_cong_viec).first()
     if not task:
-        return None
+        c_task = db.query(TaskCodinh).filter(TaskCodinh.ma_cong_viec == ma_cong_viec).first()
+        if not c_task:
+            return None
+        history_list = db.query(TaskHistory)\
+            .filter(TaskHistory.ma_cong_viec == ma_cong_viec)\
+            .order_by(desc(TaskHistory.changed_at)).all()
+        notes_list = db.query(TaskNote)\
+            .filter(TaskNote.ma_cong_viec == ma_cong_viec)\
+            .order_by(desc(TaskNote.created_at)).all()
+        return TaskDetailResponse(
+            ma_cong_viec=c_task.ma_cong_viec,
+            ma_cong_viec_cha=c_task.ma_cong_viec_cha,
+            task_type_id=None,
+            loai_cong_viec=c_task.loai_cong_viec,
+            noi_dung_cong_viec=c_task.noi_dung_cong_viec,
+            ghi_chu=c_task.ghi_chu,
+            trang_thai=c_task.trang_thai,
+            trang_thai_hoan_thanh=c_task.trang_thai_hoan_thanh,
+            system_id=None,
+            created_by_id=None,
+            thoi_diem_tao=c_task.thoi_diem_tao,
+            group_id=None,
+            assigned_to_id=None,
+            loi=None,
+            thoi_diem_bat_dau_thuc_hien=None,
+            thoi_diem_yeu_cau_ket_thuc=c_task.thoi_diem_yeu_cau_ket_thuc,
+            thoi_gian_con_lai=c_task.thoi_gian_con_lai,
+            thoi_diem_ft_hoan_thanh=c_task.thoi_diem_ft_hoan_thanh,
+            thoi_diem_cd_dong=c_task.thoi_diem_cd_dong,
+            thoi_diem_ft_tiep_nhan=None,
+            thue_bao=None,
+            unit_id=None,
+            worklog=None,
+            station_id=None,
+            ft_comment=None,
+            ft_mobile=None,
+            created_at=c_task.created_at,
+            updated_at=c_task.updated_at,
+            last_import_id=None,
+            employee_assigned_name=c_task.nhan_vien,
+            employee_created_name=None,
+            group_name=c_task.nhom,
+            system_name=c_task.he_thong,
+            unit_name=c_task.don_vi,
+            station_code=c_task.ma_tram,
+            history=[HistoryResponse.model_validate(h) for h in history_list],
+            notes=[NoteResponse.model_validate(n) for n in notes_list],
+        )
 
     history_list = db.query(TaskHistory)\
         .filter(TaskHistory.ma_cong_viec == ma_cong_viec)\

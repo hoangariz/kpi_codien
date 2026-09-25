@@ -21,3 +21,4 @@ class ImportLog(Base):
     progress_percent = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     filter_spm = Column(Integer, default=1)  # 1 = filter out SPM/SPM_VTNET, 0 = keep all
+    domain = Column(String(50), default="main", index=True)  # 'main' or 'codinh'

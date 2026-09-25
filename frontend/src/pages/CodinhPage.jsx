@@ -9,13 +9,17 @@ import {
   RotateCcw,
   CheckCircle2,
   Clock,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Filter
 } from 'lucide-react';
 
 import { codinhApi } from '../api/codinhApi';
 import { importsApi } from '../api/importsApi';
+import { tasksApi } from '../api/tasksApi';
 import { formatDataTimestamp } from '../utils/dateFormat';
 import { formatGroupName } from '../utils/groupFormat';
+import CodinhDrilldownModal from '../components/CodinhDrilldownModal';
+import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function CodinhPage() {
   // Active view tab: 'employee' | 'group'
@@ -24,8 +28,13 @@ export default function CodinhPage() {
   // Filter & Search states
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState(''); // Filter by cluster/group for employee tab
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState('desc');
+
+  // Drilldown & Task Detail Modals
+  const [drilldownFilter, setDrilldownFilter] = useState(null);
+  const [selectedDetailTask, setSelectedDetailTask] = useState(null);
 
   // 1. Fetch categories for CĐBR
   const { data: categories = [] } = useQuery({
@@ -118,10 +127,44 @@ export default function CodinhPage() {
 
   const hasCabinets = summary.has_cabinets;
 
+  // Unique clusters / groups for filtering employee table
+  const uniqueGroups = useMemo(() => {
+    if (!statsData?.by_group) return [];
+    return statsData.by_group
+      .map((g) => g.key_name)
+      .filter((name) => name && name !== 'Chưa phân nhóm')
+      .sort((a, b) => formatGroupName(a).localeCompare(formatGroupName(b), 'vi'));
+  }, [statsData]);
+
+  // Drilldown handler
+  const handleOpenDrilldown = (metric, filterType = null, targetName = null) => {
+    setDrilldownFilter({
+      categoryId: effectiveCatId,
+      categoryName: activeCategory?.name,
+      metric,
+      filterType,
+      targetName,
+    });
+  };
+
+  const handleOpenTaskDetail = async (taskOrCode) => {
+    try {
+      const code = typeof taskOrCode === 'string' ? taskOrCode : taskOrCode.ma_cong_viec;
+      const fullTask = await tasksApi.getTaskDetail(code);
+      setSelectedDetailTask(fullTask);
+    } catch (err) {
+      alert('Không thể tải chi tiết công việc: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   // Filtered & Sorted Employees
   const sortedEmployees = useMemo(() => {
     if (!statsData?.by_employee) return [];
     let list = statsData.by_employee.filter((emp) => {
+      // Cluster / Group filter
+      if (selectedGroupFilter && emp.group_name !== selectedGroupFilter) {
+        return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const mName = (emp.key_name || '').toLowerCase().includes(q);
@@ -148,7 +191,7 @@ export default function CodinhPage() {
       });
     }
     return list;
-  }, [statsData, searchQuery, sortKey, sortOrder]);
+  }, [statsData, searchQuery, selectedGroupFilter, sortKey, sortOrder]);
 
   // Filtered & Sorted Groups (Abbreviated group codes like overview)
   const sortedGroups = useMemo(() => {
@@ -439,42 +482,72 @@ export default function CodinhPage() {
               background: 'var(--bg-secondary)',
             }}
           >
-            <div style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              onClick={() => handleOpenDrilldown('total')}
+              className="cell-clickable"
+              style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Tổng Công Việc (WO)"
+            >
               <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Tổng Công Việc</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
                 {summary.total_wos ?? 0}
               </strong>
             </div>
 
-            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              onClick={() => handleOpenDrilldown('closed')}
+              className="cell-clickable"
+              style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết WO Đã Đóng"
+            >
               <span style={{ fontSize: '0.68rem', color: 'var(--success-dark)', display: 'block' }}>Đã Đóng WO</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
                 {summary.closed_wos ?? 0}
               </strong>
             </div>
 
-            <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              onClick={() => handleOpenDrilldown('pending')}
+              className="cell-clickable"
+              style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết WO Đang Tồn"
+            >
               <span style={{ fontSize: '0.68rem', color: 'var(--warning-dark)', display: 'block' }}>Tồn Việc WO</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
                 {summary.pending_wos ?? 0}
               </strong>
             </div>
 
-            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              onClick={() => handleOpenDrilldown('overdue')}
+              className="cell-clickable"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết WO Quá Hạn"
+            >
               <span style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', display: 'block' }}>Quá Hạn</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>
                 {summary.overdue_wos ?? 0}
               </strong>
             </div>
 
-            <div style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              onClick={() => handleOpenDrilldown('closed_today')}
+              className="cell-clickable"
+              style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết WO Đóng Hôm Nay"
+            >
               <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Nay</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
                 +{summary.closed_today_wos ?? 0}
               </strong>
             </div>
 
-            <div style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              onClick={() => handleOpenDrilldown('closed_yesterday')}
+              className="cell-clickable"
+              style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết WO Đóng Hôm Qua"
+            >
               <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Qua</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
                 +{summary.closed_yesterday_wos ?? 0}
@@ -490,21 +563,36 @@ export default function CodinhPage() {
 
             {hasCabinets && (
               <>
-                <div style={{ background: 'rgba(139, 92, 246, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <div
+                  onClick={() => handleOpenDrilldown('cabinet_total')}
+                  className="cell-clickable"
+                  style={{ background: 'rgba(139, 92, 246, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                  title="Nhấn để xem chi tiết Tổng Tủ THC"
+                >
                   <span style={{ fontSize: '0.68rem', color: '#8b5cf6', display: 'block', fontWeight: 700 }}>Tổng Tủ THC</span>
                   <strong style={{ fontSize: '1.15rem', color: '#8b5cf6', fontFamily: 'var(--font-mono)' }}>
                     {summary.total_cabinets ?? 0}
                   </strong>
                 </div>
 
-                <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <div
+                  onClick={() => handleOpenDrilldown('cabinet_completed')}
+                  className="cell-clickable"
+                  style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                  title="Nhấn để xem chi tiết Tủ THC Đã Xong"
+                >
                   <span style={{ fontSize: '0.68rem', color: 'var(--success-dark)', display: 'block', fontWeight: 700 }}>Tủ Đã Xong</span>
                   <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
                     {summary.completed_cabinets ?? 0}
                   </strong>
                 </div>
 
-                <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <div
+                  onClick={() => handleOpenDrilldown('cabinet_pending')}
+                  className="cell-clickable"
+                  style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                  title="Nhấn để xem chi tiết Tủ THC Chưa Xong"
+                >
                   <span style={{ fontSize: '0.68rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700 }}>Tủ Chưa Xong</span>
                   <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
                     {summary.pending_cabinets ?? 0}
@@ -544,6 +632,45 @@ export default function CodinhPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Filter theo cụm trên tab nhân viên */}
+              {currentTab === 'employee' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Filter size={14} style={{ color: selectedGroupFilter ? '#8b5cf6' : 'var(--text-muted)' }} />
+                  <select
+                    className="form-control"
+                    value={selectedGroupFilter}
+                    onChange={(e) => setSelectedGroupFilter(e.target.value)}
+                    style={{
+                      fontSize: '0.82rem',
+                      height: '32px',
+                      padding: '2px 8px',
+                      borderColor: selectedGroupFilter ? '#8b5cf6' : 'var(--border-color)',
+                      background: selectedGroupFilter ? 'rgba(139, 92, 246, 0.08)' : 'var(--bg-secondary)',
+                      fontWeight: selectedGroupFilter ? 700 : 400,
+                      color: selectedGroupFilter ? '#8b5cf6' : 'var(--text-primary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Tất cả Cụm / Nhóm ({uniqueGroups.length})</option>
+                    {uniqueGroups.map((grp) => (
+                      <option key={grp} value={grp}>
+                        {formatGroupName(grp)} ({grp})
+                      </option>
+                    ))}
+                  </select>
+                  {selectedGroupFilter && (
+                    <button
+                      onClick={() => setSelectedGroupFilter('')}
+                      className="btn btn-outline"
+                      style={{ padding: '2px 6px', height: '32px', fontSize: '0.75rem', borderColor: '#8b5cf6', color: '#8b5cf6' }}
+                      title="Xóa lọc cụm"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="search-input-box" style={{ width: '220px' }}>
                 <Search size={14} className="search-icon" />
                 <input
@@ -666,28 +793,58 @@ export default function CodinhPage() {
                     <td className="col-summary-label" colSpan={3} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       TỔNG CỘNG:
                     </td>
-                    <td className="cell-num" style={{ width: '75px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('total')}
+                      style={{ width: '75px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết Tổng WO"
+                    >
                       {summary.total_wos ?? 0}
                     </td>
-                    <td className="cell-num cell-closed" style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-closed cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed')}
+                      style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết WO Đã Đóng"
+                    >
                       {summary.closed_wos ?? 0}
                     </td>
                     <td className="cell-num" style={{ width: '75px', fontSize: '0.95rem', fontWeight: 800, color: 'var(--success-dark)' }}>
                       {summary.wo_rate ?? 0}%
                     </td>
-                    <td className="cell-num cell-pending" style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-pending cell-clickable"
+                      onClick={() => handleOpenDrilldown('pending')}
+                      style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết WO Đang Tồn"
+                    >
                       {summary.pending_wos ?? 0}
                     </td>
-                    <td className="cell-num cell-overdue" style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-overdue cell-clickable"
+                      onClick={() => handleOpenDrilldown('overdue')}
+                      style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết WO Quá Hạn"
+                    >
                       {summary.overdue_wos ?? 0}
                     </td>
 
                     {hasCabinets && (
                       <>
-                        <td className="cell-num" style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_total')}
+                          style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6', cursor: 'pointer' }}
+                          title="Nhấn để xem chi tiết Tổng Tủ THC"
+                        >
                           {summary.total_cabinets ?? 0}
                         </td>
-                        <td className="cell-num" style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_completed')}
+                          style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
+                          title="Nhấn để xem chi tiết Tủ THC Đã Xong"
+                        >
                           {summary.completed_cabinets ?? 0}
                         </td>
                         <td className="cell-num" style={{ width: '80px', fontSize: '0.95rem', fontWeight: 800, color: '#8b5cf6' }}>
@@ -734,28 +891,58 @@ export default function CodinhPage() {
                               {formatGroupName(row.group_name)}
                             </span>
                           </td>
-                          <td className="cell-num" style={{ fontWeight: 700, color: 'var(--brand-primary)' }}>
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('total', 'employee', row.key_name)}
+                            style={{ fontWeight: 700, color: 'var(--brand-primary)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.total_wos} WO của ${row.key_name}`}
+                          >
                             {row.total_wos}
                           </td>
-                          <td className="cell-num cell-closed" style={{ fontWeight: 700 }}>
+                          <td
+                            className="cell-num cell-closed cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed', 'employee', row.key_name)}
+                            style={{ fontWeight: 700, cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_wos} WO đã đóng của ${row.key_name}`}
+                          >
                             {row.closed_wos}
                           </td>
                           <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
                             {row.wo_rate}%
                           </td>
-                          <td className="cell-num cell-pending" style={{ fontWeight: 700 }}>
+                          <td
+                            className="cell-num cell-pending cell-clickable"
+                            onClick={() => handleOpenDrilldown('pending', 'employee', row.key_name)}
+                            style={{ fontWeight: 700, cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.pending_wos} WO tồn của ${row.key_name}`}
+                          >
                             {row.pending_wos}
                           </td>
-                          <td className="cell-num cell-overdue" style={{ fontWeight: isOverdue ? 900 : 400 }}>
+                          <td
+                            className="cell-num cell-overdue cell-clickable"
+                            onClick={() => handleOpenDrilldown('overdue', 'employee', row.key_name)}
+                            style={{ fontWeight: isOverdue ? 900 : 400, cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.overdue_wos} WO quá hạn của ${row.key_name}`}
+                          >
                             {row.overdue_wos}
                           </td>
 
                           {hasCabinets && (
                             <>
-                              <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_total', 'employee', row.key_name)}
+                                style={{ fontWeight: 700, color: '#8b5cf6', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.total_cabinets} tủ THC của ${row.key_name}`}
+                              >
                                 {row.total_cabinets}
                               </td>
-                              <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_completed', 'employee', row.key_name)}
+                                style={{ fontWeight: 700, color: 'var(--success-dark)', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.completed_cabinets} tủ THC đã xong của ${row.key_name}`}
+                              >
                                 {row.completed_cabinets}
                               </td>
                               <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
@@ -876,28 +1063,58 @@ export default function CodinhPage() {
                     <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       TỔNG CỘNG:
                     </td>
-                    <td className="cell-num" style={{ width: '80px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('total')}
+                      style={{ width: '80px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết Tổng WO"
+                    >
                       {summary.total_wos ?? 0}
                     </td>
-                    <td className="cell-num cell-closed" style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-closed cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed')}
+                      style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết WO Đã Đóng"
+                    >
                       {summary.closed_wos ?? 0}
                     </td>
                     <td className="cell-num" style={{ width: '75px', fontSize: '0.95rem', fontWeight: 800, color: 'var(--success-dark)' }}>
                       {summary.wo_rate ?? 0}%
                     </td>
-                    <td className="cell-num cell-pending" style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-pending cell-clickable"
+                      onClick={() => handleOpenDrilldown('pending')}
+                      style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết WO Đang Tồn"
+                    >
                       {summary.pending_wos ?? 0}
                     </td>
-                    <td className="cell-num cell-overdue" style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800 }}>
+                    <td
+                      className="cell-num cell-overdue cell-clickable"
+                      onClick={() => handleOpenDrilldown('overdue')}
+                      style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      title="Nhấn để xem chi tiết WO Quá Hạn"
+                    >
                       {summary.overdue_wos ?? 0}
                     </td>
 
                     {hasCabinets && (
                       <>
-                        <td className="cell-num" style={{ width: '90px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_total')}
+                          style={{ width: '90px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6', cursor: 'pointer' }}
+                          title="Nhấn để xem chi tiết Tổng Tủ THC"
+                        >
                           {summary.total_cabinets ?? 0}
                         </td>
-                        <td className="cell-num" style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_completed')}
+                          style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
+                          title="Nhấn để xem chi tiết Tủ THC Đã Xong"
+                        >
                           {summary.completed_cabinets ?? 0}
                         </td>
                         <td className="cell-num" style={{ width: '85px', fontSize: '0.95rem', fontWeight: 800, color: '#8b5cf6' }}>
@@ -929,38 +1146,69 @@ export default function CodinhPage() {
                   ) : (
                     sortedGroups.map((row, index) => {
                       const shortName = formatGroupName(row.key_name);
+                      const isOverdue = row.overdue_wos > 0;
                       return (
                         <tr key={`grp-${row.key_name || index}`} className="excel-row">
                           <td className="cell-num col-stt" style={{ width: '38px', color: 'var(--text-muted)' }}>
                             {row.is_other ? '*' : index + 1}
                           </td>
                           <td className="col-name" style={{ width: '1%', whiteSpace: 'nowrap', padding: '3px 12px' }}>
-                            <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                            <strong style={{ fontSize: '0.88rem', color: isOverdue ? 'var(--danger)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                               {shortName}
                             </strong>
                           </td>
-                          <td className="cell-num" style={{ fontWeight: 700, color: 'var(--brand-primary)' }}>
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('total', 'group', row.key_name)}
+                            style={{ fontWeight: 700, color: 'var(--brand-primary)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.total_wos} WO của cụm ${shortName}`}
+                          >
                             {row.total_wos}
                           </td>
-                          <td className="cell-num cell-closed" style={{ fontWeight: 700 }}>
+                          <td
+                            className="cell-num cell-closed cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed', 'group', row.key_name)}
+                            style={{ fontWeight: 700, cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_wos} WO đã đóng của cụm ${shortName}`}
+                          >
                             {row.closed_wos}
                           </td>
                           <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
                             {row.wo_rate}%
                           </td>
-                          <td className="cell-num cell-pending" style={{ fontWeight: 700 }}>
+                          <td
+                            className="cell-num cell-pending cell-clickable"
+                            onClick={() => handleOpenDrilldown('pending', 'group', row.key_name)}
+                            style={{ fontWeight: 700, cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.pending_wos} WO tồn của cụm ${shortName}`}
+                          >
                             {row.pending_wos}
                           </td>
-                          <td className="cell-num cell-overdue" style={{ fontWeight: row.overdue_wos > 0 ? 900 : 400 }}>
+                          <td
+                            className="cell-num cell-overdue cell-clickable"
+                            onClick={() => handleOpenDrilldown('overdue', 'group', row.key_name)}
+                            style={{ fontWeight: isOverdue ? 900 : 400, cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.overdue_wos} WO quá hạn của cụm ${shortName}`}
+                          >
                             {row.overdue_wos}
                           </td>
 
                           {hasCabinets && (
                             <>
-                              <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_total', 'group', row.key_name)}
+                                style={{ fontWeight: 700, color: '#8b5cf6', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.total_cabinets} tủ THC của cụm ${shortName}`}
+                              >
                                 {row.total_cabinets}
                               </td>
-                              <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_completed', 'group', row.key_name)}
+                                style={{ fontWeight: 700, color: 'var(--success-dark)', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.completed_cabinets} tủ THC đã xong của cụm ${shortName}`}
+                              >
                                 {row.completed_cabinets}
                               </td>
                               <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
@@ -993,6 +1241,32 @@ export default function CodinhPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* 4. Drilldown Modal for CĐBR (Xem chi tiết WO và Tủ THC con) */}
+      {drilldownFilter && (
+        <CodinhDrilldownModal
+          isOpen={Boolean(drilldownFilter)}
+          onClose={() => setDrilldownFilter(null)}
+          filterInfo={drilldownFilter}
+          onSelectTask={handleOpenTaskDetail}
+        />
+      )}
+
+      {/* 5. Full Task Detail Modal */}
+      {selectedDetailTask && (
+        <TaskDetailModal
+          task={selectedDetailTask}
+          onClose={() => setSelectedDetailTask(null)}
+          onNoteAdded={async (ma_cong_viec) => {
+            try {
+              const updated = await tasksApi.getTaskDetail(ma_cong_viec);
+              setSelectedDetailTask(updated);
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+        />
       )}
     </div>
   );
