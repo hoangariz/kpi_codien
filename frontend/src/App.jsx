@@ -6,6 +6,8 @@ import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import SearchPage from './pages/SearchPage';
 import CsdbPage from './pages/CsdbPage';
+import CodinhPage from './pages/CodinhPage';
+import AdminCodinhPage from './pages/AdminCodinhPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,8 +59,11 @@ export default function App() {
     try {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+      if (path.includes('/admincodinh') || hash.includes('admincodinh')) return 'admincodinh';
+      if (path.includes('/codinh') || hash.includes('codinh')) return 'codinh';
       if (path.includes('/admin') || hash.includes('admin')) return 'admin';
       if (path.includes('/search') || hash.includes('search')) return 'search';
+      if (path.includes('/csdb') || hash.includes('csdb')) return 'csdb';
     } catch (e) {
       console.error(e);
     }
@@ -70,7 +75,15 @@ export default function App() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === 'admin') {
+    if (tab === 'admincodinh') {
+      if (!window.location.pathname.includes('/admincodinh')) {
+        window.history.pushState({}, '', '/admincodinh');
+      }
+    } else if (tab === 'codinh') {
+      if (!window.location.pathname.includes('/codinh')) {
+        window.history.pushState({}, '', '/codinh');
+      }
+    } else if (tab === 'admin') {
       if (!window.location.pathname.includes('/admin')) {
         window.history.pushState({}, '', '/admin');
       }
@@ -93,7 +106,11 @@ export default function App() {
     const handleUrlChange = () => {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (path.includes('/admin') || hash.includes('admin')) {
+      if (path.includes('/admincodinh') || hash.includes('admincodinh')) {
+        setActiveTab('admincodinh');
+      } else if (path.includes('/codinh') || hash.includes('codinh')) {
+        setActiveTab('codinh');
+      } else if (path.includes('/admin') || hash.includes('admin')) {
         setActiveTab('admin');
       } else if (path.includes('/search') || hash.includes('search')) {
         setActiveTab('search');
@@ -134,7 +151,11 @@ export default function App() {
 
           <main className="main-content">
             <div className="content-body">
-              {activeTab === 'admin' ? (
+              {activeTab === 'admincodinh' ? (
+                <AdminCodinhPage onNavigateToCodinh={() => handleTabChange('codinh')} />
+              ) : activeTab === 'codinh' ? (
+                <CodinhPage onNavigateToAdminCodinh={() => handleTabChange('admincodinh')} />
+              ) : activeTab === 'admin' ? (
                 <AdminPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
               ) : activeTab === 'search' ? (
                 <SearchPage onNavigateToDashboard={() => handleTabChange('dashboard')} />

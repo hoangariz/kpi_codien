@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Activity,
   LayoutDashboard,
+  Cable,
   Search,
   Sun,
   Moon,
@@ -52,6 +53,15 @@ export default function Header({
           >
             <LayoutDashboard size={16} />
             <span>Tổng Quan</span>
+          </button>
+
+          <button
+            className={`header-nav-btn ${activeTab === 'codinh' || activeTab === 'admincodinh' ? 'active' : ''}`}
+            onClick={() => setActiveTab('codinh')}
+            title="Báo Cáo Cố Định Băng Rộng (CĐBR) & Tủ Hộp Cáp"
+          >
+            <Cable size={16} />
+            <span>Cố Định BR</span>
           </button>
 
           <button

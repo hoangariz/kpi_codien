@@ -17,6 +17,7 @@ from backend.api.router_settings import router as settings_router
 from backend.api.router_tracking import router as tracking_router
 from backend.api.router_report_categories import router as reports_router
 from backend.api.router_fixed_wo import router as fixed_wo_router
+from backend.api.router_codinh import router as codinh_router
 
 # Create database tables automatically (including report_categories)
 Base.metadata.create_all(bind=engine)
@@ -30,12 +31,19 @@ def auto_migrate_db():
             "ALTER TABLE import_logs ADD COLUMN is_active INTEGER DEFAULT 0",
             "ALTER TABLE tracking_boards ADD COLUMN loai_cong_viec VARCHAR(255)",
             "ALTER TABLE import_logs ADD COLUMN filter_spm INTEGER DEFAULT 1",
+            "ALTER TABLE report_categories ADD COLUMN domain VARCHAR(50) DEFAULT 'codien'",
         ]:
             try:
                 conn.execute(text(col_def))
                 conn.commit()
             except Exception:
                 pass
+
+        try:
+            conn.execute(text("UPDATE report_categories SET domain = 'codien' WHERE domain IS NULL"))
+            conn.commit()
+        except Exception:
+            pass
 
         try:
             conn.execute(text("UPDATE import_logs SET stored_filename = file_name WHERE stored_filename IS NULL"))
@@ -119,6 +127,7 @@ app.include_router(settings_router)
 app.include_router(tracking_router)
 app.include_router(reports_router)
 app.include_router(fixed_wo_router)
+app.include_router(codinh_router)
 
 
 @app.get("/api/health")

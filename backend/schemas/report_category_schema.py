@@ -51,6 +51,7 @@ class ReportCategoryCreate(BaseModel):
     # Multi-filter fields
     filter_mode: Optional[str] = "by_loai"   # "by_loai" | "by_system"
     filter_values: Optional[List[str]] = []   # list of selected values
+    domain: Optional[str] = "codien"         # "codien" | "codinh"
 
 
 class ReportCategoryUpdate(BaseModel):
@@ -63,6 +64,7 @@ class ReportCategoryUpdate(BaseModel):
     # Multi-filter fields
     filter_mode: Optional[str] = None
     filter_values: Optional[List[str]] = None
+    domain: Optional[str] = None
 
 
 class ReportCategoryResponse(BaseModel):
@@ -77,6 +79,7 @@ class ReportCategoryResponse(BaseModel):
     # Multi-filter fields
     filter_mode: str = "by_loai"
     filter_values: List[str] = []
+    domain: str = "codien"
     summary: Optional[ReportCategorySummary] = None
     sub_categories: List[ReportSubCategoryResponse] = []
     created_at: Optional[datetime] = None

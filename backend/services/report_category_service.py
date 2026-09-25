@@ -55,14 +55,19 @@ def _build_type_conditions(cat, db: Session):
 def get_report_categories(
     db: Session,
     target_month: Optional[str] = None,
-    include_summary: bool = True
+    include_summary: bool = True,
+    domain: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    Get all report categories.
+    Get report categories, optionally filtered by domain ('codien' | 'codinh').
     Optionally computes mini summary (total, closed, pending, overdue, rate)
     using the active month time rule. Supports multi-value filter_mode/filter_values.
     """
-    cats = db.query(ReportCategory).order_by(
+    query = db.query(ReportCategory)
+    if domain:
+        query = query.filter(ReportCategory.domain == domain)
+
+    cats = query.order_by(
         ReportCategory.sort_order.asc(),
         ReportCategory.created_at.asc()
     ).all()
@@ -88,6 +93,7 @@ def get_report_categories(
             "exclude_closed_prior_months": cat.exclude_closed_prior_months,
             "filter_mode": cat.filter_mode or "by_loai",
             "filter_values": _parse_filter_values(cat.filter_values),
+            "domain": getattr(cat, "domain", "codien") or "codien",
             "created_at": cat.created_at,
             "updated_at": cat.updated_at,
             "summary": None
@@ -219,6 +225,7 @@ def create_report_category(db: Session, payload: ReportCategoryCreate) -> Report
         exclude_closed_prior_months=payload.exclude_closed_prior_months if payload.exclude_closed_prior_months is not None else True,
         filter_mode=mode,
         filter_values=json.dumps(values, ensure_ascii=False),
+        domain=(payload.domain or "codien").strip(),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
@@ -277,6 +284,9 @@ def update_report_category(
 
     if payload.sort_order is not None:
         cat.sort_order = payload.sort_order
+
+    if payload.domain is not None:
+        cat.domain = payload.domain.strip()
 
     cat.updated_at = datetime.utcnow()
     db.commit()

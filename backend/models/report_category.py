@@ -19,6 +19,8 @@ class ReportCategory(Base):
     filter_mode = Column(String(20), default="by_loai", nullable=False)
     # JSON array string, VD: '["SPM", "ICMS"]' hoặc '["VCC_CD_LDTB Lắp đặt tủ nguồn DC"]'
     filter_values = Column(Text, nullable=True)
+    # Phân hệ / domain: 'codien' (Cơ điện di động) | 'codinh' (Cố định băng rộng)
+    domain = Column(String(50), default="codien", nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

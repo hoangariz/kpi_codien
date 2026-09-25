@@ -24,10 +24,11 @@ router = APIRouter(prefix="/api/reports/categories", tags=["Report Categories"])
 def list_categories(
     month: Optional[str] = Query(None),
     include_summary: bool = Query(True),
+    domain: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """Get all report categories with optional mini KPI summary."""
-    return get_report_categories(db, target_month=month, include_summary=include_summary)
+    """Get all report categories with optional mini KPI summary and domain filter."""
+    return get_report_categories(db, target_month=month, include_summary=include_summary, domain=domain)
 
 
 @router.post("", response_model=ReportCategoryResponse, status_code=status.HTTP_201_CREATED)
