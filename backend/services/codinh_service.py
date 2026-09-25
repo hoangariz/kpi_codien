@@ -16,7 +16,7 @@ from backend.models.report_category import ReportCategory, ReportSubCategory
 from backend.models.cabinet import Cabinet
 from backend.models.settings import SystemSetting
 from backend.models.import_log import ImportLog
-from backend.models.task_note import TaskNote
+from backend.models.note import TaskNote
 from backend.services.settings_service import get_current_month_setting
 
 CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]

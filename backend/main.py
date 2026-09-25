@@ -9,15 +9,6 @@ from backend.config import APP_TITLE, APP_VERSION
 from backend.database import engine, Base
 # Import all models to ensure metadata registration
 import backend.models
-from backend.api.router_tasks import router as tasks_router
-from backend.api.router_stats import router as stats_router
-from backend.api.router_imports import router as imports_router
-from backend.api.router_meta import router as meta_router
-from backend.api.router_settings import router as settings_router
-from backend.api.router_tracking import router as tracking_router
-from backend.api.router_report_categories import router as reports_router
-from backend.api.router_fixed_wo import router as fixed_wo_router
-from backend.api.router_codinh import router as codinh_router
 
 # Create database tables automatically (including report_categories)
 Base.metadata.create_all(bind=engine)
@@ -107,6 +98,16 @@ def auto_migrate_db():
             print(f"Sub-category migration notice: {ex}")
 
 auto_migrate_db()
+
+from backend.api.router_tasks import router as tasks_router
+from backend.api.router_stats import router as stats_router
+from backend.api.router_imports import router as imports_router
+from backend.api.router_meta import router as meta_router
+from backend.api.router_settings import router as settings_router
+from backend.api.router_tracking import router as tracking_router
+from backend.api.router_report_categories import router as reports_router
+from backend.api.router_fixed_wo import router as fixed_wo_router
+from backend.api.router_codinh import router as codinh_router
 
 app = FastAPI(
     title=APP_TITLE,
