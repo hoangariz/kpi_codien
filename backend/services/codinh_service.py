@@ -1072,7 +1072,186 @@ def get_codinh_drilldown_tasks(
             "items": items,
         }
 
-    return {"total": 0, "page": 1, "page_size": page_size, "total_pages": 1, "items": []}
+    else:
+        # Fallback to main Task table
+        q = db.query(Task).outerjoin(Task.employee_assigned).outerjoin(Task.group)
+        if values:
+            if mode == "by_system":
+                upper_values = [v.upper().strip() for v in values]
+                sys_ids = db.query(SystemModel.id).filter(
+                    func.upper(func.trim(SystemModel.name)).in_(upper_values)
+                ).scalar_subquery()
+                q = q.filter(Task.system_id.in_(sys_ids))
+            else:
+                q = q.filter(Task.loai_cong_viec.in_(values))
+
+        if cat and cat.exclude_closed_prior_months:
+            active_month = get_current_month_setting(db)
+            try:
+                y, m = active_month.split("-")
+                m_start = datetime(int(y), int(m), 1, 0, 0, 0)
+                q = q.filter(
+                    or_(
+                        ~Task.trang_thai.in_(CLOSED_STATUSES),
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= m_start,
+                        Task.thoi_diem_tao >= m_start
+                    )
+                )
+            except Exception:
+                pass
+
+        # Target filter (Employee or Group)
+        if filter_type == "employee" and target_name:
+            if target_name in ("Chưa gán", "Khác", "*"):
+                q = q.filter(or_(Task.assigned_to_id == None, Employee.name == "Chưa gán"))
+            else:
+                q = q.filter(Employee.name == target_name)
+        elif filter_type == "group" and target_name:
+            if target_name in ("Chưa phân nhóm", "Khác", "*"):
+                q = q.filter(or_(Task.group_id == None, Group.name == "Chưa phân nhóm"))
+            else:
+                q = q.filter(Group.name == target_name)
+
+        # Metric filter
+        m_low = (metric or "total").lower()
+        if m_low in ("closed", "da_dong", "dong"):
+            q = q.filter(Task.trang_thai.in_(CLOSED_STATUSES))
+        elif m_low in ("pending", "ton", "ton_viec"):
+            q = q.filter(~Task.trang_thai.in_(CLOSED_STATUSES))
+        elif m_low in ("overdue", "qua_han", "tre_han"):
+            q = q.filter(
+                ~Task.trang_thai.in_(CLOSED_STATUSES),
+                or_(
+                    Task.thoi_gian_con_lai < 0,
+                    and_(Task.thoi_diem_yeu_cau_ket_thuc.isnot(None), Task.thoi_diem_yeu_cau_ket_thuc < now)
+                )
+            )
+        elif m_low in ("closed_today", "dong_hom_nay"):
+            q = q.filter(
+                Task.trang_thai.in_(CLOSED_STATUSES),
+                func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
+            )
+        elif m_low in ("closed_yesterday", "dong_hom_qua"):
+            q = q.filter(
+                Task.trang_thai.in_(CLOSED_STATUSES),
+                func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
+            )
+        elif m_low in ("cabinet_total", "total_cabinets", "tu_thc"):
+            cab_wos = db.query(Cabinet.ma_wo).distinct().scalar_subquery()
+            q = q.filter(Task.ma_cong_viec.in_(cab_wos))
+        elif m_low in ("cabinet_completed", "completed_cabinets", "tu_xong"):
+            comp_wos = db.query(Cabinet.ma_wo).filter(
+                Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
+                ~Cabinet.trang_thai_thc.ilike("%đang%")
+            ).distinct().scalar_subquery()
+            q = q.filter(Task.ma_cong_viec.in_(comp_wos))
+        elif m_low in ("cabinet_pending", "pending_cabinets", "tu_ton"):
+            pend_wos = db.query(Cabinet.ma_wo).filter(
+                or_(
+                    ~Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
+                    Cabinet.trang_thai_thc.ilike("%đang%")
+                )
+            ).distinct().scalar_subquery()
+            q = q.filter(Task.ma_cong_viec.in_(pend_wos))
+
+        # Search filter
+        if search and search.strip():
+            s_val = f"%{search.strip()}%"
+            cab_search_wos = db.query(Cabinet.ma_wo).filter(Cabinet.ma_doi_tuong.ilike(s_val)).distinct().scalar_subquery()
+            q = q.outerjoin(Task.station).filter(
+                or_(
+                    Task.ma_cong_viec.ilike(s_val),
+                    Station.code.ilike(s_val),
+                    Employee.name.ilike(s_val),
+                    Group.name.ilike(s_val),
+                    Task.noi_dung_cong_viec.ilike(s_val),
+                    Task.ghi_chu.ilike(s_val),
+                    Task.loai_cong_viec.ilike(s_val),
+                    Task.ma_cong_viec.in_(cab_search_wos)
+                )
+            )
+
+        # Sorting
+        sort_col = getattr(Task, sort_by, None) if sort_by else Task.thoi_diem_yeu_cau_ket_thuc
+        if sort_col is not None:
+            q = q.order_by(asc(sort_col) if sort_order == "asc" else desc(sort_col))
+        else:
+            q = q.order_by(desc(Task.thoi_diem_yeu_cau_ket_thuc))
+
+        total = q.count()
+        offset = (page - 1) * page_size
+        rows = q.offset(offset).limit(page_size).all()
+
+        wo_keys = [r.ma_cong_viec for r in rows]
+
+        # Fetch child cabinets
+        cabs_map = defaultdict(list)
+        if wo_keys:
+            cabs = db.query(Cabinet).filter(Cabinet.ma_wo.in_(wo_keys)).all()
+            for c in cabs:
+                is_comp = "hoàn thành" in (c.trang_thai_thc or "").lower() and "đang" not in (c.trang_thai_thc or "").lower()
+                cabs_map[c.ma_wo].append({
+                    "id": c.id,
+                    "ma_doi_tuong": c.ma_doi_tuong,
+                    "ma_tram": c.ma_tram or "",
+                    "trang_thai_thc": c.trang_thai_thc or "Đang thực hiện bảo dưỡng",
+                    "trang_thai_wo": c.trang_thai_wo or "",
+                    "is_completed": is_comp,
+                })
+
+        # Fetch latest notes
+        notes_map = {}
+        if wo_keys:
+            all_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content)\
+                .filter(TaskNote.ma_cong_viec.in_(wo_keys))\
+                .order_by(TaskNote.created_at.desc())\
+                .all()
+            for k, c in all_notes:
+                if k not in notes_map:
+                    notes_map[k] = c
+
+        items = []
+        for r in rows:
+            is_closed = r.trang_thai in CLOSED_STATUSES
+            is_overdue = not is_closed and (
+                (r.thoi_gian_con_lai is not None and r.thoi_gian_con_lai < 0) or
+                (r.thoi_diem_yeu_cau_ket_thuc and r.thoi_diem_yeu_cau_ket_thuc < now)
+            )
+            wo_cabs = cabs_map.get(r.ma_cong_viec, [])
+            comp_cabs = sum(1 for c in wo_cabs if c["is_completed"])
+            emp_name = r.employee_assigned.name if r.employee_assigned else "Chưa gán"
+            grp_name = r.group.name if r.group else "Chưa phân nhóm"
+            st_code = r.station.code if r.station else ""
+            items.append({
+                "ma_cong_viec": r.ma_cong_viec,
+                "loai_cong_viec": r.loai_cong_viec or "",
+                "noi_dung_cong_viec": r.noi_dung_cong_viec or "",
+                "ghi_chu": r.ghi_chu or "",
+                "trang_thai": r.trang_thai or "Chưa rõ",
+                "employee_assigned_name": emp_name,
+                "group_name": grp_name,
+                "station_code": st_code,
+                "thoi_diem_tao": r.thoi_diem_tao.isoformat() if r.thoi_diem_tao else None,
+                "thoi_diem_yeu_cau_ket_thuc": r.thoi_diem_yeu_cau_ket_thuc.isoformat() if r.thoi_diem_yeu_cau_ket_thuc else None,
+                "thoi_gian_con_lai": r.thoi_gian_con_lai,
+                "thoi_diem_ft_hoan_thanh": r.thoi_diem_ft_hoan_thanh.isoformat() if r.thoi_diem_ft_hoan_thanh else None,
+                "thoi_diem_cd_dong": r.thoi_diem_cd_dong.isoformat() if r.thoi_diem_cd_dong else None,
+                "latest_note": notes_map.get(r.ma_cong_viec),
+                "is_overdue": is_overdue,
+                "total_cabinets": len(wo_cabs),
+                "completed_cabinets": comp_cabs,
+                "pending_cabinets": len(wo_cabs) - comp_cabs,
+                "cabinets": wo_cabs,
+            })
+
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": max(1, (total + page_size - 1) // page_size),
+            "items": items,
+        }
 
 
 def get_codinh_import_logs(db: Session, limit: int = 50) -> List[ImportLog]:

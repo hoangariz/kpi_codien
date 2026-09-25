@@ -136,6 +136,40 @@ export default function CodinhPage() {
       .sort((a, b) => formatGroupName(a).localeCompare(formatGroupName(b), 'vi'));
   }, [statsData]);
 
+  // Employee count per cluster / group
+  const groupEmpCounts = useMemo(() => {
+    const counts = {};
+    if (statsData?.by_employee) {
+      statsData.by_employee.forEach((e) => {
+        const g = e.group_name || 'Khác';
+        counts[g] = (counts[g] || 0) + 1;
+      });
+    }
+    return counts;
+  }, [statsData]);
+
+  // Dynamic summary for employee table (reflects selected cluster filter if active)
+  const activeEmpSummary = useMemo(() => {
+    if (!selectedGroupFilter) return summary;
+    const grp = (statsData?.by_group || []).find((g) => g.key_name === selectedGroupFilter);
+    if (grp) {
+      return {
+        ...grp,
+        total_wos: grp.total_wos,
+        closed_wos: grp.closed_wos,
+        pending_wos: grp.pending_wos,
+        overdue_wos: grp.overdue_wos,
+        wo_rate: grp.wo_rate,
+        total_cabinets: grp.total_cabinets || 0,
+        completed_cabinets: grp.completed_cabinets || 0,
+        pending_cabinets: grp.pending_cabinets || 0,
+        cabinet_rate: grp.cabinet_rate || 0,
+        has_cabinets: hasCabinets,
+      };
+    }
+    return summary;
+  }, [selectedGroupFilter, statsData, summary, hasCabinets]);
+
   // Drilldown handler
   const handleOpenDrilldown = (metric, filterType = null, targetName = null) => {
     setDrilldownFilter({
@@ -632,45 +666,6 @@ export default function CodinhPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* Filter theo cụm trên tab nhân viên */}
-              {currentTab === 'employee' && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <Filter size={14} style={{ color: selectedGroupFilter ? '#8b5cf6' : 'var(--text-muted)' }} />
-                  <select
-                    className="form-control"
-                    value={selectedGroupFilter}
-                    onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                    style={{
-                      fontSize: '0.82rem',
-                      height: '32px',
-                      padding: '2px 8px',
-                      borderColor: selectedGroupFilter ? '#8b5cf6' : 'var(--border-color)',
-                      background: selectedGroupFilter ? 'rgba(139, 92, 246, 0.08)' : 'var(--bg-secondary)',
-                      fontWeight: selectedGroupFilter ? 700 : 400,
-                      color: selectedGroupFilter ? '#8b5cf6' : 'var(--text-primary)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <option value="">Tất cả Cụm / Nhóm ({uniqueGroups.length})</option>
-                    {uniqueGroups.map((grp) => (
-                      <option key={grp} value={grp}>
-                        {formatGroupName(grp)} ({grp})
-                      </option>
-                    ))}
-                  </select>
-                  {selectedGroupFilter && (
-                    <button
-                      onClick={() => setSelectedGroupFilter('')}
-                      className="btn btn-outline"
-                      style={{ padding: '2px 6px', height: '32px', fontSize: '0.75rem', borderColor: '#8b5cf6', color: '#8b5cf6' }}
-                      title="Xóa lọc cụm"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              )}
-
               <div className="search-input-box" style={{ width: '220px' }}>
                 <Search size={14} className="search-icon" />
                 <input
@@ -692,6 +687,119 @@ export default function CodinhPage() {
               </button>
             </div>
           </div>
+
+          {/* Quick Cluster / Group Filter Pills for Employee Tab */}
+          {currentTab === 'employee' && uniqueGroups.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 14px',
+                background: 'var(--bg-secondary)',
+                borderBottom: '1px solid var(--border-color)',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--text-secondary)',
+                  whiteSpace: 'nowrap',
+                  marginRight: '2px',
+                }}
+              >
+                <Filter size={14} style={{ color: '#8b5cf6' }} />
+                <span>Cụm / Nhóm:</span>
+              </div>
+
+              {/* All button */}
+              <button
+                type="button"
+                onClick={() => setSelectedGroupFilter('')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.8rem',
+                  fontWeight: !selectedGroupFilter ? 700 : 500,
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  border: !selectedGroupFilter ? '1px solid #7c3aed' : '1px solid var(--border-color)',
+                  background: !selectedGroupFilter ? '#8b5cf6' : 'var(--bg-primary)',
+                  color: !selectedGroupFilter ? '#ffffff' : 'var(--text-primary)',
+                  boxShadow: !selectedGroupFilter ? '0 2px 6px rgba(139, 92, 246, 0.35)' : 'none',
+                }}
+              >
+                <span>Tất cả</span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    background: !selectedGroupFilter ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-tertiary)',
+                    color: !selectedGroupFilter ? '#ffffff' : 'var(--text-muted)',
+                    fontWeight: 700,
+                  }}
+                >
+                  {statsData?.by_employee?.length || 0}
+                </span>
+              </button>
+
+              {/* Each group button */}
+              {uniqueGroups.map((grp) => {
+                const isSelected = selectedGroupFilter === grp;
+                const count = groupEmpCounts[grp] || 0;
+                const short = formatGroupName(grp);
+                return (
+                  <button
+                    key={grp}
+                    type="button"
+                    onClick={() => setSelectedGroupFilter(isSelected ? '' : grp)}
+                    title={`Lọc danh sách nhân viên thuộc cụm: ${grp}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.8rem',
+                      fontWeight: isSelected ? 700 : 500,
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      border: isSelected ? '1px solid #7c3aed' : '1px solid var(--border-color)',
+                      background: isSelected ? '#8b5cf6' : 'var(--bg-primary)',
+                      color: isSelected ? '#ffffff' : 'var(--text-primary)',
+                      boxShadow: isSelected ? '0 2px 6px rgba(139, 92, 246, 0.35)' : 'none',
+                    }}
+                  >
+                    <span>{short}</span>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        background: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-tertiary)',
+                        color: isSelected ? '#ffffff' : 'var(--text-muted)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Mobile swipe hint banner */}
           <div className="mobile-swipe-hint">
@@ -791,64 +899,64 @@ export default function CodinhPage() {
                   {/* Excel Summary Row on TOP */}
                   <tr className="excel-summary-row">
                     <td className="col-summary-label" colSpan={3} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                      TỔNG CỘNG:
+                      {selectedGroupFilter ? `TỔNG (${formatGroupName(selectedGroupFilter)}):` : 'TỔNG CỘNG:'}
                     </td>
                     <td
                       className="cell-num cell-clickable"
-                      onClick={() => handleOpenDrilldown('total')}
+                      onClick={() => handleOpenDrilldown('total', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
                       style={{ width: '75px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800, cursor: 'pointer' }}
-                      title="Nhấn để xem chi tiết Tổng WO"
+                      title={`Nhấn để xem chi tiết Tổng WO ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                     >
-                      {summary.total_wos ?? 0}
+                      {activeEmpSummary.total_wos ?? 0}
                     </td>
                     <td
                       className="cell-num cell-closed cell-clickable"
-                      onClick={() => handleOpenDrilldown('closed')}
+                      onClick={() => handleOpenDrilldown('closed', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
                       style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
-                      title="Nhấn để xem chi tiết WO Đã Đóng"
+                      title={`Nhấn để xem chi tiết WO Đã Đóng ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                     >
-                      {summary.closed_wos ?? 0}
+                      {activeEmpSummary.closed_wos ?? 0}
                     </td>
                     <td className="cell-num" style={{ width: '75px', fontSize: '0.95rem', fontWeight: 800, color: 'var(--success-dark)' }}>
-                      {summary.wo_rate ?? 0}%
+                      {activeEmpSummary.wo_rate ?? 0}%
                     </td>
                     <td
                       className="cell-num cell-pending cell-clickable"
-                      onClick={() => handleOpenDrilldown('pending')}
+                      onClick={() => handleOpenDrilldown('pending', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
                       style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
-                      title="Nhấn để xem chi tiết WO Đang Tồn"
+                      title={`Nhấn để xem chi tiết WO Đang Tồn ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                     >
-                      {summary.pending_wos ?? 0}
+                      {activeEmpSummary.pending_wos ?? 0}
                     </td>
                     <td
                       className="cell-num cell-overdue cell-clickable"
-                      onClick={() => handleOpenDrilldown('overdue')}
+                      onClick={() => handleOpenDrilldown('overdue', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
                       style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
-                      title="Nhấn để xem chi tiết WO Quá Hạn"
+                      title={`Nhấn để xem chi tiết WO Quá Hạn ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                     >
-                      {summary.overdue_wos ?? 0}
+                      {activeEmpSummary.overdue_wos ?? 0}
                     </td>
 
                     {hasCabinets && (
                       <>
                         <td
                           className="cell-num cell-clickable"
-                          onClick={() => handleOpenDrilldown('cabinet_total')}
+                          onClick={() => handleOpenDrilldown('cabinet_total', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
                           style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6', cursor: 'pointer' }}
-                          title="Nhấn để xem chi tiết Tổng Tủ THC"
+                          title={`Nhấn để xem chi tiết Tổng Tủ THC ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                         >
-                          {summary.total_cabinets ?? 0}
+                          {activeEmpSummary.total_cabinets ?? 0}
                         </td>
                         <td
                           className="cell-num cell-clickable"
-                          onClick={() => handleOpenDrilldown('cabinet_completed')}
+                          onClick={() => handleOpenDrilldown('cabinet_completed', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
                           style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
-                          title="Nhấn để xem chi tiết Tủ THC Đã Xong"
+                          title={`Nhấn để xem chi tiết Tủ THC Đã Xong ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                         >
-                          {summary.completed_cabinets ?? 0}
+                          {activeEmpSummary.completed_cabinets ?? 0}
                         </td>
                         <td className="cell-num" style={{ width: '80px', fontSize: '0.95rem', fontWeight: 800, color: '#8b5cf6' }}>
-                          {summary.cabinet_rate ?? 0}%
+                          {activeEmpSummary.cabinet_rate ?? 0}%
                         </td>
                       </>
                     )}
@@ -858,7 +966,7 @@ export default function CodinhPage() {
                         <div
                           className="progress-bar-fill"
                           style={{
-                            width: `${Math.min(hasCabinets ? summary.cabinet_rate : summary.wo_rate, 100)}%`,
+                            width: `${Math.min(hasCabinets ? activeEmpSummary.cabinet_rate : activeEmpSummary.wo_rate, 100)}%`,
                             background: hasCabinets ? '#8b5cf6' : 'var(--brand-primary)',
                           }}
                         />

@@ -11,7 +11,8 @@ import {
   ChevronDown,
   ChevronRight,
   CheckCircle2,
-  Cable
+  Cable,
+  Eye
 } from 'lucide-react';
 import { codinhApi } from '../api/codinhApi';
 import { formatGroupName } from '../utils/groupFormat';
@@ -477,6 +478,10 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                   >
                     Còn lại (H) {renderSortIndicator('thoi_gian_con_lai')}
                   </th>
+
+                  <th style={{ width: '85px', minWidth: '80px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    Thao tác
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -627,12 +632,31 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                             ? Number(t.thoi_gian_con_lai).toFixed(1)
                             : '--'}
                         </td>
+
+                        {/* Thao tác Chi tiết */}
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '2.5px 6px' }}>
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => onSelectTask && onSelectTask(t)}
+                            title="Xem chi tiết đầy đủ, lịch sử và ghi chú WO"
+                            style={{
+                              padding: '2px 8px',
+                              fontSize: '0.75rem',
+                              gap: '3px',
+                              height: '24px',
+                              borderColor: '#8b5cf6',
+                              color: '#8b5cf6',
+                            }}
+                          >
+                            <Eye size={12} /> Chi tiết
+                          </button>
+                        </td>
                       </tr>
 
                       {/* EXPANDED ROW: CHILD CABINETS THC */}
                       {isExpanded && hasCabs && (
                         <tr style={{ background: 'rgba(139, 92, 246, 0.04)' }}>
-                          <td colSpan={11} style={{ padding: '8px 24px 14px 48px' }}>
+                          <td colSpan={12} style={{ padding: '8px 24px 14px 48px' }}>
                             <div
                               style={{
                                 border: '1px solid rgba(139, 92, 246, 0.25)',

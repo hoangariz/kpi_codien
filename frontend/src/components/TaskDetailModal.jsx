@@ -131,7 +131,7 @@ export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
   const isOverdue = task.thoi_gian_con_lai < 0;
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100 }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 2000 }}>
       <div 
         className="modal-content" 
         onClick={(e) => e.stopPropagation()}
