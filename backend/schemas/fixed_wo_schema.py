@@ -9,6 +9,7 @@ class FixedWoSummary(BaseModel):
     pending: int = 0
     overdue: int = 0
     closed_today: int = 0
+    closed_yesterday: int = 0
     closed_last_7_days: int = 0
     cho_cd_tiep_nhan: int = 0
     ft_hoan_thanh: int = 0
@@ -30,6 +31,7 @@ class FixedWoBreakdownItem(BaseModel):
     pending: int = 0
     overdue: int = 0
     closed_today: int = 0
+    closed_yesterday: int = 0
     closed_last_7_days: int = 0
     cho_cd_tiep_nhan: int = 0
     ft_hoan_thanh: int = 0

@@ -145,6 +145,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       'STT',
       'Ghi chú',
       'Mã công việc',
+      'Mã trạm',
       'Loại công việc',
       'Nội dung công việc',
       'Mô tả',
@@ -153,14 +154,14 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       'Nhân viên',
       'Thời điểm bắt đầu thực hiện',
       'Thời điểm yêu cầu kết thúc',
-      'Thời gian còn lại (H)',
-      'Mã trạm'
+      'Thời gian còn lại (H)'
     ];
 
     const rows = items.map((t, idx) => [
       idx + 1,
       `"${(t.latest_note || '').replace(/"/g, '""')}"`,
       `"${t.ma_cong_viec || ''}"`,
+      `"${t.station_code || ''}"`,
       `"${(t.loai_cong_viec || '').replace(/"/g, '""')}"`,
       `"${(t.noi_dung_cong_viec || '').replace(/"/g, '""')}"`,
       `"${(t.ghi_chu || '').replace(/"/g, '""')}"`,
@@ -169,8 +170,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       `"${t.employee_assigned_name || ''}"`,
       `"${formatDateTime(t.thoi_diem_bat_dau_thuc_hien)}"`,
       `"${formatDateTime(t.thoi_diem_yeu_cau_ket_thuc)}"`,
-      t.thoi_gian_con_lai ?? '',
-      `"${t.station_code || ''}"`
+      t.thoi_gian_con_lai ?? ''
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -236,7 +236,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                 filterInfo.metric === 'pending' ? 'badge-warning' : 
                 filterInfo.metric === 'cho_cd_tiep_nhan' ? 'badge-purple' :
                 filterInfo.metric === 'ft_hoan_thanh' ? 'badge-cyan' :
-                filterInfo.metric === 'closed_today' ? 'badge-success' :
+                filterInfo.metric === 'closed_today' || filterInfo.metric === 'closed_yesterday' ? 'badge-success' :
                 'badge-info'
               }`} style={{ fontWeight: 800, fontSize: '0.85rem' }}>
                 {filterInfo.metricLabel || 'Tất Cả'}
@@ -380,6 +380,14 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                   </th>
 
                   <th 
+                    onClick={() => handleSort('station_code')}
+                    style={{ width: '85px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    title="Nhấn để sắp xếp theo Mã trạm"
+                  >
+                    Mã trạm {renderSortIndicator('station_code')}
+                  </th>
+
+                  <th 
                     onClick={() => handleSort('loai_cong_viec')}
                     style={{ width: '170px', minWidth: '150px', maxWidth: '200px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                     title="Nhấn để sắp xếp theo Loại công việc"
@@ -451,14 +459,6 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                     Thời gian còn lại (H) {renderSortIndicator('thoi_gian_con_lai')}
                   </th>
 
-                  <th 
-                    onClick={() => handleSort('station_code')}
-                    style={{ width: '85px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Mã trạm"
-                  >
-                    Mã trạm {renderSortIndicator('station_code')}
-                  </th>
-
                   <th style={{ width: '90px', minWidth: '90px', whiteSpace: 'nowrap', textAlign: 'center' }}>Thao tác</th>
                 </tr>
               </thead>
@@ -510,13 +510,26 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                           whiteSpace: 'nowrap', 
                           fontWeight: 700, 
                           fontFamily: 'var(--font-mono)', 
-                          color: 'var(--brand-primary)',
+                          color: isOverdue ? 'var(--danger-dark)' : 'var(--brand-primary)',
                           cursor: 'pointer'
                         }}
                         title={t.ma_cong_viec}
                         onClick={() => onSelectTask && onSelectTask(t)}
                       >
                         {t.ma_cong_viec}
+                      </td>
+
+                      {/* 2.5 Mã trạm */}
+                      <td 
+                        className="cell-num" 
+                        style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}
+                        title={t.station_code || '--'}
+                      >
+                        {t.station_code ? (
+                          <span className="badge badge-neutral" style={{ fontSize: '0.72rem', padding: '1px 6px' }}>
+                            {t.station_code}
+                          </span>
+                        ) : '--'}
                       </td>
 
                       {/* 3. Loại công việc */}
@@ -590,7 +603,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                         }}
                         title={t.employee_assigned_name || 'Chưa gán'}
                       >
-                        <strong style={{ color: t.employee_assigned_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        <strong style={{ color: isOverdue ? 'var(--danger-dark)' : (t.employee_assigned_name ? 'var(--text-primary)' : 'var(--text-muted)') }}>
                           {t.employee_assigned_name || 'Chưa gán'}
                         </strong>
                       </td>
@@ -630,19 +643,6 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                         title={t.thoi_gian_con_lai != null ? `${t.thoi_gian_con_lai} giờ` : '--'}
                       >
                         {t.thoi_gian_con_lai != null ? t.thoi_gian_con_lai : '--'}
-                      </td>
-
-                      {/* 11. Mã trạm */}
-                      <td 
-                        className="cell-num" 
-                        style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}
-                        title={t.station_code || '--'}
-                      >
-                        {t.station_code ? (
-                          <span className="badge badge-neutral" style={{ fontSize: '0.72rem', padding: '1px 6px' }}>
-                            {t.station_code}
-                          </span>
-                        ) : '--'}
                       </td>
 
                       {/* 12. Thao tác */}

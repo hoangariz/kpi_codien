@@ -303,6 +303,7 @@ export default function MaintenanceSpreadsheetTable({
       'Tồn Việc',
       'Quá Hạn',
       'Đóng Hôm Nay',
+      'Đóng Hôm Qua',
       'Đóng Tuần Qua',
       'Tiến Độ (%)'
     ];
@@ -316,6 +317,7 @@ export default function MaintenanceSpreadsheetTable({
       row.pending,
       row.overdue,
       row.closed_today || 0,
+      row.closed_yesterday || 0,
       row.closed_last_7_days || 0,
       `${row.completion_rate}%`
     ]);
@@ -329,6 +331,7 @@ export default function MaintenanceSpreadsheetTable({
       summary.pending ?? 0,
       summary.overdue ?? 0,
       summary.closed_today ?? 0,
+      summary.closed_yesterday ?? 0,
       summary.closed_last_7_days ?? 0,
       `${summary.completion_rate ?? 0}%`
     ]);
@@ -422,6 +425,16 @@ export default function MaintenanceSpreadsheetTable({
         >
           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Nay</span>
           <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>+{summary.closed_today ?? 0}</strong>
+        </div>
+
+        <div 
+          className="cell-clickable"
+          onClick={() => handleCellClick('closed_yesterday', 'Đóng Hôm Qua')}
+          title="Nhấn để xem danh sách việc đóng hôm qua"
+          style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}
+        >
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Qua</span>
+          <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>+{summary.closed_yesterday ?? 0}</strong>
         </div>
 
         <div 
@@ -993,6 +1006,13 @@ export default function MaintenanceSpreadsheetTable({
                 </th>
                 <th 
                   style={{ width: '85px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleSort('closed_yesterday')}
+                  title="Nhấn để sắp xếp theo Đóng Hôm Qua"
+                >
+                  Đóng Hôm Qua{renderSortIndicator('closed_yesterday')}
+                </th>
+                <th 
+                  style={{ width: '85px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                   onClick={() => handleSort('closed_last_7_days')}
                   title="Nhấn để sắp xếp theo Đóng Tuần Qua"
                 >
@@ -1067,6 +1087,14 @@ export default function MaintenanceSpreadsheetTable({
                   +{summary.closed_today ?? 0}
                 </td>
                 <td 
+                  className="cell-num cell-yesterday cell-clickable" 
+                  style={{ width: '85px', fontSize: '0.98rem' }}
+                  title="Nhấn để xem toàn bộ việc đóng hôm qua"
+                  onClick={() => handleCellClick('closed_yesterday', 'Đóng Hôm Qua')}
+                >
+                  +{summary.closed_yesterday ?? 0}
+                </td>
+                <td 
                   className="cell-num cell-week cell-clickable" 
                   style={{ width: '85px', fontSize: '0.98rem' }}
                   title="Nhấn để xem toàn bộ việc đóng 7 ngày qua"
@@ -1095,7 +1123,7 @@ export default function MaintenanceSpreadsheetTable({
 
               {sortedList.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
                     Không tìm thấy bản ghi nào phù hợp với bộ lọc tìm kiếm.
                   </td>
                 </tr>
@@ -1177,6 +1205,14 @@ export default function MaintenanceSpreadsheetTable({
                         onClick={() => handleCellClick('closed_today', 'Đóng Hôm Nay', row)}
                       >
                         {row.closed_today > 0 ? `+${row.closed_today}` : '0'}
+                      </td>
+                      <td 
+                        className="cell-num cell-yesterday cell-clickable" 
+                        style={{ width: '85px', whiteSpace: 'nowrap' }}
+                        title={`Nhấn để xem ${row.closed_yesterday || 0} việc đóng hôm qua của ${displayName}`}
+                        onClick={() => handleCellClick('closed_yesterday', 'Đóng Hôm Qua', row)}
+                      >
+                        {(row.closed_yesterday || 0) > 0 ? `+${row.closed_yesterday}` : '0'}
                       </td>
                       <td 
                         className="cell-num cell-week cell-clickable" 

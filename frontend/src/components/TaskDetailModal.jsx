@@ -128,6 +128,7 @@ export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
   };
 
   const activeBoardsCount = taskBoardIds.size;
+  const isOverdue = task.thoi_gian_con_lai < 0;
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100 }}>
@@ -161,7 +162,10 @@ export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge badge-info" style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.85rem' }}>
+              <span 
+                className={`badge ${isOverdue ? 'badge-danger' : 'badge-info'}`} 
+                style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.85rem' }}
+              >
                 {task.ma_cong_viec}
               </span>
               <span className="badge badge-neutral" style={{ fontSize: '0.8rem' }}>
@@ -304,7 +308,7 @@ export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
             <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhân viên (FT)</span>
-              <strong style={{ fontSize: '0.92rem', color: 'var(--brand-primary)' }}>
+              <strong style={{ fontSize: '0.92rem', color: isOverdue ? 'var(--danger-dark)' : 'var(--brand-primary)' }}>
                 {task.employee_assigned_name || 'Chưa gán'}
               </strong>
             </div>

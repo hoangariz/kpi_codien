@@ -169,7 +169,7 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
     return cache
 
 
-def process_excel_import(import_id: int, file_path: str):
+def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True):
     """
     Main ETL function executed in background.
     Optimized for 100k+ rows with fast parsing, primary key deduplication, and bulk chunk insert.
@@ -263,9 +263,9 @@ def process_excel_import(import_id: int, file_path: str):
         import_record.total_rows = total_rows
         db.commit()
 
-        # Step 2: Filter out SPM and SPM_VTNET rows
+        # Step 2: Filter out SPM and SPM_VTNET rows (only if filter_spm is True)
         filtered_out_count = 0
-        if "Hệ thống" in df.columns:
+        if filter_spm and "Hệ thống" in df.columns:
             sys_series = df["Hệ thống"].fillna("").astype(str).str.strip().str.upper()
             is_spm = sys_series.isin(["SPM", "SPM_VTNET"])
             filtered_out_count = int(is_spm.sum())

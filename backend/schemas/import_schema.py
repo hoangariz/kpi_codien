@@ -20,6 +20,7 @@ class ImportLogResponse(BaseModel):
     status: str
     progress_percent: int
     error_message: Optional[str] = None
+    filter_spm: Optional[int] = 1
 
     @field_serializer("imported_at")
     def serialize_imported_at(self, dt: datetime, _info):

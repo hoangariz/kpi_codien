@@ -236,6 +236,7 @@ def get_fixed_wo_stats(
 
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+    yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
 
     # All WO codes registered in this report
@@ -325,6 +326,20 @@ def get_fixed_wo_stats(
                     and_(
                         Task.trang_thai.in_(CLOSED_STATUSES),
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
+                    ),
+                    1
+                ),
+                else_=0
+            )
+        ).label("closed_yesterday"),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Task.trang_thai.in_(CLOSED_STATUSES),
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= seven_days_ago
                     ),
                     1
@@ -364,6 +379,7 @@ def get_fixed_wo_stats(
     pending_count = overall_agg.pending or 0 if overall_agg else 0
     overdue_count = overall_agg.overdue or 0 if overall_agg else 0
     closed_today_count = overall_agg.closed_today or 0 if overall_agg else 0
+    closed_yesterday_count = overall_agg.closed_yesterday or 0 if overall_agg else 0
     closed_7_days_count = overall_agg.closed_last_7_days or 0 if overall_agg else 0
     cho_cd_count = overall_agg.cho_cd_tiep_nhan or 0 if overall_agg else 0
     ft_ht_count = overall_agg.ft_hoan_thanh or 0 if overall_agg else 0
@@ -384,6 +400,7 @@ def get_fixed_wo_stats(
         "pending": pending_count,
         "overdue": overdue_count,
         "closed_today": closed_today_count,
+        "closed_yesterday": closed_yesterday_count,
         "closed_last_7_days": closed_7_days_count,
         "cho_cd_tiep_nhan": cho_cd_count,
         "ft_hoan_thanh": ft_ht_count,
@@ -430,6 +447,20 @@ def get_fixed_wo_stats(
                 else_=0
             )
         ).label("closed_today"),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Task.trang_thai.in_(CLOSED_STATUSES),
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
+                    ),
+                    1
+                ),
+                else_=0
+            )
+        ).label("closed_yesterday"),
         func.sum(
             case(
                 (
@@ -507,6 +538,7 @@ def get_fixed_wo_stats(
         pe = r.pending or 0
         ov = r.overdue or 0
         ct = r.closed_today or 0
+        cy = r.closed_yesterday or 0
         c7 = r.closed_last_7_days or 0
         c_cd = r.cho_cd_tiep_nhan or 0
         ft_ht = r.ft_hoan_thanh or 0
@@ -530,6 +562,7 @@ def get_fixed_wo_stats(
             "pending": pe,
             "overdue": ov,
             "closed_today": ct,
+            "closed_yesterday": cy,
             "closed_last_7_days": c7,
             "cho_cd_tiep_nhan": c_cd,
             "ft_hoan_thanh": ft_ht,
@@ -569,6 +602,7 @@ def get_fixed_wo_stats(
                 "pending": unmatched_count,
                 "overdue": 0,
                 "closed_today": 0,
+                "closed_yesterday": 0,
                 "closed_last_7_days": 0,
                 "cho_cd_tiep_nhan": 0,
                 "ft_hoan_thanh": 0,
@@ -625,6 +659,20 @@ def get_fixed_wo_stats(
                 else_=0
             )
         ).label("closed_today"),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Task.trang_thai.in_(CLOSED_STATUSES),
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
+                    ),
+                    1
+                ),
+                else_=0
+            )
+        ).label("closed_yesterday"),
         func.sum(
             case(
                 (
@@ -702,6 +750,7 @@ def get_fixed_wo_stats(
         pe = r.pending or 0
         ov = r.overdue or 0
         ct = r.closed_today or 0
+        cy = r.closed_yesterday or 0
         c7 = r.closed_last_7_days or 0
         c_cd = r.cho_cd_tiep_nhan or 0
         ft_ht = r.ft_hoan_thanh or 0
@@ -725,6 +774,7 @@ def get_fixed_wo_stats(
             "pending": pe,
             "overdue": ov,
             "closed_today": ct,
+            "closed_yesterday": cy,
             "closed_last_7_days": c7,
             "cho_cd_tiep_nhan": c_cd,
             "ft_hoan_thanh": ft_ht,
@@ -764,6 +814,7 @@ def get_fixed_wo_stats(
                 "pending": unmatched_count,
                 "overdue": 0,
                 "closed_today": 0,
+                "closed_yesterday": 0,
                 "closed_last_7_days": 0,
                 "cho_cd_tiep_nhan": 0,
                 "ft_hoan_thanh": 0,
@@ -829,6 +880,7 @@ def get_fixed_wo_tasks(
 
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+    yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
 
     # 1. Toàn bộ mã WO thuộc báo cáo cố định này
@@ -864,6 +916,13 @@ def get_fixed_wo_tasks(
             Task.trang_thai.in_(CLOSED_STATUSES),
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
             func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
+        )
+    elif metric == "closed_yesterday":
+        query = query.filter(
+            Task.trang_thai.in_(CLOSED_STATUSES),
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
         )
     elif metric == "closed_last_7_days":
         query = query.filter(

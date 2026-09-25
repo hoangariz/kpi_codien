@@ -1,11 +1,11 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  CheckSquare, 
-  Wrench, 
-  UploadCloud, 
-  History, 
-  Sun, 
+import {
+  LayoutDashboard,
+  CheckSquare,
+  Wrench,
+  UploadCloud,
+  History,
+  Sun,
   Moon,
   Activity,
   Settings
@@ -27,7 +27,7 @@ export default function Sidebar({ activeTab, setActiveTab, theme, toggleTheme })
           <Activity size={24} />
         </div>
         <div className="brand-text">
-          <h1>KPI Cơ Điện</h1>
+          <h1>KPI</h1>
           <p>Hệ Thống Theo Dõi VCC</p>
         </div>
       </div>

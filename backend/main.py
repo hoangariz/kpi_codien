@@ -29,6 +29,7 @@ def auto_migrate_db():
             "ALTER TABLE import_logs ADD COLUMN file_size_bytes INTEGER DEFAULT 0",
             "ALTER TABLE import_logs ADD COLUMN is_active INTEGER DEFAULT 0",
             "ALTER TABLE tracking_boards ADD COLUMN loai_cong_viec VARCHAR(255)",
+            "ALTER TABLE import_logs ADD COLUMN filter_spm INTEGER DEFAULT 1",
         ]:
             try:
                 conn.execute(text(col_def))

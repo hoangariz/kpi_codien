@@ -324,6 +324,7 @@ def get_special_maintenance_stats(
 
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+    yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
 
     import calendar
@@ -435,6 +436,20 @@ def get_special_maintenance_stats(
                     else_=0
                 )
             ).label("closed_today"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai.in_(CLOSED_STATUSES),
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("closed_yesterday"),
             func.sum(
                 case(
                     (
@@ -553,6 +568,7 @@ def get_special_maintenance_stats(
             pe = r.pending or 0
             ov = r.overdue or 0
             ct = r.closed_today or 0
+            cy = r.closed_yesterday or 0
             c7 = r.closed_last_7_days or 0
             c_cd = r.cho_cd_tiep_nhan or 0
             ft_ht = r.ft_hoan_thanh or 0
@@ -576,6 +592,7 @@ def get_special_maintenance_stats(
                 "pending": pe,
                 "overdue": ov,
                 "closed_today": ct,
+                "closed_yesterday": cy,
                 "closed_last_7_days": c7,
                 "cho_cd_tiep_nhan": c_cd,
                 "ft_hoan_thanh": ft_ht,
@@ -634,6 +651,20 @@ def get_special_maintenance_stats(
                     else_=0
                 )
             ).label("closed_today"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            Task.trang_thai.in_(CLOSED_STATUSES),
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                            func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("closed_yesterday"),
             func.sum(
                 case(
                     (
@@ -711,6 +742,7 @@ def get_special_maintenance_stats(
             pe = r.pending or 0
             ov = r.overdue or 0
             ct = r.closed_today or 0
+            cy = r.closed_yesterday or 0
             c7 = r.closed_last_7_days or 0
             c_cd = r.cho_cd_tiep_nhan or 0
             ft_ht = r.ft_hoan_thanh or 0
@@ -734,6 +766,7 @@ def get_special_maintenance_stats(
                 "pending": pe,
                 "overdue": ov,
                 "closed_today": ct,
+                "closed_yesterday": cy,
                 "closed_last_7_days": c7,
                 "cho_cd_tiep_nhan": c_cd,
                 "ft_hoan_thanh": ft_ht,
@@ -763,6 +796,7 @@ def get_special_maintenance_stats(
         sum_pending = sum(x["pending"] for x in by_group)
         sum_overdue = sum(x["overdue"] for x in by_group)
         sum_closed_today = sum(x["closed_today"] for x in by_group)
+        sum_closed_yesterday = sum(x.get("closed_yesterday", 0) for x in by_group)
         sum_closed_7_days = sum(x["closed_last_7_days"] for x in by_group)
         sum_cho_cd_tiep_nhan = sum(x["cho_cd_tiep_nhan"] for x in by_group)
         sum_ft_hoan_thanh = sum(x["ft_hoan_thanh"] for x in by_group)
@@ -782,6 +816,7 @@ def get_special_maintenance_stats(
             "pending": sum_pending,
             "overdue": sum_overdue,
             "closed_today": sum_closed_today,
+            "closed_yesterday": sum_closed_yesterday,
             "closed_last_7_days": sum_closed_7_days,
             "cho_cd_tiep_nhan": sum_cho_cd_tiep_nhan,
             "ft_hoan_thanh": sum_ft_hoan_thanh,
@@ -987,6 +1022,7 @@ def get_special_maintenance_tasks(
 
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+    yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
 
     cat = None
@@ -1073,6 +1109,15 @@ def get_special_maintenance_tasks(
                 Task.trang_thai.in_(CLOSED_STATUSES),
                 func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
                 func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= today_start
+            )
+        )
+    elif metric == "closed_yesterday":
+        filters.append(
+            and_(
+                Task.trang_thai.in_(CLOSED_STATUSES),
+                func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
+                func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= yesterday_start,
+                func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) < today_start
             )
         )
     elif metric == "closed_last_7_days":

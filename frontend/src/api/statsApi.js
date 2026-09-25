@@ -223,6 +223,7 @@ export const statsApi = {
     // 2. Metric Filter
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     if (params.metric === 'closed') {
@@ -242,6 +243,13 @@ export const statsApi = {
         const dateStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
         const ftDate = dateStr ? new Date(dateStr) : null;
         return ftDate && ftDate >= todayStart;
+      });
+    } else if (params.metric === 'closed_yesterday') {
+      items = items.filter(t => {
+        if (!isClosedStatus(t.trang_thai)) return false;
+        const dateStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
+        const ftDate = dateStr ? new Date(dateStr) : null;
+        return ftDate && ftDate >= yesterdayStart && ftDate < todayStart;
       });
     } else if (params.metric === 'closed_last_7_days') {
       items = items.filter(t => {

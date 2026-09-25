@@ -20,6 +20,8 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
   const [currentImportId, setCurrentImportId] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [filterSpm, setFilterSpm] = useState(false); // Default: OFF (don't filter)
+  const [uploadProgress, setUploadProgress] = useState(0); // 0-100 for chunk upload progress
 
   const fileInputRef = useRef(null);
 
@@ -61,6 +63,7 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
     setFile(f);
     setImportStatus(null);
     setErrorMessage('');
+    setUploadProgress(0);
   };
 
   const handleDrop = (e) => {
@@ -76,14 +79,19 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
     setUploading(true);
     setErrorMessage('');
     setImportStatus(null);
+    setUploadProgress(0);
 
     try {
-      const res = await importsApi.uploadFile(file);
+      const res = await importsApi.uploadFile(file, filterSpm, (progress) => {
+        setUploadProgress(progress);
+      });
       setCurrentImportId(res.id);
       setImportStatus(res);
     } catch (err) {
       setUploading(false);
-      setErrorMessage(err.response?.data?.detail || err.message || 'Lỗi tải file');
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (err.message || 'Lỗi tải file');
+      setErrorMessage(msg + '\n\nMẹo: Nếu gặp lỗi timeout từ Cloudflare, hãy thử lại. Hệ thống sẽ tự động chia nhỏ file và gửi lại từng phần.');
     }
   };
 
@@ -104,8 +112,8 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
         </h2>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
           Hệ thống hỗ trợ file Excel công việc lên tới <strong>100.000+ dòng</strong>. 
-          Dữ liệu được xử lý ngầm (background bulk upsert): tự động loại bỏ các dòng Hệ thống SPM/SPM_VTNET, 
-          chuẩn hóa danh mục, phát hiện thay đổi tiến độ để ghi vết lịch sử và bảo toàn nguyên vẹn mọi ghi chú riêng của bạn.
+          Dữ liệu được xử lý ngầm (background bulk upsert): chuẩn hóa danh mục, phát hiện thay đổi tiến độ để ghi vết lịch sử và bảo toàn nguyên vẹn mọi ghi chú riêng của bạn.
+          {filterSpm && <span style={{ color: 'var(--warning-dark)' }}> Tự động loại bỏ các dòng Hệ thống SPM/SPM_VTNET.</span>}
         </p>
       </div>
 
@@ -153,9 +161,55 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
         )}
       </div>
 
-      {/* Upload Action Button */}
+      {/* SPM Filter Toggle + Upload Button */}
       {file && !uploading && (!importStatus || importStatus.status !== 'PROCESSING') && (
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          {/* SPM toggle */}
+          <div 
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              padding: '8px 16px', 
+              background: filterSpm ? 'rgba(245, 158, 11, 0.1)' : 'var(--bg-tertiary)', 
+              borderRadius: 'var(--radius-md)', 
+              border: `1px solid ${filterSpm ? 'var(--warning)' : 'var(--border-color)'}`,
+              marginBottom: '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              userSelect: 'none'
+            }}
+            onClick={() => setFilterSpm(!filterSpm)}
+          >
+            <input 
+              type="checkbox" 
+              checked={filterSpm}
+              onChange={() => setFilterSpm(!filterSpm)}
+              style={{ 
+                width: '16px', 
+                height: '16px', 
+                cursor: 'pointer',
+                accentColor: 'var(--warning-dark)'
+              }}
+            />
+            <Filter size={15} style={{ color: filterSpm ? 'var(--warning-dark)' : 'var(--text-muted)' }} />
+            <span style={{ 
+              fontSize: '0.85rem', 
+              fontWeight: 600,
+              color: filterSpm ? 'var(--warning-dark)' : 'var(--text-secondary)'
+            }}>
+              Lọc bỏ SPM / SPM_VTNET
+            </span>
+            <span style={{ 
+              fontSize: '0.72rem', 
+              color: 'var(--text-muted)',
+              fontWeight: 400 
+            }}>
+              {filterSpm ? '(Đang lọc)' : '(Không lọc)'}
+            </span>
+          </div>
+
+          <br />
           <button
             className="btn btn-primary"
             onClick={handleUploadSubmit}
@@ -181,22 +235,32 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={18} className="spin" style={{ color: 'var(--brand-primary)' }} />
-              <strong>Đang đọc và đồng bộ dữ liệu vào cơ sở dữ liệu...</strong>
+              <strong>
+                {importStatus?.status === 'PROCESSING' || importStatus?.status === 'PENDING'
+                  ? 'Đang đọc và đồng bộ dữ liệu vào cơ sở dữ liệu...'
+                  : uploadProgress < 100
+                    ? `Đang tải lên file (${uploadProgress}%)...`
+                    : 'Đang chờ xử lý dữ liệu...'
+                }
+              </strong>
             </div>
             <span style={{ fontWeight: 800, color: 'var(--brand-primary)' }}>
-              {importStatus?.progress_percent || 10}%
+              {importStatus?.progress_percent || uploadProgress || 10}%
             </span>
           </div>
 
           <div className="progress-bar-outer">
             <div 
               className="progress-bar-inner" 
-              style={{ width: `${importStatus?.progress_percent || 10}%` }} 
+              style={{ width: `${importStatus?.progress_percent || uploadProgress || 10}%` }} 
             />
           </div>
 
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Hệ thống đang chuẩn hóa danh mục, kiểm tra các bản ghi và ghi nhận vết thay đổi. Quá trình xử lý chạy ngầm và không làm gián đoạn các thao tác khác.
+            {filterSpm 
+              ? 'Hệ thống đang chuẩn hóa danh mục, lọc bỏ SPM/SPM_VTNET, kiểm tra các bản ghi và ghi nhận vết thay đổi.'
+              : 'Hệ thống đang chuẩn hóa danh mục, kiểm tra các bản ghi và ghi nhận vết thay đổi. Quá trình xử lý chạy ngầm và không làm gián đoạn các thao tác khác.'
+            }
           </p>
         </div>
       )}
@@ -239,10 +303,12 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
               <strong style={{ fontSize: '1.25rem' }}>{importStatus.total_rows.toLocaleString()}</strong>
             </div>
 
-            <div style={{ background: 'var(--warning-light)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--warning-dark)' }}>
-              <span style={{ fontSize: '0.72rem', display: 'block' }}>Loại Bỏ SPM</span>
-              <strong style={{ fontSize: '1.25rem' }}>{importStatus.filtered_out_count.toLocaleString()}</strong>
-            </div>
+            {importStatus.filter_spm === 1 && (
+              <div style={{ background: 'var(--warning-light)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--warning-dark)' }}>
+                <span style={{ fontSize: '0.72rem', display: 'block' }}>Loại Bỏ SPM</span>
+                <strong style={{ fontSize: '1.25rem' }}>{importStatus.filtered_out_count.toLocaleString()}</strong>
+              </div>
+            )}
 
             <div style={{ background: 'var(--success-light)', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--success-dark)' }}>
               <span style={{ fontSize: '0.72rem', display: 'block' }}>Thêm Mới</span>
@@ -299,6 +365,26 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
           <p style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
             {importStatus?.error_message || errorMessage}
           </p>
+          {/* Retry button */}
+          <div style={{ marginTop: '12px' }}>
+            <button
+              className="btn btn-outline"
+              onClick={() => {
+                setErrorMessage('');
+                setImportStatus(null);
+                handleUploadSubmit();
+              }}
+              style={{ 
+                borderColor: 'var(--danger)', 
+                color: 'var(--danger-dark)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <RefreshCw size={14} /> Thử Lại
+            </button>
+          </div>
         </div>
       )}
     </div>

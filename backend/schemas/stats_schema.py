@@ -56,6 +56,7 @@ class MaintenanceStatItem(BaseModel):
     pending: int           # Tồn (chưa đóng)
     overdue: int           # Quá hạn
     closed_today: int      # Đóng hôm nay
+    closed_yesterday: int = 0 # Đóng hôm qua
     closed_last_7_days: int # Đóng tuần vừa qua
     completion_rate: float # Tỉ lệ đóng (%)
 

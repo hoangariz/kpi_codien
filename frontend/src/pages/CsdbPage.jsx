@@ -145,7 +145,7 @@ export default function CsdbPage() {
           }} />
           <span>Hệ thống đang trong quá trình xây dựng{dots}</span>
           <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Clock size={12} /> Dự kiến: Tháng 10 2026
+            <Clock size={12} /> Dự kiến: Tháng 10 / 2026
           </span>
         </div>
       </div>

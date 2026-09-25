@@ -51,6 +51,7 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
       'Tồn Việc',
       'Quá Hạn',
       'Đóng Hôm Nay',
+      'Đóng Hôm Qua',
       'Đóng Tuần Qua',
       'Tỉ Lệ Đóng (%)'
     ];
@@ -63,6 +64,7 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
       row.pending,
       row.overdue,
       row.closed_today,
+      row.closed_yesterday || 0,
       row.closed_last_7_days,
       `${row.completion_rate}%`
     ]);
@@ -75,6 +77,7 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
       summary.pending ?? 0,
       summary.overdue ?? 0,
       summary.closed_today ?? 0,
+      summary.closed_yesterday ?? 0,
       summary.closed_last_7_days ?? 0,
       `${summary.completion_rate ?? 0}%`
     ]);
@@ -239,6 +242,12 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
           </strong>
         </div>
         <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>ĐÓNG HÔM QUA</span>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+            +{summary.closed_yesterday ?? 0}
+          </strong>
+        </div>
+        <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>ĐÓNG TUẦN QUA</span>
           <strong style={{ fontSize: '1.25rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
             {summary.closed_last_7_days ?? 0}
@@ -267,6 +276,7 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
                 <th style={{ width: '90px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)' }}>Tồn Việc</th>
                 <th style={{ width: '90px', background: 'rgba(239, 68, 68, 0.12)', color: 'var(--danger-dark)' }}>Quá Hạn</th>
                 <th style={{ width: '105px' }}>Đóng Hôm Nay</th>
+                <th style={{ width: '105px' }}>Đóng Hôm Qua</th>
                 <th style={{ width: '110px' }}>Đóng Tuần Qua</th>
                 <th style={{ minWidth: '150px' }}>Tỉ Lệ Đóng (%)</th>
                 <th style={{ width: '80px' }}>Thao Tác</th>
@@ -292,6 +302,9 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
                 </td>
                 <td className="cell-num cell-today" style={{ fontSize: '0.95rem' }}>
                   +{summary.closed_today ?? 0}
+                </td>
+                <td className="cell-num cell-yesterday" style={{ fontSize: '0.95rem' }}>
+                  +{summary.closed_yesterday ?? 0}
                 </td>
                 <td className="cell-num cell-week" style={{ fontSize: '0.95rem' }}>
                   {summary.closed_last_7_days ?? 0}
@@ -336,6 +349,9 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
                   </td>
                   <td className="cell-num cell-today">
                     {row.closed_today > 0 ? `+${row.closed_today}` : '0'}
+                  </td>
+                  <td className="cell-num cell-yesterday">
+                    {(row.closed_yesterday || 0) > 0 ? `+${row.closed_yesterday}` : '0'}
                   </td>
                   <td className="cell-num cell-week">
                     {row.closed_last_7_days}

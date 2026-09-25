@@ -26,7 +26,8 @@ import {
   Pencil,
   ListPlus,
   RefreshCw,
-  Layers
+  Layers,
+  Filter
 } from 'lucide-react';
 
 import { settingsApi } from '../api/settingsApi';
@@ -54,6 +55,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
   const [currentImportId, setCurrentImportId] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [filterSpm, setFilterSpm] = useState(false);
 
   // 1. Fetch current settings
   const { data: settingsData, isLoading: loadingSettings } = useQuery({
@@ -613,13 +615,15 @@ export default function AdminPage({ onNavigateToDashboard }) {
     setImportStatus(null);
 
     try {
-      const res = await importsApi.uploadFile(file);
+      const res = await importsApi.uploadFile(file, filterSpm);
       setCurrentImportId(res.id);
       setImportStatus(res);
       refetchLogs();
     } catch (err) {
       setUploading(false);
-      setErrorMessage(err.response?.data?.detail || err.message || 'Lỗi tải file');
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (err.message || 'Lỗi tải file');
+      setErrorMessage(msg);
     }
   };
 
@@ -2316,6 +2320,39 @@ export default function AdminPage({ onNavigateToDashboard }) {
 
         {file && !uploading && (!importStatus || importStatus.status !== 'PROCESSING') && (
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            {/* SPM toggle */}
+            <div 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '6px 14px', 
+                background: filterSpm ? 'rgba(245, 158, 11, 0.1)' : 'var(--bg-tertiary)', 
+                borderRadius: 'var(--radius-md)', 
+                border: `1px solid ${filterSpm ? 'var(--warning)' : 'var(--border-color)'}`,
+                marginBottom: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                userSelect: 'none'
+              }}
+              onClick={() => setFilterSpm(!filterSpm)}
+            >
+              <input 
+                type="checkbox" 
+                checked={filterSpm}
+                onChange={() => setFilterSpm(!filterSpm)}
+                style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: 'var(--warning-dark)' }}
+              />
+              <Filter size={13} style={{ color: filterSpm ? 'var(--warning-dark)' : 'var(--text-muted)' }} />
+              <span style={{ 
+                fontSize: '0.78rem', 
+                fontWeight: 600,
+                color: filterSpm ? 'var(--warning-dark)' : 'var(--text-secondary)'
+              }}>
+                Lọc bỏ SPM / SPM_VTNET {filterSpm ? '(Đang lọc)' : '(Không lọc)'}
+              </span>
+            </div>
+            <br />
             <button
               className="btn btn-primary"
               onClick={handleUploadSubmit}

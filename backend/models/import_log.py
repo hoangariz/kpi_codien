@@ -20,3 +20,4 @@ class ImportLog(Base):
     status = Column(String(50), default="PENDING", index=True)  # PENDING, PROCESSING, COMPLETED, FAILED
     progress_percent = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
+    filter_spm = Column(Integer, default=1)  # 1 = filter out SPM/SPM_VTNET, 0 = keep all
