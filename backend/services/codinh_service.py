@@ -369,20 +369,50 @@ def import_cabinets_from_excel(
     Automatically detects header row and column names.
     Inserts / replaces records in Cabinet table.
     """
+    # Ensure Cabinet table exists
+    try:
+        Cabinet.__table__.create(bind=db.get_bind(), checkfirst=True)
+    except Exception:
+        pass
+
     path_obj = Path(file_path)
     if not path_obj.exists():
         raise FileNotFoundError(f"File {file_path} không tồn tại")
 
-    # Read first 20 rows to detect header row
-    df_preview = pd.read_excel(path_obj, header=None, nrows=20)
+    path_str = str(path_obj).lower()
+
+    # Read preview to detect header row
+    def _read_df(header=None, nrows=None):
+        if path_str.endswith(".csv"):
+            return pd.read_csv(path_obj, header=header, nrows=nrows, low_memory=False, encoding_errors="replace")
+        elif path_str.endswith(".xls"):
+            try:
+                return pd.read_excel(path_obj, header=header, nrows=nrows, engine="xlrd")
+            except Exception:
+                return pd.read_excel(path_obj, header=header, nrows=nrows)
+        else:
+            try:
+                return pd.read_excel(path_obj, header=header, nrows=nrows)
+            except Exception:
+                try:
+                    return pd.read_excel(path_obj, header=header, nrows=nrows, engine="openpyxl")
+                except Exception:
+                    return pd.read_csv(path_obj, header=header, nrows=nrows, low_memory=False, encoding_errors="replace")
+
+    df_preview = _read_df(header=None, nrows=25)
     header_row_idx = 0
     for idx, row in df_preview.iterrows():
         row_strs = [str(x).strip().lower() for x in row.values if pd.notna(x)]
-        if any("mã đối tượng" in s or "mã wo" in s for s in row_strs):
+        has_dt = any(any(k in s for k in ("mã đối tượng", "đối tượng", "mã tủ", "mã thc", "tủ cáp", "tủ")) for s in row_strs)
+        has_wo = any(any(k in s for k in ("mã wo", "mã công việc", "ma_wo", "ma_cong_viec", "phiếu", "wo")) for s in row_strs)
+        if has_dt and has_wo:
+            header_row_idx = idx
+            break
+        elif any("mã đối tượng" in s or "ma_doi_tuong" in s or "mã thc" in s for s in row_strs):
             header_row_idx = idx
             break
 
-    df = pd.read_excel(path_obj, header=header_row_idx)
+    df = _read_df(header=header_row_idx)
 
     # Detect required columns
     col_doi_tuong = None
@@ -396,22 +426,45 @@ def import_cabinets_from_excel(
 
     for col in df.columns:
         c_clean = str(col).strip().lower()
-        if "mã đối tượng" in c_clean or c_clean == "ma_doi_tuong":
-            col_doi_tuong = col
-        elif "mã wo" in c_clean or c_clean == "ma_wo" or "mã công việc" in c_clean:
-            col_wo = col
-        elif "trạng thái thc" in c_clean or "trạng thái đối tượng" in c_clean:
-            col_thc_status = col
-        elif "mã trạm" in c_clean:
-            col_tram = col
-        elif "trạng thái wo" in c_clean:
-            col_wo_status = col
-        elif "tỉnh" in c_clean or "tinh" in c_clean:
-            col_tinh = col
-        elif "khu vực" in c_clean or "khu_vuc" in c_clean:
-            col_khu_vuc = col
-        elif "quốc gia" in c_clean or "quoc_gia" in c_clean:
-            col_quoc_gia = col
+        if any(k in c_clean for k in ("mã đối tượng", "ma_doi_tuong", "mã tủ", "mã thc", "tủ cáp", "thiết bị")):
+            if not col_doi_tuong:
+                col_doi_tuong = col
+        elif any(k in c_clean for k in ("mã wo", "ma_wo", "mã công việc", "ma_cong_viec", "mã phiếu", "phiếu công việc")) or c_clean == "wo":
+            if not col_wo:
+                col_wo = col
+        elif any(k in c_clean for k in ("trạng thái thc", "trạng thái đối tượng", "trạng thái tủ", "kết quả bảo dưỡng", "trạng thái bảo dưỡng", "kết quả")):
+            if not col_thc_status:
+                col_thc_status = col
+        elif any(k in c_clean for k in ("mã trạm", "ma_tram", "nhà trạm", "station")):
+            if not col_tram:
+                col_tram = col
+        elif any(k in c_clean for k in ("trạng thái wo", "trạng thái phiếu", "trạng thái công việc")):
+            if not col_wo_status:
+                col_wo_status = col
+        elif any(k in c_clean for k in ("tỉnh", "tinh", "tỉnh/tp")):
+            if not col_tinh:
+                col_tinh = col
+        elif any(k in c_clean for k in ("khu vực", "khu_vuc", "cụm", "nhóm")):
+            if not col_khu_vuc:
+                col_khu_vuc = col
+        elif any(k in c_clean for k in ("quốc gia", "quoc_gia")):
+            if not col_quoc_gia:
+                col_quoc_gia = col
+
+    # Fallback for col_doi_tuong if still not found
+    if not col_doi_tuong:
+        for col in df.columns:
+            c_clean = str(col).strip().lower()
+            if "đối tượng" in c_clean or "tủ" in c_clean:
+                col_doi_tuong = col
+                break
+
+    # Fallback for col_thc_status
+    if not col_thc_status:
+        for col in df.columns:
+            if col != col_wo_status and "trạng thái" in str(col).strip().lower():
+                col_thc_status = col
+                break
 
     if not col_doi_tuong:
         raise ValueError(
@@ -437,15 +490,16 @@ def import_cabinets_from_excel(
     pending_cabinets = 0
     unique_wos = set()
 
-    for _, row in df_valid.iterrows():
-        wo_val = row["ma_wo_clean"]
-        dt_val = row["ma_doi_tuong_clean"]
-        tram_val = str(row[col_tram]).strip() if col_tram and pd.notna(row[col_tram]) else None
-        thc_status = str(row[col_thc_status]).strip() if col_thc_status and pd.notna(row[col_thc_status]) else "Đang thực hiện bảo dưỡng"
-        wo_status = str(row[col_wo_status]).strip() if col_wo_status and pd.notna(row[col_wo_status]) else None
-        tinh_val = str(row[col_tinh]).strip() if col_tinh and pd.notna(row[col_tinh]) else None
-        khu_vuc_val = str(row[col_khu_vuc]).strip() if col_khu_vuc and pd.notna(row[col_khu_vuc]) else None
-        quoc_gia_val = str(row[col_quoc_gia]).strip() if col_quoc_gia and pd.notna(row[col_quoc_gia]) else None
+    df_records = df_valid.to_dict(orient="records")
+    for row in df_records:
+        wo_val = str(row["ma_wo_clean"]).strip()
+        dt_val = str(row["ma_doi_tuong_clean"]).strip()
+        tram_val = str(row[col_tram]).strip() if col_tram and pd.notna(row.get(col_tram)) else None
+        thc_status = str(row[col_thc_status]).strip() if col_thc_status and pd.notna(row.get(col_thc_status)) else "Đang thực hiện bảo dưỡng"
+        wo_status = str(row[col_wo_status]).strip() if col_wo_status and pd.notna(row.get(col_wo_status)) else None
+        tinh_val = str(row[col_tinh]).strip() if col_tinh and pd.notna(row.get(col_tinh)) else None
+        khu_vuc_val = str(row[col_khu_vuc]).strip() if col_khu_vuc and pd.notna(row.get(col_khu_vuc)) else None
+        quoc_gia_val = str(row[col_quoc_gia]).strip() if col_quoc_gia and pd.notna(row.get(col_quoc_gia)) else None
 
         unique_wos.add(wo_val)
         if "hoàn thành" in thc_status.lower() and "đang" not in thc_status.lower():

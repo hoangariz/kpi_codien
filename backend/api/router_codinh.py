@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
+import shutil
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks, Request, status
 from sqlalchemy.orm import Session
 
@@ -307,13 +309,14 @@ async def upload_cabinets_file(
             detail="Định dạng file không hỗ trợ. Vui lòng tải lên file .xlsx, .xls hoặc .csv"
         )
 
-    # Save temp file
-    safe_name = f"cabinet_{file.filename}"
-    temp_path = UPLOAD_DIR / safe_name
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
+    temp_path = None
     try:
+        # Save temp file
+        safe_name = f"cabinet_{int(datetime.utcnow().timestamp())}_{file.filename}"
+        temp_path = UPLOAD_DIR / safe_name
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
         result = import_cabinets_from_excel(
             db=db,
             file_path=temp_path,
@@ -325,8 +328,17 @@ async def upload_cabinets_file(
             "message": f"Nạp thành công {result['total_cabinets']} tủ cáp của {result['unique_wos']} WO!",
             **result
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Lỗi xử lý file tủ cáp: {str(e)}")
+    finally:
+        if temp_path and temp_path.exists():
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
 
 
 @router.get("/stats")
