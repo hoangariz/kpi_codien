@@ -12,10 +12,12 @@ import {
   ChevronRight,
   CheckCircle2,
   Cable,
-  Eye
+  Eye,
+  Copy
 } from 'lucide-react';
 import { codinhApi } from '../api/codinhApi';
 import { formatGroupName } from '../utils/groupFormat';
+import { getUserFullName } from '../utils/userMapping';
 
 function formatDateTime(val) {
   if (!val) return '--';
@@ -61,6 +63,33 @@ function getMetricLabel(metric) {
     case 'closed_yesterday':
     case 'dong_hom_qua':
       return 'WO Đóng Hôm Qua';
+    case 'closed_week':
+    case 'closed_this_week':
+    case 'dong_tuan_qua':
+    case 'tuan_qua':
+      return 'WO Đóng Tuần Qua';
+    case 'home_kem':
+    case 'home_wifi_kem':
+      return 'Đầu việc: Home Wifi Thu Kém';
+    case 'port_kem':
+    case 'port_kem_gpon':
+      return 'Đầu việc: Port Kém GPON';
+    case 'pending_under_24h':
+    case 'ton_duoi_24h':
+      return 'WO Tồn < 1 Ngày (<24h)';
+    case 'pending_under_72h':
+    case 'ton_duoi_72h':
+      return 'WO Tồn < 3 Ngày (<72h)';
+    case 'kpi_24h':
+    case 'closed_24h':
+    case 'closed_within_24h':
+    case 'kpi_1_ngay':
+      return 'WO Hoàn Thành Trong 24h (KPI 1 Ngày)';
+    case 'kpi_72h':
+    case 'closed_72h':
+    case 'closed_within_72h':
+    case 'kpi_3_ngay':
+      return 'WO Hoàn Thành Trong 72h (KPI 3 Ngày)';
     case 'cabinet_total':
     case 'total_cabinets':
     case 'tu_thc':
@@ -73,6 +102,10 @@ function getMetricLabel(metric) {
     case 'pending_cabinets':
     case 'tu_ton':
       return 'Tủ THC Đang Tồn';
+    case 'cabinet_overdue':
+    case 'overdue_cabinets':
+    case 'tu_qua_han':
+      return 'Tủ THC Quá Hạn';
     default:
       return 'Tất Cả Công Việc (Tổng WO)';
   }
@@ -83,6 +116,15 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
   const [sortKey, setSortKey] = useState('thoi_diem_yeu_cau_ket_thuc');
   const [sortOrder, setSortOrder] = useState('desc');
   const [expandedWos, setExpandedWos] = useState({});
+  const [selectedCabinetWo, setSelectedCabinetWo] = useState(null);
+  const [copiedCabId, setCopiedCabId] = useState(null);
+
+  const handleCopyCabinet = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedCabId(text);
+    setTimeout(() => setCopiedCabId(null), 2000);
+  };
 
   const toggleExpand = (maCv) => {
     setExpandedWos((prev) => ({
@@ -117,6 +159,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
     queryFn: () => {
       return codinhApi.getDrilldownTasks({
         category_id: filterInfo.categoryId || undefined,
+        month: filterInfo.month || undefined,
         metric: filterInfo.metric || 'total',
         filter_type: filterInfo.filterType || undefined,
         target_name: filterInfo.targetName || undefined,
@@ -170,7 +213,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
         `"${(t.ghi_chu || '').replace(/"/g, '""')}"`,
         `"${t.trang_thai || ''}"`,
         `"${formatGroupName(t.group_name)}"`,
-        `"${t.employee_assigned_name || ''}"`,
+        `"${getUserFullName(t.employee_assigned_name) || ''}"`,
         `"${formatDateTime(t.thoi_diem_yeu_cau_ket_thuc)}"`,
         t.thoi_gian_con_lai ?? '',
         t.total_cabinets || 0,
@@ -225,6 +268,32 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
           border: '1px solid var(--border-color)',
         }}
       >
+        {/* Responsive mobile style for cabinet viewer */}
+        <style>{`
+          @media (max-width: 768px) {
+            .cabinet-viewer-sheet {
+              max-height: 94vh !important;
+              border-bottom-left-radius: 0 !important;
+              border-bottom-right-radius: 0 !important;
+              position: fixed !important;
+              bottom: 0 !important;
+              left: 0 !important;
+              right: 0 !important;
+              margin: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+            }
+            .cabinet-grid-container {
+              grid-template-columns: 1fr !important;
+            }
+            .expanded-cabinet-box {
+              left: 0 !important;
+              max-width: calc(100vw - 28px) !important;
+              padding: 8px 10px !important;
+            }
+          }
+        `}</style>
+
         {/* MODAL HEADER */}
         <div
           style={{
@@ -250,7 +319,11 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-                {filterInfo.targetName ? filterInfo.targetName : 'Toàn Bộ Hệ Thống CĐBR'}
+                {filterInfo.targetName
+                  ? filterInfo.filterType === 'employee'
+                    ? getUserFullName(filterInfo.targetName)
+                    : formatGroupName(filterInfo.targetName)
+                  : 'Toàn Bộ Hệ Thống CĐBR'}
               </h3>
               <span
                 style={{
@@ -449,15 +522,15 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
 
                   <th
                     onClick={() => handleSort('employee_assigned_name')}
-                    style={{ width: '140px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ width: '150px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                     title="Nhấn để sắp xếp theo Nhân viên"
                   >
-                    Nhân viên {renderSortIndicator('employee_assigned_name')}
+                    Họ và tên {renderSortIndicator('employee_assigned_name')}
                   </th>
 
                   <th
                     onClick={() => handleSort('group_name')}
-                    style={{ width: '120px', minWidth: '100px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center', padding: '6px 8px', cursor: 'pointer', userSelect: 'none' }}
                     title="Nhấn để sắp xếp theo Nhóm"
                   >
                     Cụm / Nhóm {renderSortIndicator('group_name')}
@@ -568,12 +641,25 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           {hasCabs ? (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <span
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCabinetWo(t)}
                                 className={`badge ${isAllCabsDone ? 'badge-success' : 'badge-purple'}`}
-                                style={{ fontSize: '0.72rem', padding: '2px 7px', fontWeight: 800 }}
+                                style={{
+                                  fontSize: '0.72rem',
+                                  padding: '2px 7px',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  border: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                }}
+                                title="Nhấn xem popup danh sách tủ con (không bị che)"
                               >
+                                <Layers size={11} />
                                 {t.completed_cabinets}/{t.total_cabinets} Xong
-                              </span>
+                              </button>
                               <button
                                 onClick={() => toggleExpand(t.ma_cong_viec)}
                                 style={{
@@ -585,7 +671,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                                   display: 'flex',
                                   alignItems: 'center',
                                 }}
-                                title={isExpanded ? 'Thu gọn tủ' : 'Xem danh sách tủ con'}
+                                title={isExpanded ? 'Thu gọn tủ inline' : 'Xem tủ ngay bên dưới'}
                               >
                                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                               </button>
@@ -602,13 +688,14 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                             fontWeight: 600,
                             color: 'var(--text-primary)',
                           }}
+                          title={t.employee_username ? `User: ${t.employee_username}` : ''}
                         >
-                          {t.employee_assigned_name}
+                          {getUserFullName(t.employee_assigned_name)}
                         </td>
 
                         {/* Nhóm / Cụm */}
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--bg-tertiary)' }}>
+                        <td style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center', padding: '3px 8px' }}>
+                          <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--bg-tertiary)', padding: '2px 6px' }}>
                             {formatGroupName(t.group_name)}
                           </span>
                         </td>
@@ -641,14 +728,15 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                             title="Xem chi tiết đầy đủ, lịch sử và ghi chú WO"
                             style={{
                               padding: '2px 8px',
-                              fontSize: '0.75rem',
-                              gap: '3px',
+                              fontSize: '0.72rem',
                               height: '24px',
-                              borderColor: '#8b5cf6',
-                              color: '#8b5cf6',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
                             }}
                           >
-                            <Eye size={12} /> Chi tiết
+                            <Eye size={12} />
+                            Chi tiết
                           </button>
                         </td>
                       </tr>
@@ -656,23 +744,41 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                       {/* EXPANDED ROW: CHILD CABINETS THC */}
                       {isExpanded && hasCabs && (
                         <tr style={{ background: 'rgba(139, 92, 246, 0.04)' }}>
-                          <td colSpan={12} style={{ padding: '8px 24px 14px 48px' }}>
+                          <td colSpan={20} style={{ padding: '8px 12px' }}>
                             <div
+                              className="expanded-cabinet-box"
                               style={{
-                                border: '1px solid rgba(139, 92, 246, 0.25)',
+                                position: 'sticky',
+                                left: '8px',
+                                maxWidth: 'min(94vw, 1050px)',
+                                width: 'fit-content',
+                                minWidth: 'min(100%, 300px)',
+                                border: '1.5px solid #8b5cf6',
                                 borderRadius: 'var(--radius-md)',
                                 background: 'var(--bg-secondary)',
-                                padding: '10px 14px',
+                                padding: '12px 14px',
+                                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.16)',
+                                zIndex: 10,
                               }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <Layers size={14} style={{ color: '#8b5cf6' }} />
-                                <strong style={{ fontSize: '0.82rem', color: '#8b5cf6' }}>
-                                  Danh Sách Tủ Cáp THC Con ({t.cabinets.length} tủ) của WO: {t.ma_cong_viec}
-                                </strong>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Layers size={14} style={{ color: '#8b5cf6' }} />
+                                  <strong style={{ fontSize: '0.84rem', color: '#8b5cf6' }}>
+                                    Danh Sách Tủ Cáp THC Con ({t.cabinets.length} tủ) của WO: {t.ma_cong_viec}
+                                  </strong>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline"
+                                  onClick={() => setSelectedCabinetWo(t)}
+                                  style={{ fontSize: '0.72rem', padding: '3px 10px', height: '26px', borderColor: '#8b5cf6', color: '#8b5cf6', gap: '4px', fontWeight: 700 }}
+                                >
+                                  <Eye size={12} /> Xem Dạng Popup (100% Không Bị Che)
+                                </button>
                               </div>
 
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '8px' }}>
+                              <div className="cabinet-grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px' }}>
                                 {t.cabinets.map((cab, cIdx) => (
                                   <div
                                     key={cab.id || cIdx}
@@ -717,7 +823,227 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
             </table>
           )}
         </div>
+
+        {/* 6. POPUP XEM TỦ CHUYÊN DỤNG (100% KHÔNG BỊ CHE KHUẤT) */}
+        {selectedCabinetWo && (
+          <div
+            className="modal-overlay"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.72)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1300,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '14px',
+              animation: 'fadeIn 0.15s ease-out',
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedCabinetWo(null);
+            }}
+          >
+            <div
+              className="cabinet-viewer-sheet"
+              style={{
+                width: '100%',
+                maxWidth: '680px',
+                maxHeight: '88vh',
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: 'var(--shadow-2xl)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                animation: 'slideUp 0.2s ease-out',
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  padding: '14px 18px',
+                  borderBottom: '1px solid var(--border-color)',
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.05) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: 'rgba(139, 92, 246, 0.18)',
+                      color: '#8b5cf6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Layers size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.02rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                      Danh Sách Tủ Cáp THC ({selectedCabinetWo.cabinets?.length || 0} tủ)
+                    </h3>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span>Mã WO: <strong style={{ fontFamily: 'var(--font-mono)', color: '#8b5cf6' }}>{selectedCabinetWo.ma_cong_viec}</strong></span>
+                      {selectedCabinetWo.station_code && <span>• Trạm: <strong>{selectedCabinetWo.station_code}</strong></span>}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedCabinetWo(null)}
+                  className="btn-icon"
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0 }}
+                  title="Đóng popup xem tủ"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Progress Summary Bar */}
+              <div
+                style={{
+                  padding: '8px 18px',
+                  background: 'var(--bg-tertiary)',
+                  borderBottom: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  fontSize: '0.8rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="badge badge-success" style={{ fontWeight: 700 }}>
+                    Đã Xong: {selectedCabinetWo.completed_cabinets || 0}
+                  </span>
+                  <span className="badge badge-warning" style={{ fontWeight: 700 }}>
+                    Chưa Xong: {(selectedCabinetWo.total_cabinets || 0) - (selectedCabinetWo.completed_cabinets || 0)}
+                  </span>
+                </div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                  Tiến độ tủ: <strong style={{ color: '#8b5cf6' }}>{selectedCabinetWo.total_cabinets > 0 ? Math.round(((selectedCabinetWo.completed_cabinets || 0) / selectedCabinetWo.total_cabinets) * 100) : 0}%</strong>
+                </span>
+              </div>
+
+              {/* Body: Danh sách tủ */}
+              <div
+                style={{
+                  padding: '14px 18px',
+                  overflowY: 'auto',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                {(!selectedCabinetWo.cabinets || selectedCabinetWo.cabinets.length === 0) ? (
+                  <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-muted)' }}>
+                    <Layers size={36} style={{ opacity: 0.35, marginBottom: '8px' }} />
+                    <p style={{ fontSize: '0.88rem' }}>Không có dữ liệu tủ THC nào liên kết với WO này</p>
+                  </div>
+                ) : (
+                  selectedCabinetWo.cabinets.map((cab, idx) => {
+                    const isCopied = copiedCabId === cab.ma_doi_tuong;
+                    return (
+                      <div
+                        key={cab.id || idx}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: 'var(--radius-lg)',
+                          border: cab.is_completed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
+                          background: cab.is_completed ? 'rgba(16, 185, 129, 0.04)' : 'var(--bg-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>#{idx + 1}</span>
+                            <strong
+                              style={{
+                                fontSize: '0.9rem',
+                                fontFamily: 'var(--font-mono)',
+                                color: 'var(--text-primary)',
+                                letterSpacing: '0.02em',
+                              }}
+                            >
+                              {cab.ma_doi_tuong}
+                            </strong>
+                            {cab.ma_tram && (
+                              <span className="badge badge-neutral" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
+                                Trạm: {cab.ma_tram}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            {cab.tinh && <span>Tỉnh: {cab.tinh}</span>}
+                            {cab.khu_vuc && <span>Khu vực: {cab.khu_vuc}</span>}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            onClick={() => handleCopyCabinet(cab.ma_doi_tuong)}
+                            title="Sao chép mã tủ"
+                            style={{ width: '28px', height: '28px', borderRadius: '6px' }}
+                          >
+                            {isCopied ? <CheckCircle2 size={14} style={{ color: 'var(--success)' }} /> : <Copy size={13} />}
+                          </button>
+
+                          <span
+                            className={`badge ${cab.is_completed ? 'badge-success' : 'badge-warning'}`}
+                            style={{ fontSize: '0.72rem', padding: '3px 8px', fontWeight: 700 }}
+                          >
+                            {cab.trang_thai_thc}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div
+                style={{
+                  padding: '10px 18px',
+                  borderTop: '1px solid var(--border-color)',
+                  background: 'var(--bg-secondary)',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setSelectedCabinetWo(null)}
+                  style={{ padding: '6px 16px', fontSize: '0.82rem' }}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

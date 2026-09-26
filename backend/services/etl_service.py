@@ -123,11 +123,16 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
 
         return CaseInsensitiveCache(exact_map)
 
-    # 1. Employees (from both 'Nhân viên khởi tạo' and 'Nhân viên thực hiện')
+    # 1. Employees (from both 'Nhân viên khởi tạo' and 'Nhân viên thực hiện' / 'Người nhận việc' / etc.)
     emp_names = set()
-    for col in ("Nhân viên khởi tạo", "Nhân viên thực hiện"):
-        if col in df.columns:
-            emp_names.update(df[col].dropna().astype(str).str.strip().unique())
+    emp_cols = [c for c in df.columns if any(k in c.lower() for k in (
+        "nhân viên thực hiện", "người nhận việc", "nhân viên nhận việc", "người thực hiện",
+        "nhân viên xử lý", "người xử lý", "nhân viên khởi tạo", "người tạo", "nhân viên"
+    ))]
+    if not emp_cols:
+        emp_cols = [c for c in ("Nhân viên khởi tạo", "Nhân viên thực hiện") if c in df.columns]
+    for col in emp_cols:
+        emp_names.update(df[col].dropna().astype(str).str.strip().unique())
     emp_names.discard("")
     cache["employees"] = resolve_dim(Employee, "name", emp_names)
 
@@ -236,6 +241,14 @@ def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True
             df["Ghi chú"] = df["Mô tả"]
         if "Mức độ ưu tiên" in df.columns and "Lỗi" not in df.columns:
             df["Lỗi"] = df["Mức độ ưu tiên"]
+
+        # Flexible column mappings for employee fields
+        for c in df.columns:
+            c_clean = c.lower().strip()
+            if any(k in c_clean for k in ("nhân viên thực hiện", "người nhận việc", "nhân viên nhận việc", "người thực hiện", "nhân viên xử lý", "người xử lý")) and "Nhân viên thực hiện" not in df.columns:
+                df["Nhân viên thực hiện"] = df[c]
+            elif any(k in c_clean for k in ("nhân viên khởi tạo", "người tạo", "người khởi tạo")) and "Nhân viên khởi tạo" not in df.columns:
+                df["Nhân viên khởi tạo"] = df[c]
 
         # Flexible column mappings for date & time fields
         for c in df.columns:

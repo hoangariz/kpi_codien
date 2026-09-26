@@ -10,6 +10,17 @@ class ReportCategorySummary(BaseModel):
     pending: int = 0
     overdue: int = 0
     completion_rate: float = 0.0
+    total_cabinets: Optional[int] = 0
+    completed_cabinets: Optional[int] = 0
+    pending_cabinets: Optional[int] = 0
+    overdue_cabinets: Optional[int] = 0
+    cabinet_rate: Optional[float] = 0.0
+    closed_today: Optional[int] = 0
+    closed_yesterday: Optional[int] = 0
+    closed_week: Optional[int] = 0
+    home_kem_count: Optional[int] = 0
+    port_kem_count: Optional[int] = 0
+    is_port_kem: Optional[bool] = False
 
 
 class ReportSubCategoryBase(BaseModel):

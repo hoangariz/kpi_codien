@@ -24,6 +24,7 @@ def auto_migrate_db():
             "ALTER TABLE import_logs ADD COLUMN filter_spm INTEGER DEFAULT 1",
             "ALTER TABLE report_categories ADD COLUMN domain VARCHAR(50) DEFAULT 'codien'",
             "ALTER TABLE import_logs ADD COLUMN domain VARCHAR(50) DEFAULT 'main'",
+            "ALTER TABLE codinh_tasks ADD COLUMN thoi_diem_bat_dau_thuc_hien DATETIME",
         ]:
             try:
                 conn.execute(text(col_def))

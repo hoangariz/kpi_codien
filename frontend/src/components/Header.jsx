@@ -70,7 +70,8 @@ export default function Header({
             title="Tra cứu công việc theo Mã WO, Mã Trạm, FT và ghi chú"
           >
             <Search size={16} />
-            <span>Tra Cứu WO</span>
+            <span className="nav-text-desktop">Tra Cứu WO</span>
+            <span className="nav-text-mobile">Tra Cứu</span>
           </button>
 
           {/* CSDL Tab – Coming Soon */}
@@ -81,9 +82,10 @@ export default function Header({
             style={{ position: 'relative' }}
           >
             <Database size={16} />
-            <span>CSDL Trạm / MPĐ</span>
+            <span className="nav-text-desktop">CSDL Trạm / MPĐ</span>
+            <span className="nav-text-mobile">CSDL Trạm</span>
             {/* Pulsing badge */}
-            <span style={{
+            <span className="badge-soon" style={{
               position: 'absolute',
               top: '-4px',
               right: '-6px',

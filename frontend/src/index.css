@@ -206,6 +206,14 @@ body {
   font-weight: 700;
 }
 
+/* Responsive nav text toggles */
+.nav-text-desktop {
+  display: inline;
+}
+.nav-text-mobile {
+  display: none;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -260,6 +268,52 @@ table.excel-table td {
 
 table.excel-table tr.excel-row:hover {
   background: rgba(2, 132, 199, 0.08) !important;
+}
+
+/* Sticky Left Columns for all Excel Tables (STT & Họ và tên / Nhóm cụm) */
+table.excel-table th.col-stt,
+table.excel-table td.col-stt {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 6 !important;
+  background: var(--bg-secondary) !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+}
+
+table.excel-table th.col-stt {
+  z-index: 10 !important;
+  background: var(--bg-tertiary) !important;
+}
+
+table.excel-table th.col-name,
+table.excel-table td.col-name {
+  position: sticky !important;
+  left: 38px !important;
+  z-index: 6 !important;
+  background: var(--bg-secondary) !important;
+  box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.18) !important;
+}
+
+table.excel-table th.col-name {
+  z-index: 10 !important;
+  background: var(--bg-tertiary) !important;
+}
+
+/* Hover effect on sticky cells matching the row hover with 100% opacity */
+table.excel-table tr.excel-row:hover td.col-stt,
+table.excel-table tr.excel-row:hover td.col-name {
+  background: var(--bg-hover) !important;
+}
+
+/* Ensure summary row label is non-sticky so it scrolls naturally */
+table.excel-table tr.excel-summary-row td.col-summary-label {
+  position: static !important;
+  background: var(--bg-tertiary) !important;
+  box-shadow: none !important;
 }
 
 /* Excel Conditional Formatting Cells */
@@ -854,37 +908,64 @@ table.data-table tbody tr:hover {
    TABLET & MOBILE BREAKPOINTS (<= 768px)
    ========================================================================== */
 @media (max-width: 768px) {
-  /* 1. Navbar & Brand */
+  /* 1. Navbar & Brand (Top bar is light & airy on Mobile) */
   .top-navbar {
-    height: 56px;
-    padding: 0 12px;
+    height: 52px;
+    padding: 0 14px;
+    justify-content: space-between;
   }
 
   .header-left {
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
-    flex: 1;
   }
 
   .brand-logo {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     font-size: 0.95rem;
   }
 
   .brand-title {
-    font-size: 0.92rem;
+    font-size: 0.95rem;
+    font-weight: 800;
   }
 
   .brand-subtitle {
     display: none;
   }
 
+  .header-right {
+    gap: 8px;
+  }
+
+  .header-date {
+    display: none !important;
+  }
+
+  /* ==========================================================================
+     MOBILE BOTTOM NAVIGATION BAR (Fixed at bottom like native mobile app)
+     ========================================================================== */
   .header-nav {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 4px;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    height: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+    z-index: 99 !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    align-items: center !important;
+    padding: 2px 4px !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    list-style: none !important;
+    backdrop-filter: blur(12px) !important;
   }
 
   .header-nav::-webkit-scrollbar {
@@ -892,23 +973,97 @@ table.data-table tbody tr:hover {
   }
 
   .header-nav-btn {
-    padding: 6px 10px;
-    font-size: 0.78rem;
-    gap: 5px;
-    white-space: nowrap;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    padding: 6px 2px !important;
+    height: 100% !important;
+    border-radius: var(--radius-md) !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-muted) !important;
+    transition: all 0.15s ease !important;
+    user-select: none !important;
+    position: relative !important;
+    outline: none !important;
   }
 
-  .header-right {
-    gap: 6px;
+  .header-nav-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+    transition: transform 0.15s ease, color 0.15s ease !important;
   }
 
-  .header-date {
+  .header-nav-btn span:not(.badge-soon) {
+    font-size: 0.67rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.01em !important;
+    line-height: 1 !important;
+    transition: color 0.15s ease, font-weight 0.15s ease !important;
+  }
+
+  /* Responsive label toggle */
+  .nav-text-desktop {
     display: none !important;
   }
+  .nav-text-mobile {
+    display: inline !important;
+  }
 
-  /* 2. Main Content Body */
+  /* Active Tab on Mobile */
+  .header-nav-btn.active {
+    color: var(--brand-primary) !important;
+    background: var(--brand-light) !important;
+  }
+
+  .header-nav-btn.active svg {
+    transform: translateY(-1px) scale(1.08) !important;
+    color: var(--brand-primary) !important;
+  }
+
+  .header-nav-btn.active span:not(.badge-soon) {
+    font-weight: 800 !important;
+    color: var(--brand-primary) !important;
+  }
+
+  /* Subtle top accent bar for active tab */
+  .header-nav-btn.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 2.5px;
+    background: var(--brand-primary);
+    border-radius: 0 0 3px 3px;
+  }
+
+  /* Tap feedback effect */
+  .header-nav-btn:active {
+    transform: scale(0.93) !important;
+  }
+
+  /* SOON badge positioning on mobile */
+  .header-nav-btn .badge-soon {
+    top: 2px !important;
+    right: calc(50% - 24px) !important;
+    font-size: 0.5rem !important;
+    padding: 1px 4px !important;
+    line-height: 1 !important;
+  }
+
+  /* 2. Main Content Body Padding for Mobile Bottom Bar */
   .content-body {
-    padding: 12px 8px;
+    padding: 12px 10px;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  /* Ensure modals always render over bottom nav bar */
+  .modal-overlay {
+    z-index: 1000 !important;
   }
 
   /* 3. Report Selector Cards */
@@ -1006,16 +1161,14 @@ table.data-table tbody tr:hover {
     z-index: 5;
   }
 
-  /* Summary row first cell (colspan 2) sticks neatly, and remaining summary cells scroll naturally */
+  /* Summary row first cell scrolls naturally with the rest of the table */
   table.excel-table tr.excel-summary-row td.col-summary-label {
-    position: sticky;
-    left: 0;
-    z-index: 7;
+    position: static !important;
     background: var(--bg-tertiary);
-    width: 132px;
-    min-width: 132px;
-    max-width: 132px;
-    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.15);
+    width: auto;
+    min-width: unset;
+    max-width: unset;
+    box-shadow: none;
   }
 
   table.excel-table tr.excel-summary-row td:not(.col-summary-label) {
@@ -1025,33 +1178,31 @@ table.data-table tbody tr:hover {
   /* Data rows: STT column (frozen left: 0) */
   table.excel-table th.col-stt,
   table.excel-table td.col-stt {
-    position: sticky;
-    left: 0;
-    z-index: 6;
-    background: var(--bg-secondary);
-    width: 32px;
-    min-width: 32px;
-    max-width: 32px;
-    text-align: center;
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 6 !important;
+    background: var(--bg-secondary) !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
   }
 
-  /* Data rows: Name column (frozen left: 32px, strict compact width so it never covers numbers) */
+  /* Data rows: Name column (frozen left: 38px) */
   table.excel-table th.col-name,
   table.excel-table td.col-name {
-    position: sticky;
-    left: 32px;
-    z-index: 6;
-    background: var(--bg-secondary);
-    width: 100px;
-    min-width: 100px;
-    max-width: 100px;
-    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.15);
+    position: sticky !important;
+    left: 38px !important;
+    z-index: 6 !important;
+    background: var(--bg-secondary) !important;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.18) !important;
   }
 
   table.excel-table th.col-stt,
   table.excel-table th.col-name {
-    z-index: 8;
-    background: var(--bg-tertiary);
+    z-index: 10 !important;
+    background: var(--bg-tertiary) !important;
   }
 
   /* Prevent long cluster/FT names from overflowing and covering numbers */

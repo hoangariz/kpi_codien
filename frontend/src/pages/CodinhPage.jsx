@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Cable,
@@ -18,15 +18,21 @@ import { importsApi } from '../api/importsApi';
 import { tasksApi } from '../api/tasksApi';
 import { formatDataTimestamp } from '../utils/dateFormat';
 import { formatGroupName } from '../utils/groupFormat';
+import { getUserFullName } from '../utils/userMapping';
 import CodinhDrilldownModal from '../components/CodinhDrilldownModal';
 import TaskDetailModal from '../components/TaskDetailModal';
+import DhPortKemTable from '../components/DhPortKemTable';
 
 export default function CodinhPage() {
+  // Reference for smooth auto-scroll down to the selected table
+  const tableSectionRef = useRef(null);
+
   // Active view tab: 'employee' | 'group'
   const [currentTab, setCurrentTab] = useState('employee');
 
   // Filter & Search states
   const [selectedCatId, setSelectedCatId] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState(''); // Filter by cluster/group for employee tab
   const [sortKey, setSortKey] = useState(null);
@@ -42,20 +48,23 @@ export default function CodinhPage() {
     queryFn: () => codinhApi.getCategories(null, true),
   });
 
-  // Effective category id
-  const effectiveCatId = useMemo(() => {
-    if (selectedCatId) return selectedCatId;
-    if (categories.length > 0) {
-      const def = categories.find((c) => c.is_default) || categories[0];
-      return def?.id;
-    }
-    return null;
-  }, [selectedCatId, categories]);
+  // Effective category id - Mặc định chưa xem bảng nào cho đến khi người dùng click chọn
+  const effectiveCatId = selectedCatId;
+
+  // Lắng nghe sự kiện reset khi click lại tab Cố Định BR trên Header
+  useEffect(() => {
+    const handleReset = () => {
+      setSelectedCatId(null);
+      setSelectedMonth('all');
+    };
+    window.addEventListener('reset-codinh-view', handleReset);
+    return () => window.removeEventListener('reset-codinh-view', handleReset);
+  }, []);
 
   // 2. Fetch stats for the effective category
   const { data: statsData, isLoading: loadingStats, refetch: refetchStats } = useQuery({
-    queryKey: ['codinh-stats', effectiveCatId],
-    queryFn: () => codinhApi.getStats(effectiveCatId),
+    queryKey: ['codinh-stats', effectiveCatId, selectedMonth],
+    queryFn: () => codinhApi.getStats(effectiveCatId, selectedMonth === 'all' ? null : selectedMonth),
     enabled: effectiveCatId !== null,
   });
 
@@ -117,10 +126,12 @@ export default function CodinhPage() {
     overdue_wos: 0,
     closed_today_wos: 0,
     closed_yesterday_wos: 0,
+    closed_week_wos: 0,
     wo_rate: 0,
     total_cabinets: 0,
     completed_cabinets: 0,
     pending_cabinets: 0,
+    overdue_cabinets: 0,
     cabinet_rate: 0,
     has_cabinets: false,
   };
@@ -159,10 +170,14 @@ export default function CodinhPage() {
         closed_wos: grp.closed_wos,
         pending_wos: grp.pending_wos,
         overdue_wos: grp.overdue_wos,
+        closed_today_wos: grp.closed_today || 0,
+        closed_yesterday_wos: grp.closed_yesterday || 0,
+        closed_week_wos: grp.closed_week || 0,
         wo_rate: grp.wo_rate,
         total_cabinets: grp.total_cabinets || 0,
         completed_cabinets: grp.completed_cabinets || 0,
         pending_cabinets: grp.pending_cabinets || 0,
+        overdue_cabinets: grp.overdue_cabinets || 0,
         cabinet_rate: grp.cabinet_rate || 0,
         has_cabinets: hasCabinets,
       };
@@ -170,11 +185,20 @@ export default function CodinhPage() {
     return summary;
   }, [selectedGroupFilter, statsData, summary, hasCabinets]);
 
+  // Determine whether current category is Port Kém
+  const isPortKemCategory = Boolean(
+    activeCategory?.is_port_kem ||
+    summary?.is_port_kem ||
+    activeCategory?.name?.toLowerCase().includes('port') ||
+    activeCategory?.loai_cong_viec?.toLowerCase().includes('port')
+  );
+
   // Drilldown handler
   const handleOpenDrilldown = (metric, filterType = null, targetName = null) => {
     setDrilldownFilter({
       categoryId: effectiveCatId,
       categoryName: activeCategory?.name,
+      month: selectedMonth === 'all' ? null : selectedMonth,
       metric,
       filterType,
       targetName,
@@ -201,10 +225,11 @@ export default function CodinhPage() {
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const mName = (emp.key_name || '').toLowerCase().includes(q);
-        const mGrp = (emp.group_name || '').toLowerCase().includes(q);
-        const mShort = formatGroupName(emp.group_name || '').toLowerCase().includes(q);
-        if (!mName && !mGrp && !mShort) return false;
+        const rawUser = (emp.key_name || '').toLowerCase();
+        const fullName = getUserFullName(emp.key_name || '').toLowerCase();
+        const mGrp = (emp.group_name || '').toLowerCase();
+        const mShort = formatGroupName(emp.group_name || '').toLowerCase();
+        if (!rawUser.includes(q) && !fullName.includes(q) && !mGrp.includes(q) && !mShort.includes(q)) return false;
       }
       return true;
     });
@@ -215,7 +240,9 @@ export default function CodinhPage() {
         if (b.is_other) return -1;
         let cmp = 0;
         if (sortKey === 'key_name') {
-          cmp = (a.key_name || '').localeCompare(b.key_name || '', 'vi');
+          const nameA = getUserFullName(a.key_name || '');
+          const nameB = getUserFullName(b.key_name || '');
+          cmp = nameA.localeCompare(nameB, 'vi');
         } else if (sortKey === 'group_name') {
           cmp = formatGroupName(a.group_name || '').localeCompare(formatGroupName(b.group_name || ''), 'vi');
         } else {
@@ -256,64 +283,86 @@ export default function CodinhPage() {
     return list;
   }, [statsData, searchQuery, sortKey, sortOrder]);
 
+  // Auto-scroll down to table when selecting or viewing a report category
+  const handleSelectCategory = (catId) => {
+    setSelectedCatId(catId);
+    setTimeout(() => {
+      if (tableSectionRef.current) {
+        tableSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 120);
+  };
+
   // Export CSV
   const handleExportCSV = () => {
     if (!statsData) return;
     let csvLines = [];
     if (currentTab === 'employee') {
       csvLines.push(`BẢNG THỐNG KÊ ${activeCategory?.name || 'CĐBR'} THEO NHÂN VIÊN`);
-      const headers = ['STT', 'Nhân viên', 'Nhóm / Cụm', 'Tổng WO', 'Đã Đóng', '% Đóng', 'Tồn Việc', 'Quá Hạn'];
-      if (hasCabinets) headers.push('Tổng Tủ THC', 'Tủ Đã Xong', 'Tủ Chưa Xong', '% Tủ Xong');
+      const headers = [
+        'STT', 'Nhân viên', 'Nhóm / Cụm',
+        '% Đóng', 'Tồn Việc', 'Quá Hạn',
+        ...(hasCabinets ? ['% Tủ Xong', 'Tủ Tồn', 'Tủ Quá Hạn'] : []),
+        'Hôm nay', 'Hôm qua', 'Tuần qua'
+      ];
       csvLines.push(headers.join(','));
       csvLines.push([
         '--',
         '"TỔNG CỘNG"',
         '--',
-        summary.total_wos,
-        summary.closed_wos,
         `${summary.wo_rate}%`,
         summary.pending_wos,
         summary.overdue_wos,
-        ...(hasCabinets ? [summary.total_cabinets, summary.completed_cabinets, summary.pending_cabinets, `${summary.cabinet_rate}%`] : [])
+        ...(hasCabinets ? [`${summary.cabinet_rate}%`, summary.pending_cabinets, summary.overdue_cabinets] : []),
+        summary.closed_today_wos ?? 0,
+        summary.closed_yesterday_wos ?? 0,
+        summary.closed_week_wos ?? 0,
       ].join(','));
       sortedEmployees.forEach((r, idx) => {
         csvLines.push([
           idx + 1,
-          `"${r.key_name}"`,
+          `"${getUserFullName(r.key_name)}"`,
           `"${formatGroupName(r.group_name)}"`,
-          r.total_wos,
-          r.closed_wos,
           `${r.wo_rate}%`,
           r.pending_wos,
           r.overdue_wos,
-          ...(hasCabinets ? [r.total_cabinets, r.completed_cabinets, r.pending_cabinets, `${r.cabinet_rate}%`] : [])
+          ...(hasCabinets ? [`${r.cabinet_rate}%`, r.pending_cabinets, r.overdue_cabinets] : []),
+          r.closed_today ?? 0,
+          r.closed_yesterday ?? 0,
+          r.closed_week ?? 0,
         ].join(','));
       });
     } else {
       csvLines.push(`BẢNG THỐNG KÊ ${activeCategory?.name || 'CĐBR'} THEO NHÓM / CỤM`);
-      const headers = ['STT', 'Nhóm / Cụm', 'Tổng WO', 'Đã Đóng', '% Đóng', 'Tồn Việc', 'Quá Hạn'];
-      if (hasCabinets) headers.push('Tổng Tủ THC', 'Tủ Đã Xong', 'Tủ Chưa Xong', '% Tủ Xong');
+      const headers = [
+        'STT', 'Nhóm / Cụm',
+        '% Đóng', 'Tồn Việc', 'Quá Hạn',
+        ...(hasCabinets ? ['% Tủ Xong', 'Tủ Tồn', 'Tủ Quá Hạn'] : []),
+        'Hôm nay', 'Hôm qua', 'Tuần qua'
+      ];
       csvLines.push(headers.join(','));
       csvLines.push([
         '--',
         '"TỔNG CỘNG"',
-        summary.total_wos,
-        summary.closed_wos,
         `${summary.wo_rate}%`,
         summary.pending_wos,
         summary.overdue_wos,
-        ...(hasCabinets ? [summary.total_cabinets, summary.completed_cabinets, summary.pending_cabinets, `${summary.cabinet_rate}%`] : [])
+        ...(hasCabinets ? [`${summary.cabinet_rate}%`, summary.pending_cabinets, summary.overdue_cabinets] : []),
+        summary.closed_today_wos ?? 0,
+        summary.closed_yesterday_wos ?? 0,
+        summary.closed_week_wos ?? 0,
       ].join(','));
       sortedGroups.forEach((r, idx) => {
         csvLines.push([
           idx + 1,
           `"${formatGroupName(r.key_name)}"`,
-          r.total_wos,
-          r.closed_wos,
           `${r.wo_rate}%`,
           r.pending_wos,
           r.overdue_wos,
-          ...(hasCabinets ? [r.total_cabinets, r.completed_cabinets, r.pending_cabinets, `${r.cabinet_rate}%`] : [])
+          ...(hasCabinets ? [`${r.cabinet_rate}%`, r.pending_cabinets, r.overdue_cabinets] : []),
+          r.closed_today ?? 0,
+          r.closed_yesterday ?? 0,
+          r.closed_week ?? 0,
         ].join(','));
       });
     }
@@ -331,6 +380,89 @@ export default function CodinhPage() {
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
+      {/* Responsive mobile & cabinet UI styling */}
+      <style>{`
+        /* Sticky Left Columns for all Excel Tables in CĐBR (Desktop & Mobile) */
+        .col-stt {
+          position: sticky !important;
+          left: 0 !important;
+          width: 38px !important;
+          min-width: 38px !important;
+          max-width: 38px !important;
+          z-index: 6 !important;
+          background: var(--bg-secondary) !important;
+          box-sizing: border-box !important;
+          text-align: center !important;
+        }
+        th.col-stt {
+          z-index: 10 !important;
+          background: var(--bg-tertiary) !important;
+        }
+        .col-name {
+          position: sticky !important;
+          left: 38px !important;
+          z-index: 6 !important;
+          background: var(--bg-secondary) !important;
+          box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.18) !important;
+        }
+        th.col-name {
+          z-index: 10 !important;
+          background: var(--bg-tertiary) !important;
+        }
+        tr.excel-row:hover td.col-stt,
+        tr.excel-row:hover td.col-name {
+          background: var(--bg-hover) !important;
+        }
+        .excel-summary-row .col-summary-label {
+          position: static !important;
+          left: auto !important;
+          z-index: auto !important;
+          width: auto !important;
+          min-width: unset !important;
+          max-width: unset !important;
+          box-shadow: none !important;
+        }
+
+        @media (max-width: 768px) {
+          .report-cards-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          .report-selector-card {
+            padding: 12px 14px !important;
+            min-height: auto !important;
+          }
+          .card-kpi-summary-row {
+            padding: 6px 2px !important;
+            gap: 2px !important;
+          }
+          .card-kpi-summary-row span {
+            font-size: 0.58rem !important;
+          }
+          .card-kpi-summary-row strong {
+            font-size: 0.8rem !important;
+          }
+          .table-metric-strip {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 6px !important;
+            padding: 8px 10px !important;
+          }
+          .excel-table th, .excel-table td {
+            padding: 4px 6px !important;
+            font-size: 0.76rem !important;
+          }
+          .mobile-swipe-hint {
+            display: block !important;
+            padding: 6px 12px !important;
+            font-size: 0.74rem !important;
+            background: rgba(139, 92, 246, 0.08) !important;
+            color: #8b5cf6 !important;
+            text-align: center !important;
+            border-bottom: 1px solid var(--border-color) !important;
+          }
+        }
+      `}</style>
+
       {/* 0. Top Strip: Badge CĐBR, Data freshness GMT+7, Refresh button (No large redundant title banner) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -357,12 +489,15 @@ export default function CodinhPage() {
         </div>
 
         <button
-          onClick={() => refetchStats()}
+          onClick={() => {
+            if (effectiveCatId) refetchStats();
+          }}
+          disabled={!effectiveCatId || loadingStats}
           className="btn btn-outline"
-          style={{ fontSize: '0.82rem', padding: '6px 14px', gap: '6px' }}
-          title="Tải lại số liệu mới nhất"
+          style={{ fontSize: '0.82rem', padding: '6px 14px', gap: '6px', opacity: !effectiveCatId ? 0.6 : 1 }}
+          title={effectiveCatId ? "Tải lại số liệu mới nhất" : "Vui lòng chọn báo cáo trước"}
         >
-          <RotateCcw size={14} /> Làm mới
+          <RotateCcw size={14} className={loadingStats ? 'spin' : ''} /> Làm mới
         </button>
       </div>
 
@@ -379,28 +514,42 @@ export default function CodinhPage() {
           >
             {categories.map((cat) => {
               const isSelected = String(cat.id) === String(effectiveCatId);
-              const cardSummary = isSelected ? summary : null;
-              const rateVal = isSelected ? (hasCabinets ? summary.cabinet_rate : summary.wo_rate) : null;
+              // Lấy summary: nếu đang chọn và có statsData thì dùng statsData.summary, ngược lại lấy từ cat.summary
+              const catSum = (isSelected && summary?.total_wos != null) ? summary : (cat.summary || {});
+
+              // 5 chỉ số theo yêu cầu: % ĐÓNG, TỒN VIỆC, QUÁ HẠN, TỦ TỒN, TỦ QUÁ HẠN
+              const closeRate = catSum.wo_rate ?? catSum.completion_rate ?? 0;
+              const pendingWos = catSum.pending_wos ?? catSum.pending ?? 0;
+              const overdueWos = catSum.overdue_wos ?? catSum.overdue ?? 0;
+              const pendingCabs = catSum.pending_cabinets ?? 0;
+              const overdueCabs = catSum.overdue_cabinets ?? 0;
+
+              const isPortKemCard = Boolean(
+                cat.name?.toLowerCase().includes('port') ||
+                cat.loai_cong_viec?.toLowerCase().includes('port') ||
+                cat.loai_cong_viec?.toLowerCase().includes('chủ động') ||
+                catSum.is_port_kem
+              );
 
               return (
                 <div
                   key={cat.id}
                   className="report-selector-card"
-                  onClick={() => setSelectedCatId(cat.id)}
+                  onClick={() => handleSelectCategory(cat.id)}
                   style={{
                     cursor: 'pointer',
                     padding: '16px 18px',
                     borderRadius: 'var(--radius-lg)',
                     border: isSelected ? '2px solid #8b5cf6' : '1px solid var(--border-color)',
                     background: isSelected
-                      ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.04) 100%)'
+                      ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.05) 100%)'
                       : 'var(--bg-secondary)',
                     boxShadow: isSelected ? '0 4px 16px -2px rgba(139, 92, 246, 0.25)' : 'var(--shadow-sm)',
                     transition: 'all 0.2s ease',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    minHeight: '145px',
+                    minHeight: '154px',
                   }}
                 >
                   <div>
@@ -430,48 +579,160 @@ export default function CodinhPage() {
                     </h4>
                   </div>
 
-                  {isSelected && cardSummary && (
+                  {isPortKemCard ? (
+                    /* MINI KPI RIÊNG CHO ĐH PORT KÉM: % ĐÓNG, TỒN, HOME KÉM, PORT KÉM, HÔM QUA */
                     <div
+                      className="card-kpi-summary-row"
                       style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(5, 1fr)',
                         gap: '4px',
-                        padding: '8px',
+                        padding: '8px 4px',
                         borderRadius: 'var(--radius-md)',
-                        background: 'var(--bg-tertiary)',
+                        background: isSelected ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-tertiary)',
+                        border: '1px solid',
+                        borderColor: isSelected ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
                         textAlign: 'center',
+                        marginTop: '8px',
                       }}
                     >
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', display: 'block', fontWeight: 700 }}>TỔNG WO</span>
+                      {/* % đóng */}
+                      <div title="Tỷ lệ hoàn thành đóng công việc">
+                        <span style={{ fontSize: '0.62rem', color: 'var(--brand-primary)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          % ĐÓNG
+                        </span>
                         <strong style={{ fontSize: '0.84rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
-                          {cardSummary.total_wos}
+                          {closeRate}%
                         </strong>
                       </div>
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--success-dark)', display: 'block', fontWeight: 700 }}>ĐÃ ĐÓNG</span>
-                        <strong style={{ fontSize: '0.84rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
-                          {cardSummary.closed_wos}
-                        </strong>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700 }}>TỒN</span>
+
+                      {/* tồn */}
+                      <div title="Số công việc tồn chưa hoàn thành">
+                        <span style={{ fontSize: '0.62rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          TỒN
+                        </span>
                         <strong style={{ fontSize: '0.84rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
-                          {cardSummary.pending_wos}
+                          {pendingWos.toLocaleString()}
                         </strong>
                       </div>
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: '#8b5cf6', display: 'block', fontWeight: 700 }}>
-                          {hasCabinets ? 'XONG TỦ' : 'TỈ LỆ'}
+
+                      {/* Home kém */}
+                      <div title="Số công việc Home wifi thu kém đang tồn">
+                        <span style={{ fontSize: '0.62rem', color: '#9333ea', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          HOME KÉM
+                        </span>
+                        <strong style={{ fontSize: '0.84rem', color: '#9333ea', fontFamily: 'var(--font-mono)' }}>
+                          {(catSum.home_kem_count ?? 0).toLocaleString()}
+                        </strong>
+                      </div>
+
+                      {/* Port kém */}
+                      <div title="Số công việc Port kém GPON đang tồn">
+                        <span style={{ fontSize: '0.62rem', color: '#06b6d4', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          PORT KÉM
+                        </span>
+                        <strong style={{ fontSize: '0.84rem', color: '#06b6d4', fontFamily: 'var(--font-mono)' }}>
+                          {(catSum.port_kem_count ?? 0).toLocaleString()}
+                        </strong>
+                      </div>
+
+                      {/* hôm qua */}
+                      <div title="Số công việc đã hoàn thành / đóng hôm qua">
+                        <span style={{ fontSize: '0.62rem', color: 'var(--success-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          HÔM QUA
+                        </span>
+                        <strong
+                          style={{
+                            fontSize: '0.84rem',
+                            color: (catSum.closed_yesterday_wos ?? catSum.closed_yesterday ?? 0) > 0 ? 'var(--success-dark)' : 'var(--text-muted)',
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                        >
+                          {(catSum.closed_yesterday_wos ?? catSum.closed_yesterday ?? 0) > 0
+                            ? `+${(catSum.closed_yesterday_wos ?? catSum.closed_yesterday ?? 0).toLocaleString()}`
+                            : 0}
+                        </strong>
+                      </div>
+                    </div>
+                  ) : (
+                    /* MINI KPI TIẾN ĐỘ CHO BẢO DƯỠNG THC (5 CHỈ SỐ: % ĐÓNG, TỒN VIỆC, QUÁ HẠN, TỦ TỒN, TỦ QUÁ HẠN) */
+                    <div
+                      className="card-kpi-summary-row"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: '4px',
+                        padding: '8px 4px',
+                        borderRadius: 'var(--radius-md)',
+                        background: isSelected ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-tertiary)',
+                        border: '1px solid',
+                        borderColor: isSelected ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
+                        textAlign: 'center',
+                        marginTop: '8px',
+                      }}
+                    >
+                      <div title="Tỷ lệ hoàn thành đóng công việc">
+                        <span style={{ fontSize: '0.62rem', color: 'var(--brand-primary)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          % ĐÓNG
+                        </span>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                          {closeRate}%
+                        </strong>
+                      </div>
+
+                      <div title="Số công việc tồn chưa hoàn thành">
+                        <span style={{ fontSize: '0.62rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          TỒN VIỆC
+                        </span>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                          {pendingWos.toLocaleString()}
+                        </strong>
+                      </div>
+
+                      <div title="Số công việc bị quá hạn">
+                        <span style={{ 
+                          fontSize: '0.62rem', 
+                          color: overdueWos > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', 
+                          display: 'block', 
+                          fontWeight: 700, 
+                          marginBottom: '2px' 
+                        }}>
+                          QUÁ HẠN
+                        </span>
+                        <strong style={{ 
+                          fontSize: '0.84rem', 
+                          color: overdueWos > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', 
+                          fontFamily: 'var(--font-mono)' 
+                        }}>
+                          {overdueWos.toLocaleString()}
+                        </strong>
+                      </div>
+
+                      <div title="Số lượng tủ cáp THC con còn tồn chưa xong">
+                        <span style={{ fontSize: '0.62rem', color: '#8b5cf6', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                          TỦ TỒN
                         </span>
                         <strong style={{ fontSize: '0.84rem', color: '#8b5cf6', fontFamily: 'var(--font-mono)' }}>
-                          {rateVal}%
+                          {pendingCabs.toLocaleString()}
                         </strong>
                       </div>
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: cardSummary.overdue_wos > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', display: 'block', fontWeight: 700 }}>QUÁ HẠN</span>
-                        <strong style={{ fontSize: '0.84rem', color: cardSummary.overdue_wos > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                          {cardSummary.overdue_wos}
+
+                      <div title="Số lượng tủ cáp THC con chưa xong thuộc các WO quá hạn">
+                        <span style={{ 
+                          fontSize: '0.62rem', 
+                          color: overdueCabs > 0 ? '#ef4444' : 'var(--text-muted)', 
+                          display: 'block', 
+                          fontWeight: 700, 
+                          marginBottom: '2px' 
+                        }}>
+                          TỦ QUÁ HẠN
+                        </span>
+                        <strong style={{ 
+                          fontSize: '0.84rem', 
+                          color: overdueCabs > 0 ? '#ef4444' : 'var(--text-muted)', 
+                          fontFamily: 'var(--font-mono)' 
+                        }}>
+                          {overdueCabs.toLocaleString()}
                         </strong>
                       </div>
                     </div>
@@ -483,14 +744,76 @@ export default function CodinhPage() {
         </div>
       )}
 
-      {/* Loading state */}
-      {loadingStats ? (
+      {/* Scroll anchor target for auto-scrolling to table */}
+      <div ref={tableSectionRef} style={{ scrollMarginTop: '80px' }} />
+
+      {/* Conditional Content: Chưa chọn bảng | Đang tải | Bảng số liệu chi tiết */}
+      {!effectiveCatId ? (
+        <div
+          className="card"
+          style={{
+            padding: '52px 24px',
+            textAlign: 'center',
+            background: 'var(--bg-secondary)',
+            border: '1px dashed var(--border-color)',
+            borderRadius: 'var(--radius-xl)',
+            marginBottom: '28px',
+          }}
+        >
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'rgba(139, 92, 246, 0.1)',
+              color: '#8b5cf6',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '14px',
+            }}
+          >
+            <Cable size={28} />
+          </div>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '8px', color: 'var(--text-primary)' }}>
+            Chưa Chọn Bảng Báo Cáo
+          </h3>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', maxWidth: '520px', margin: '0 auto 16px', lineHeight: 1.6 }}>
+            Vui lòng nhấn chọn một bảng báo cáo ở danh sách phía trên (ví dụ: Bảo Dưỡng Tủ Hộp Cáp, Tuyến Cáp...) để xem bảng thống kê số liệu và tiến độ chi tiết.
+          </p>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-full)',
+              background: 'var(--bg-tertiary)',
+              color: '#8b5cf6',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <span>👆 Nhấp vào một thẻ báo cáo ở trên để tải bảng</span>
+          </div>
+        </div>
+      ) : loadingStats ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
           <div className="spin" style={{ display: 'inline-block', marginBottom: '12px' }}>
             <RotateCcw size={28} />
           </div>
-          <div>Đang tải dữ liệu báo cáo Cố Định Băng Rộng...</div>
+          <div>Đang tải dữ liệu báo cáo {activeCategory?.name || 'Cố Định Băng Rộng'}...</div>
         </div>
+      ) : isPortKemCategory ? (
+        <DhPortKemTable
+          statsData={statsData}
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          onOpenDrilldown={handleOpenDrilldown}
+          lastDataUpdateStr={lastDataUpdateStr}
+          onRefresh={refetchStats}
+          loading={loadingStats}
+        />
       ) : (
         /* 2. MAIN SPREADSHEET TABLE CARD (Identical to Dashboard MaintenanceSpreadsheetTable) */
         <div
@@ -568,9 +891,9 @@ export default function CodinhPage() {
               onClick={() => handleOpenDrilldown('closed_today')}
               className="cell-clickable"
               style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-              title="Nhấn để xem chi tiết WO Đóng Hôm Nay"
+              title="Nhấn để xem chi tiết Hôm Nay"
             >
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Nay</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Hôm nay</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
                 +{summary.closed_today_wos ?? 0}
               </strong>
@@ -580,11 +903,23 @@ export default function CodinhPage() {
               onClick={() => handleOpenDrilldown('closed_yesterday')}
               className="cell-clickable"
               style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-              title="Nhấn để xem chi tiết WO Đóng Hôm Qua"
+              title="Nhấn để xem chi tiết Hôm Qua"
             >
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Đóng Hôm Qua</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Hôm qua</span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
                 +{summary.closed_yesterday_wos ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => handleOpenDrilldown('closed_week')}
+              className="cell-clickable"
+              style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Tuần Qua"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Tuần qua</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                +{summary.closed_week_wos ?? 0}
               </strong>
             </div>
 
@@ -625,11 +960,23 @@ export default function CodinhPage() {
                   onClick={() => handleOpenDrilldown('cabinet_pending')}
                   className="cell-clickable"
                   style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-                  title="Nhấn để xem chi tiết Tủ THC Chưa Xong"
+                  title="Nhấn để xem chi tiết Tủ THC Còn Tồn"
                 >
-                  <span style={{ fontSize: '0.68rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700 }}>Tủ Chưa Xong</span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700 }}>Tủ Tồn</span>
                   <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
                     {summary.pending_cabinets ?? 0}
+                  </strong>
+                </div>
+
+                <div
+                  onClick={() => handleOpenDrilldown('cabinet_overdue')}
+                  className="cell-clickable"
+                  style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                  title="Nhấn để xem chi tiết Tủ THC Quá Hạn"
+                >
+                  <span style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', display: 'block', fontWeight: 700 }}>Tủ Quá Hạn</span>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>
+                    {summary.overdue_cabinets ?? 0}
                   </strong>
                 </div>
 
@@ -809,55 +1156,41 @@ export default function CodinhPage() {
           {/* ======================= TAB 1: THEO NHÂN VIÊN ======================= */}
           {currentTab === 'employee' && (
             <div className="excel-table-scroll-wrapper" style={{ overflowX: 'auto', borderBottom: '1px solid var(--border-color)', WebkitOverflowScrolling: 'touch' }}>
-              <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+              <table className="excel-table" style={{ width: 'max-content', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
                     <th className="col-stt" style={{ width: '38px', whiteSpace: 'nowrap' }}>STT</th>
                     <th
                       className="col-name"
-                      style={{ textAlign: 'left', width: '1%', whiteSpace: 'nowrap', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', textAlign: 'left', whiteSpace: 'nowrap', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('key_name')}
-                      title="Nhấn để sắp xếp theo tên nhân viên"
+                      title="Nhấn để sắp xếp theo họ và tên nhân viên"
                     >
-                      Nhân viên {renderSortIndicator('key_name')}
+                      Họ và tên {renderSortIndicator('key_name')}
                     </th>
                     <th
-                      style={{ minWidth: '95px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center', padding: '5px 8px', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('group_name')}
                       title="Nhấn để sắp xếp theo cụm"
                     >
                       Nhóm / Cụm {renderSortIndicator('group_name')}
                     </th>
                     <th
-                      style={{ width: '75px', minWidth: '75px', background: 'rgba(2, 132, 199, 0.1)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => handleSort('total_wos')}
-                      title="Nhấn để sắp xếp theo Tổng WO"
-                    >
-                      Tổng WO {renderSortIndicator('total_wos')}
-                    </th>
-                    <th
-                      style={{ width: '75px', minWidth: '75px', background: 'rgba(34, 197, 94, 0.12)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => handleSort('closed_wos')}
-                      title="Nhấn để sắp xếp theo Đã Đóng"
-                    >
-                      Đã Đóng {renderSortIndicator('closed_wos')}
-                    </th>
-                    <th
-                      style={{ width: '75px', minWidth: '75px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('wo_rate')}
                       title="Nhấn để sắp xếp theo % Đóng WO"
                     >
                       % Đóng {renderSortIndicator('wo_rate')}
                     </th>
                     <th
-                      style={{ width: '75px', minWidth: '75px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('pending_wos')}
                       title="Nhấn để sắp xếp theo Tồn Việc"
                     >
                       Tồn Việc {renderSortIndicator('pending_wos')}
                     </th>
                     <th
-                      style={{ width: '75px', minWidth: '75px', background: 'rgba(239, 68, 68, 0.16)', color: 'var(--danger-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(239, 68, 68, 0.16)', color: 'var(--danger-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('overdue_wos')}
                       title="Nhấn để sắp xếp theo Quá Hạn"
                     >
@@ -867,63 +1200,65 @@ export default function CodinhPage() {
                     {hasCabinets && (
                       <>
                         <th
-                          style={{ width: '85px', minWidth: '85px', background: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('total_cabinets')}
-                          title="Nhấn để sắp xếp theo Tổng Tủ THC"
-                        >
-                          Tổng Tủ THC {renderSortIndicator('total_cabinets')}
-                        </th>
-                        <th
-                          style={{ width: '80px', minWidth: '80px', background: 'rgba(34, 197, 94, 0.12)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('completed_cabinets')}
-                          title="Nhấn để sắp xếp theo Tủ Đã Xong"
-                        >
-                          Tủ Đã Xong {renderSortIndicator('completed_cabinets')}
-                        </th>
-                        <th
-                          style={{ width: '80px', minWidth: '80px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('cabinet_rate')}
                           title="Nhấn để sắp xếp theo % Tủ Xong"
                         >
                           % Tủ Xong {renderSortIndicator('cabinet_rate')}
                         </th>
+                        <th
+                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('pending_cabinets')}
+                          title="Nhấn để sắp xếp theo Tủ Tồn Chưa Xong"
+                        >
+                          Tủ Tồn {renderSortIndicator('pending_cabinets')}
+                        </th>
+                        <th
+                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(239, 68, 68, 0.16)', color: 'var(--danger-dark)', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('overdue_cabinets')}
+                          title="Nhấn để sắp xếp theo Tủ Quá Hạn"
+                        >
+                          Tủ Quá Hạn {renderSortIndicator('overdue_cabinets')}
+                        </th>
                       </>
                     )}
 
-                    <th style={{ width: 'auto', minWidth: '130px', textAlign: 'left', paddingLeft: '14px' }}>
-                      Tiến Độ
+                    <th
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.06)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('closed_today')}
+                      title="Nhấn để sắp xếp theo WO đóng hôm nay"
+                    >
+                      Hôm nay {renderSortIndicator('closed_today')}
+                    </th>
+                    <th
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.06)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('closed_yesterday')}
+                      title="Nhấn để sắp xếp theo WO đóng hôm qua"
+                    >
+                      Hôm qua {renderSortIndicator('closed_yesterday')}
+                    </th>
+                    <th
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(2, 132, 199, 0.08)', color: 'var(--brand-primary)', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('closed_week')}
+                      title="Nhấn để sắp xếp theo WO đóng tuần qua"
+                    >
+                      Tuần qua {renderSortIndicator('closed_week')}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {/* Excel Summary Row on TOP */}
                   <tr className="excel-summary-row">
-                    <td className="col-summary-label" colSpan={3} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                    <td className="col-summary-label" colSpan={3} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       {selectedGroupFilter ? `TỔNG (${formatGroupName(selectedGroupFilter)}):` : 'TỔNG CỘNG:'}
                     </td>
-                    <td
-                      className="cell-num cell-clickable"
-                      onClick={() => handleOpenDrilldown('total', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
-                      style={{ width: '75px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800, cursor: 'pointer' }}
-                      title={`Nhấn để xem chi tiết Tổng WO ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
-                    >
-                      {activeEmpSummary.total_wos ?? 0}
-                    </td>
-                    <td
-                      className="cell-num cell-closed cell-clickable"
-                      onClick={() => handleOpenDrilldown('closed', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
-                      style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
-                      title={`Nhấn để xem chi tiết WO Đã Đóng ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
-                    >
-                      {activeEmpSummary.closed_wos ?? 0}
-                    </td>
-                    <td className="cell-num" style={{ width: '75px', fontSize: '0.95rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                    <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)' }}>
                       {activeEmpSummary.wo_rate ?? 0}%
                     </td>
                     <td
                       className="cell-num cell-pending cell-clickable"
                       onClick={() => handleOpenDrilldown('pending', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
-                      style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      style={{ fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer' }}
                       title={`Nhấn để xem chi tiết WO Đang Tồn ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                     >
                       {activeEmpSummary.pending_wos ?? 0}
@@ -931,7 +1266,7 @@ export default function CodinhPage() {
                     <td
                       className="cell-num cell-overdue cell-clickable"
                       onClick={() => handleOpenDrilldown('overdue', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
-                      style={{ width: '75px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      style={{ fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer' }}
                       title={`Nhấn để xem chi tiết WO Quá Hạn ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
                     >
                       {activeEmpSummary.overdue_wos ?? 0}
@@ -939,81 +1274,82 @@ export default function CodinhPage() {
 
                     {hasCabinets && (
                       <>
-                        <td
-                          className="cell-num cell-clickable"
-                          onClick={() => handleOpenDrilldown('cabinet_total', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
-                          style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6', cursor: 'pointer' }}
-                          title={`Nhấn để xem chi tiết Tổng Tủ THC ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
-                        >
-                          {activeEmpSummary.total_cabinets ?? 0}
-                        </td>
-                        <td
-                          className="cell-num cell-clickable"
-                          onClick={() => handleOpenDrilldown('cabinet_completed', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
-                          style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
-                          title={`Nhấn để xem chi tiết Tủ THC Đã Xong ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
-                        >
-                          {activeEmpSummary.completed_cabinets ?? 0}
-                        </td>
-                        <td className="cell-num" style={{ width: '80px', fontSize: '0.95rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: '#8b5cf6' }}>
                           {activeEmpSummary.cabinet_rate ?? 0}%
+                        </td>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_pending', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
+                          style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--warning-dark)', cursor: 'pointer' }}
+                          title={`Nhấn để xem chi tiết Tủ THC Còn Tồn ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
+                        >
+                          {activeEmpSummary.pending_cabinets ?? 0}
+                        </td>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_overdue', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
+                          style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--danger-dark)', cursor: 'pointer' }}
+                          title={`Nhấn để xem chi tiết Tủ THC Quá Hạn ${selectedGroupFilter ? `cụm ${formatGroupName(selectedGroupFilter)}` : ''}`}
+                        >
+                          {activeEmpSummary.overdue_cabinets ?? 0}
                         </td>
                       </>
                     )}
 
-                    <td>
-                      <div className="progress-bar-container" style={{ width: '100px' }}>
-                        <div
-                          className="progress-bar-fill"
-                          style={{
-                            width: `${Math.min(hasCabinets ? activeEmpSummary.cabinet_rate : activeEmpSummary.wo_rate, 100)}%`,
-                            background: hasCabinets ? '#8b5cf6' : 'var(--brand-primary)',
-                          }}
-                        />
-                      </div>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed_today', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
+                      style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
+                      title={`Nhấn để xem chi tiết WO Đóng Hôm Nay`}
+                    >
+                      +{activeEmpSummary.closed_today_wos ?? 0}
+                    </td>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed_yesterday', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
+                      style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
+                      title={`Nhấn để xem chi tiết WO Đóng Hôm Qua`}
+                    >
+                      +{activeEmpSummary.closed_yesterday_wos ?? 0}
+                    </td>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed_week', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
+                      style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--brand-primary)', cursor: 'pointer' }}
+                      title={`Nhấn để xem chi tiết WO Đóng Tuần Qua`}
+                    >
+                      +{activeEmpSummary.closed_week_wos ?? 0}
                     </td>
                   </tr>
 
                   {/* Data Rows */}
                   {sortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={hasCabinets ? 11 : 8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <td colSpan={hasCabinets ? 12 : 9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         Không tìm thấy nhân viên nào phù hợp bộ lọc tìm kiếm.
                       </td>
                     </tr>
                   ) : (
                     sortedEmployees.map((row, index) => {
                       const isOverdue = row.overdue_wos > 0;
+                      const fullName = getUserFullName(row.key_name);
                       return (
                         <tr key={`emp-${row.key_name || index}`} className="excel-row">
                           <td className="cell-num col-stt" style={{ width: '38px', color: 'var(--text-muted)' }}>
                             {row.is_other ? '*' : index + 1}
                           </td>
                           <td className="col-name" style={{ width: '1%', whiteSpace: 'nowrap', padding: '3px 12px' }}>
-                            <strong style={{ fontSize: '0.88rem', color: isOverdue ? 'var(--danger)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                              {row.key_name}
+                            <strong
+                              style={{ fontSize: '0.88rem', color: isOverdue ? 'var(--danger)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}
+                              title={`User: ${row.key_name}`}
+                            >
+                              {fullName}
                             </strong>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--bg-tertiary)' }}>
+                          <td style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center', padding: '3px 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--bg-tertiary)', padding: '2px 6px' }}>
                               {formatGroupName(row.group_name)}
                             </span>
-                          </td>
-                          <td
-                            className="cell-num cell-clickable"
-                            onClick={() => handleOpenDrilldown('total', 'employee', row.key_name)}
-                            style={{ fontWeight: 700, color: 'var(--brand-primary)', cursor: 'pointer' }}
-                            title={`Nhấn để xem chi tiết ${row.total_wos} WO của ${row.key_name}`}
-                          >
-                            {row.total_wos}
-                          </td>
-                          <td
-                            className="cell-num cell-closed cell-clickable"
-                            onClick={() => handleOpenDrilldown('closed', 'employee', row.key_name)}
-                            style={{ fontWeight: 700, cursor: 'pointer' }}
-                            title={`Nhấn để xem chi tiết ${row.closed_wos} WO đã đóng của ${row.key_name}`}
-                          >
-                            {row.closed_wos}
                           </td>
                           <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
                             {row.wo_rate}%
@@ -1037,42 +1373,56 @@ export default function CodinhPage() {
 
                           {hasCabinets && (
                             <>
-                              <td
-                                className="cell-num cell-clickable"
-                                onClick={() => handleOpenDrilldown('cabinet_total', 'employee', row.key_name)}
-                                style={{ fontWeight: 700, color: '#8b5cf6', cursor: 'pointer' }}
-                                title={`Nhấn để xem chi tiết ${row.total_cabinets} tủ THC của ${row.key_name}`}
-                              >
-                                {row.total_cabinets}
-                              </td>
-                              <td
-                                className="cell-num cell-clickable"
-                                onClick={() => handleOpenDrilldown('cabinet_completed', 'employee', row.key_name)}
-                                style={{ fontWeight: 700, color: 'var(--success-dark)', cursor: 'pointer' }}
-                                title={`Nhấn để xem chi tiết ${row.completed_cabinets} tủ THC đã xong của ${row.key_name}`}
-                              >
-                                {row.completed_cabinets}
-                              </td>
                               <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
                                 {row.cabinet_rate}%
+                              </td>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_pending', 'employee', row.key_name)}
+                                style={{ fontWeight: 700, color: (row.pending_cabinets || 0) > 0 ? 'var(--warning-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.pending_cabinets || 0} tủ THC tồn của ${row.key_name}`}
+                              >
+                                {row.pending_cabinets || 0}
+                              </td>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_overdue', 'employee', row.key_name)}
+                                style={{ fontWeight: (row.overdue_cabinets || 0) > 0 ? 800 : 400, color: (row.overdue_cabinets || 0) > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.overdue_cabinets || 0} tủ THC quá hạn của ${row.key_name}`}
+                              >
+                                {row.overdue_cabinets || 0}
                               </td>
                             </>
                           )}
 
-                          <td>
-                            <div className="progress-bar-container" style={{ width: '90px' }}>
-                              <div
-                                className="progress-bar-fill"
-                                style={{
-                                  width: `${Math.min(hasCabinets ? row.cabinet_rate : row.wo_rate, 100)}%`,
-                                  background: (hasCabinets ? row.cabinet_rate : row.wo_rate) >= 100
-                                    ? 'var(--success)'
-                                    : hasCabinets
-                                    ? '#8b5cf6'
-                                    : 'var(--brand-primary)',
-                                }}
-                              />
-                            </div>
+                          {/* WO Đóng Hôm Nay */}
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed_today', 'employee', row.key_name)}
+                            style={{ fontWeight: 600, color: (row.closed_today || 0) > 0 ? 'var(--success-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_today || 0} WO đóng hôm nay`}
+                          >
+                            {(row.closed_today || 0) > 0 ? `+${row.closed_today}` : 0}
+                          </td>
+
+                          {/* WO Đóng Hôm Qua */}
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed_yesterday', 'employee', row.key_name)}
+                            style={{ fontWeight: 600, color: (row.closed_yesterday || 0) > 0 ? 'var(--success-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_yesterday || 0} WO đóng hôm qua`}
+                          >
+                            {(row.closed_yesterday || 0) > 0 ? `+${row.closed_yesterday}` : 0}
+                          </td>
+
+                          {/* WO Đóng Tuần Qua */}
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed_week', 'employee', row.key_name)}
+                            style={{ fontWeight: 600, color: (row.closed_week || 0) > 0 ? 'var(--brand-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_week || 0} WO đóng tuần qua`}
+                          >
+                            {(row.closed_week || 0) > 0 ? `+${row.closed_week}` : 0}
                           </td>
                         </tr>
                       );
@@ -1086,48 +1436,34 @@ export default function CodinhPage() {
           {/* ======================= TAB 2: THEO NHÓM / CỤM ======================= */}
           {currentTab === 'group' && (
             <div className="excel-table-scroll-wrapper" style={{ overflowX: 'auto', borderBottom: '1px solid var(--border-color)', WebkitOverflowScrolling: 'touch' }}>
-              <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+              <table className="excel-table" style={{ width: 'max-content', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
                     <th className="col-stt" style={{ width: '38px', whiteSpace: 'nowrap' }}>STT</th>
                     <th
                       className="col-name"
-                      style={{ textAlign: 'left', width: '1%', whiteSpace: 'nowrap', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', textAlign: 'left', whiteSpace: 'nowrap', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('key_name')}
                       title="Nhấn để sắp xếp theo tên cụm viết tắt"
                     >
                       Nhóm / Cụm {renderSortIndicator('key_name')}
                     </th>
                     <th
-                      style={{ width: '80px', minWidth: '80px', background: 'rgba(2, 132, 199, 0.1)', color: 'var(--brand-primary)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => handleSort('total_wos')}
-                      title="Nhấn để sắp xếp theo Tổng WO"
-                    >
-                      Tổng WO {renderSortIndicator('total_wos')}
-                    </th>
-                    <th
-                      style={{ width: '80px', minWidth: '80px', background: 'rgba(34, 197, 94, 0.12)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => handleSort('closed_wos')}
-                      title="Nhấn để sắp xếp theo Đã Đóng"
-                    >
-                      Đã Đóng {renderSortIndicator('closed_wos')}
-                    </th>
-                    <th
-                      style={{ width: '75px', minWidth: '75px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('wo_rate')}
                       title="Nhấn để sắp xếp theo % Đóng WO"
                     >
                       % Đóng {renderSortIndicator('wo_rate')}
                     </th>
                     <th
-                      style={{ width: '80px', minWidth: '80px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('pending_wos')}
                       title="Nhấn để sắp xếp theo Tồn Việc"
                     >
                       Tồn Việc {renderSortIndicator('pending_wos')}
                     </th>
                     <th
-                      style={{ width: '80px', minWidth: '80px', background: 'rgba(239, 68, 68, 0.16)', color: 'var(--danger-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(239, 68, 68, 0.16)', color: 'var(--danger-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('overdue_wos')}
                       title="Nhấn để sắp xếp theo Quá Hạn"
                     >
@@ -1137,63 +1473,65 @@ export default function CodinhPage() {
                     {hasCabinets && (
                       <>
                         <th
-                          style={{ width: '90px', minWidth: '90px', background: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('total_cabinets')}
-                          title="Nhấn để sắp xếp theo Tổng Tủ THC"
-                        >
-                          Tổng Tủ THC {renderSortIndicator('total_cabinets')}
-                        </th>
-                        <th
-                          style={{ width: '85px', minWidth: '85px', background: 'rgba(34, 197, 94, 0.12)', color: 'var(--success-dark)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('completed_cabinets')}
-                          title="Nhấn để sắp xếp theo Tủ Đã Xong"
-                        >
-                          Tủ Đã Xong {renderSortIndicator('completed_cabinets')}
-                        </th>
-                        <th
-                          style={{ width: '85px', minWidth: '85px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('cabinet_rate')}
                           title="Nhấn để sắp xếp theo % Tủ Xong"
                         >
                           % Tủ Xong {renderSortIndicator('cabinet_rate')}
                         </th>
+                        <th
+                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('pending_cabinets')}
+                          title="Nhấn để sắp xếp theo Tủ Tồn Chưa Xong"
+                        >
+                          Tủ Tồn {renderSortIndicator('pending_cabinets')}
+                        </th>
+                        <th
+                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(239, 68, 68, 0.16)', color: 'var(--danger-dark)', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('overdue_cabinets')}
+                          title="Nhấn để sắp xếp theo Tủ Quá Hạn"
+                        >
+                          Tủ Quá Hạn {renderSortIndicator('overdue_cabinets')}
+                        </th>
                       </>
                     )}
 
-                    <th style={{ width: 'auto', minWidth: '130px', textAlign: 'left', paddingLeft: '14px' }}>
-                      Tiến Độ
+                    <th
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.06)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('closed_today')}
+                      title="Nhấn để sắp xếp theo WO đóng hôm nay"
+                    >
+                      Hôm nay {renderSortIndicator('closed_today')}
+                    </th>
+                    <th
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.06)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('closed_yesterday')}
+                      title="Nhấn để sắp xếp theo WO đóng hôm qua"
+                    >
+                      Hôm qua {renderSortIndicator('closed_yesterday')}
+                    </th>
+                    <th
+                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(2, 132, 199, 0.08)', color: 'var(--brand-primary)', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('closed_week')}
+                      title="Nhấn để sắp xếp theo WO đóng tuần qua"
+                    >
+                      Tuần qua {renderSortIndicator('closed_week')}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {/* Summary Row */}
                   <tr className="excel-summary-row">
-                    <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', width: '1%', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                    <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       TỔNG CỘNG:
                     </td>
-                    <td
-                      className="cell-num cell-clickable"
-                      onClick={() => handleOpenDrilldown('total')}
-                      style={{ width: '80px', fontSize: '0.98rem', color: 'var(--brand-primary)', fontWeight: 800, cursor: 'pointer' }}
-                      title="Nhấn để xem chi tiết Tổng WO"
-                    >
-                      {summary.total_wos ?? 0}
-                    </td>
-                    <td
-                      className="cell-num cell-closed cell-clickable"
-                      onClick={() => handleOpenDrilldown('closed')}
-                      style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
-                      title="Nhấn để xem chi tiết WO Đã Đóng"
-                    >
-                      {summary.closed_wos ?? 0}
-                    </td>
-                    <td className="cell-num" style={{ width: '75px', fontSize: '0.95rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                    <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)' }}>
                       {summary.wo_rate ?? 0}%
                     </td>
                     <td
                       className="cell-num cell-pending cell-clickable"
                       onClick={() => handleOpenDrilldown('pending')}
-                      style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      style={{ fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer' }}
                       title="Nhấn để xem chi tiết WO Đang Tồn"
                     >
                       {summary.pending_wos ?? 0}
@@ -1201,7 +1539,7 @@ export default function CodinhPage() {
                     <td
                       className="cell-num cell-overdue cell-clickable"
                       onClick={() => handleOpenDrilldown('overdue')}
-                      style={{ width: '80px', fontSize: '0.98rem', fontWeight: 800, cursor: 'pointer' }}
+                      style={{ fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer' }}
                       title="Nhấn để xem chi tiết WO Quá Hạn"
                     >
                       {summary.overdue_wos ?? 0}
@@ -1209,38 +1547,51 @@ export default function CodinhPage() {
 
                     {hasCabinets && (
                       <>
-                        <td
-                          className="cell-num cell-clickable"
-                          onClick={() => handleOpenDrilldown('cabinet_total')}
-                          style={{ width: '90px', fontSize: '0.98rem', fontWeight: 800, color: '#8b5cf6', cursor: 'pointer' }}
-                          title="Nhấn để xem chi tiết Tổng Tủ THC"
-                        >
-                          {summary.total_cabinets ?? 0}
-                        </td>
-                        <td
-                          className="cell-num cell-clickable"
-                          onClick={() => handleOpenDrilldown('cabinet_completed')}
-                          style={{ width: '85px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
-                          title="Nhấn để xem chi tiết Tủ THC Đã Xong"
-                        >
-                          {summary.completed_cabinets ?? 0}
-                        </td>
-                        <td className="cell-num" style={{ width: '85px', fontSize: '0.95rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: '#8b5cf6' }}>
                           {summary.cabinet_rate ?? 0}%
+                        </td>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_pending')}
+                          style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--warning-dark)', cursor: 'pointer' }}
+                          title="Nhấn để xem chi tiết Tủ THC Còn Tồn"
+                        >
+                          {summary.pending_cabinets ?? 0}
+                        </td>
+                        <td
+                          className="cell-num cell-clickable"
+                          onClick={() => handleOpenDrilldown('cabinet_overdue')}
+                          style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--danger-dark)', cursor: 'pointer' }}
+                          title="Nhấn để xem chi tiết Tủ THC Quá Hạn"
+                        >
+                          {summary.overdue_cabinets ?? 0}
                         </td>
                       </>
                     )}
 
-                    <td>
-                      <div className="progress-bar-container" style={{ width: '100px' }}>
-                        <div
-                          className="progress-bar-fill"
-                          style={{
-                            width: `${Math.min(hasCabinets ? summary.cabinet_rate : summary.wo_rate, 100)}%`,
-                            background: hasCabinets ? '#8b5cf6' : 'var(--brand-primary)',
-                          }}
-                        />
-                      </div>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed_today')}
+                      style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
+                      title={`Nhấn để xem chi tiết WO Đóng Hôm Nay`}
+                    >
+                      +{summary.closed_today_wos ?? 0}
+                    </td>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed_yesterday')}
+                      style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)', cursor: 'pointer' }}
+                      title={`Nhấn để xem chi tiết WO Đóng Hôm Qua`}
+                    >
+                      +{summary.closed_yesterday_wos ?? 0}
+                    </td>
+                    <td
+                      className="cell-num cell-clickable"
+                      onClick={() => handleOpenDrilldown('closed_week')}
+                      style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--brand-primary)', cursor: 'pointer' }}
+                      title={`Nhấn để xem chi tiết WO Đóng Tuần Qua`}
+                    >
+                      +{summary.closed_week_wos ?? 0}
                     </td>
                   </tr>
 
@@ -1265,22 +1616,6 @@ export default function CodinhPage() {
                               {shortName}
                             </strong>
                           </td>
-                          <td
-                            className="cell-num cell-clickable"
-                            onClick={() => handleOpenDrilldown('total', 'group', row.key_name)}
-                            style={{ fontWeight: 700, color: 'var(--brand-primary)', cursor: 'pointer' }}
-                            title={`Nhấn để xem chi tiết ${row.total_wos} WO của cụm ${shortName}`}
-                          >
-                            {row.total_wos}
-                          </td>
-                          <td
-                            className="cell-num cell-closed cell-clickable"
-                            onClick={() => handleOpenDrilldown('closed', 'group', row.key_name)}
-                            style={{ fontWeight: 700, cursor: 'pointer' }}
-                            title={`Nhấn để xem chi tiết ${row.closed_wos} WO đã đóng của cụm ${shortName}`}
-                          >
-                            {row.closed_wos}
-                          </td>
                           <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
                             {row.wo_rate}%
                           </td>
@@ -1303,42 +1638,56 @@ export default function CodinhPage() {
 
                           {hasCabinets && (
                             <>
-                              <td
-                                className="cell-num cell-clickable"
-                                onClick={() => handleOpenDrilldown('cabinet_total', 'group', row.key_name)}
-                                style={{ fontWeight: 700, color: '#8b5cf6', cursor: 'pointer' }}
-                                title={`Nhấn để xem chi tiết ${row.total_cabinets} tủ THC của cụm ${shortName}`}
-                              >
-                                {row.total_cabinets}
-                              </td>
-                              <td
-                                className="cell-num cell-clickable"
-                                onClick={() => handleOpenDrilldown('cabinet_completed', 'group', row.key_name)}
-                                style={{ fontWeight: 700, color: 'var(--success-dark)', cursor: 'pointer' }}
-                                title={`Nhấn để xem chi tiết ${row.completed_cabinets} tủ THC đã xong của cụm ${shortName}`}
-                              >
-                                {row.completed_cabinets}
-                              </td>
                               <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
                                 {row.cabinet_rate}%
+                              </td>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_pending', 'group', row.key_name)}
+                                style={{ fontWeight: 700, color: (row.pending_cabinets || 0) > 0 ? 'var(--warning-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.pending_cabinets || 0} tủ THC tồn của cụm ${shortName}`}
+                              >
+                                {row.pending_cabinets || 0}
+                              </td>
+                              <td
+                                className="cell-num cell-clickable"
+                                onClick={() => handleOpenDrilldown('cabinet_overdue', 'group', row.key_name)}
+                                style={{ fontWeight: (row.overdue_cabinets || 0) > 0 ? 800 : 400, color: (row.overdue_cabinets || 0) > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                                title={`Nhấn để xem chi tiết ${row.overdue_cabinets || 0} tủ THC quá hạn của cụm ${shortName}`}
+                              >
+                                {row.overdue_cabinets || 0}
                               </td>
                             </>
                           )}
 
-                          <td>
-                            <div className="progress-bar-container" style={{ width: '90px' }}>
-                              <div
-                                className="progress-bar-fill"
-                                style={{
-                                  width: `${Math.min(hasCabinets ? row.cabinet_rate : row.wo_rate, 100)}%`,
-                                  background: (hasCabinets ? row.cabinet_rate : row.wo_rate) >= 100
-                                    ? 'var(--success)'
-                                    : hasCabinets
-                                    ? '#8b5cf6'
-                                    : 'var(--brand-primary)',
-                                }}
-                              />
-                            </div>
+                          {/* WO Đóng Hôm Nay */}
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed_today', 'group', row.key_name)}
+                            style={{ fontWeight: 600, color: (row.closed_today || 0) > 0 ? 'var(--success-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_today || 0} WO đóng hôm nay của cụm ${shortName}`}
+                          >
+                            {(row.closed_today || 0) > 0 ? `+${row.closed_today}` : 0}
+                          </td>
+
+                          {/* WO Đóng Hôm Qua */}
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed_yesterday', 'group', row.key_name)}
+                            style={{ fontWeight: 600, color: (row.closed_yesterday || 0) > 0 ? 'var(--success-dark)' : 'var(--text-muted)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_yesterday || 0} WO đóng hôm qua của cụm ${shortName}`}
+                          >
+                            {(row.closed_yesterday || 0) > 0 ? `+${row.closed_yesterday}` : 0}
+                          </td>
+
+                          {/* WO Đóng Tuần Qua */}
+                          <td
+                            className="cell-num cell-clickable"
+                            onClick={() => handleOpenDrilldown('closed_week', 'group', row.key_name)}
+                            style={{ fontWeight: 600, color: (row.closed_week || 0) > 0 ? 'var(--brand-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
+                            title={`Nhấn để xem chi tiết ${row.closed_week || 0} WO đóng tuần qua của cụm ${shortName}`}
+                          >
+                            {(row.closed_week || 0) > 0 ? `+${row.closed_week}` : 0}
                           </td>
                         </tr>
                       );

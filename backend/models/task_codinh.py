@@ -19,6 +19,7 @@ class TaskCodinh(Base):
     don_vi = Column(String(255), nullable=True)
     ma_tram = Column(String(100), nullable=True, index=True)     # Station code
     thoi_diem_tao = Column(DateTime, nullable=True, index=True)
+    thoi_diem_bat_dau_thuc_hien = Column(DateTime, nullable=True, index=True)
     thoi_diem_yeu_cau_ket_thuc = Column(DateTime, nullable=True, index=True)
     thoi_gian_con_lai = Column(Float, nullable=True)
     thoi_diem_ft_hoan_thanh = Column(DateTime, nullable=True)

@@ -74,6 +74,9 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('vcc_theme') || 'light');
 
   const handleTabChange = (tab) => {
+    if (tab === 'codinh') {
+      window.dispatchEvent(new CustomEvent('reset-codinh-view'));
+    }
     setActiveTab(tab);
     if (tab === 'admincodinh') {
       if (!window.location.pathname.includes('/admincodinh')) {

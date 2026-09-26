@@ -353,6 +353,7 @@ def get_meta_options(db: Session = Depends(get_db)):
 @router.get("/drilldown")
 def get_drilldown_tasks(
     category_id: Optional[int] = Query(None),
+    month: Optional[str] = Query(None),
     metric: str = Query("total"),
     filter_type: Optional[str] = Query(None),
     target_name: Optional[str] = Query(None),
@@ -370,6 +371,7 @@ def get_drilldown_tasks(
         return get_codinh_drilldown_tasks(
             db=db,
             category_id=category_id,
+            target_month=month,
             metric=metric,
             filter_type=filter_type,
             target_name=target_name,

@@ -100,6 +100,40 @@ def get_report_categories(
         }
 
         if include_summary:
+            if getattr(cat, "domain", "codien") == "codinh":
+                try:
+                    from backend.services.codinh_service import get_codinh_stats
+                    c_stats = get_codinh_stats(db, category_id=cat.id, target_month=target_month)
+                    c_sum = c_stats.get("summary", {})
+                    item["summary"] = {
+                        "total": c_sum.get("total_wos", 0),
+                        "closed": c_sum.get("closed_wos", 0),
+                        "pending": c_sum.get("pending_wos", 0),
+                        "overdue": c_sum.get("overdue_wos", 0),
+                        "completion_rate": c_sum.get("wo_rate", 0.0),
+                        "total_cabinets": c_sum.get("total_cabinets", 0),
+                        "completed_cabinets": c_sum.get("completed_cabinets", 0),
+                        "pending_cabinets": c_sum.get("pending_cabinets", 0),
+                        "overdue_cabinets": c_sum.get("overdue_cabinets", 0),
+                        "cabinet_rate": c_sum.get("cabinet_rate", 0.0),
+                        "closed_today": c_sum.get("closed_today_wos", 0),
+                        "closed_yesterday": c_sum.get("closed_yesterday_wos", 0),
+                        "closed_week": c_sum.get("closed_week_wos", 0),
+                        "home_kem_count": c_sum.get("home_kem_count", 0),
+                        "port_kem_count": c_sum.get("port_kem_count", 0),
+                        "is_port_kem": c_sum.get("is_port_kem", False),
+                    }
+                except Exception:
+                    item["summary"] = {
+                        "total": 0, "closed": 0, "pending": 0, "overdue": 0, "completion_rate": 0.0,
+                        "total_cabinets": 0, "completed_cabinets": 0, "pending_cabinets": 0, "overdue_cabinets": 0, "cabinet_rate": 0.0,
+                        "closed_today": 0, "closed_yesterday": 0, "closed_week": 0,
+                        "home_kem_count": 0, "port_kem_count": 0, "is_port_kem": False
+                    }
+                item["sub_categories"] = []
+                output.append(item)
+                continue
+
             base_conds = _build_type_conditions(cat, db)
             if not base_conds:
                 item["summary"] = {"total": 0, "closed": 0, "pending": 0, "overdue": 0, "completion_rate": 0.0}
