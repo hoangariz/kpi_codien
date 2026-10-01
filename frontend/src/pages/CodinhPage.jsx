@@ -301,8 +301,9 @@ export default function CodinhPage() {
       csvLines.push(`BẢNG THỐNG KÊ ${activeCategory?.name || 'CĐBR'} THEO NHÂN VIÊN`);
       const headers = [
         'STT', 'Nhân viên', 'Nhóm / Cụm',
-        '% Đóng', 'Tồn Việc', 'Quá Hạn',
-        ...(hasCabinets ? ['% Tủ Xong', 'Tủ Tồn', 'Tủ Quá Hạn'] : []),
+        ...(!hasCabinets ? ['% Đóng'] : []),
+        'Tồn Việc', 'Quá Hạn',
+        ...(hasCabinets ? ['Tủ Tồn', 'Tủ Quá Hạn'] : []),
         'Hôm nay', 'Hôm qua', 'Tuần qua'
       ];
       csvLines.push(headers.join(','));
@@ -310,10 +311,10 @@ export default function CodinhPage() {
         '--',
         '"TỔNG CỘNG"',
         '--',
-        `${summary.wo_rate}%`,
+        ...(!hasCabinets ? [`${summary.wo_rate}%`] : []),
         summary.pending_wos,
         summary.overdue_wos,
-        ...(hasCabinets ? [`${summary.cabinet_rate}%`, summary.pending_cabinets, summary.overdue_cabinets] : []),
+        ...(hasCabinets ? [summary.pending_cabinets, summary.overdue_cabinets] : []),
         summary.closed_today_wos ?? 0,
         summary.closed_yesterday_wos ?? 0,
         summary.closed_week_wos ?? 0,
@@ -323,10 +324,10 @@ export default function CodinhPage() {
           idx + 1,
           `"${getUserFullName(r.key_name)}"`,
           `"${formatGroupName(r.group_name)}"`,
-          `${r.wo_rate}%`,
+          ...(!hasCabinets ? [`${r.wo_rate}%`] : []),
           r.pending_wos,
           r.overdue_wos,
-          ...(hasCabinets ? [`${r.cabinet_rate}%`, r.pending_cabinets, r.overdue_cabinets] : []),
+          ...(hasCabinets ? [r.pending_cabinets, r.overdue_cabinets] : []),
           r.closed_today ?? 0,
           r.closed_yesterday ?? 0,
           r.closed_week ?? 0,
@@ -336,18 +337,19 @@ export default function CodinhPage() {
       csvLines.push(`BẢNG THỐNG KÊ ${activeCategory?.name || 'CĐBR'} THEO NHÓM / CỤM`);
       const headers = [
         'STT', 'Nhóm / Cụm',
-        '% Đóng', 'Tồn Việc', 'Quá Hạn',
-        ...(hasCabinets ? ['% Tủ Xong', 'Tủ Tồn', 'Tủ Quá Hạn'] : []),
+        ...(!hasCabinets ? ['% Đóng'] : []),
+        'Tồn Việc', 'Quá Hạn',
+        ...(hasCabinets ? ['Tủ Tồn', 'Tủ Quá Hạn'] : []),
         'Hôm nay', 'Hôm qua', 'Tuần qua'
       ];
       csvLines.push(headers.join(','));
       csvLines.push([
         '--',
         '"TỔNG CỘNG"',
-        `${summary.wo_rate}%`,
+        ...(!hasCabinets ? [`${summary.wo_rate}%`] : []),
         summary.pending_wos,
         summary.overdue_wos,
-        ...(hasCabinets ? [`${summary.cabinet_rate}%`, summary.pending_cabinets, summary.overdue_cabinets] : []),
+        ...(hasCabinets ? [summary.pending_cabinets, summary.overdue_cabinets] : []),
         summary.closed_today_wos ?? 0,
         summary.closed_yesterday_wos ?? 0,
         summary.closed_week_wos ?? 0,
@@ -356,10 +358,10 @@ export default function CodinhPage() {
         csvLines.push([
           idx + 1,
           `"${formatGroupName(r.key_name)}"`,
-          `${r.wo_rate}%`,
+          ...(!hasCabinets ? [`${r.wo_rate}%`] : []),
           r.pending_wos,
           r.overdue_wos,
-          ...(hasCabinets ? [`${r.cabinet_rate}%`, r.pending_cabinets, r.overdue_cabinets] : []),
+          ...(hasCabinets ? [r.pending_cabinets, r.overdue_cabinets] : []),
           r.closed_today ?? 0,
           r.closed_yesterday ?? 0,
           r.closed_week ?? 0,
@@ -1227,13 +1229,15 @@ export default function CodinhPage() {
                     >
                       Nhóm / Cụm {renderSortIndicator('group_name')}
                     </th>
-                    <th
-                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => handleSort('wo_rate')}
-                      title="Nhấn để sắp xếp theo % Đóng WO"
-                    >
-                      % Đóng {renderSortIndicator('wo_rate')}
-                    </th>
+                    {!hasCabinets && (
+                      <th
+                        style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
+                        onClick={() => handleSort('wo_rate')}
+                        title="Nhấn để sắp xếp theo % Đóng WO"
+                      >
+                        % Đóng {renderSortIndicator('wo_rate')}
+                      </th>
+                    )}
                     <th
                       style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('pending_wos')}
@@ -1251,13 +1255,6 @@ export default function CodinhPage() {
 
                     {hasCabinets && (
                       <>
-                        <th
-                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('cabinet_rate')}
-                          title="Nhấn để sắp xếp theo % Tủ Xong"
-                        >
-                          % Tủ Xong {renderSortIndicator('cabinet_rate')}
-                        </th>
                         <th
                           style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('pending_cabinets')}
@@ -1304,9 +1301,11 @@ export default function CodinhPage() {
                     <td className="col-summary-label" colSpan={3} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       {selectedGroupFilter ? `TỔNG (${formatGroupName(selectedGroupFilter)}):` : 'TỔNG CỘNG:'}
                     </td>
-                    <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)' }}>
-                      {activeEmpSummary.wo_rate ?? 0}%
-                    </td>
+                    {!hasCabinets && (
+                      <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                        {activeEmpSummary.wo_rate ?? 0}%
+                      </td>
+                    )}
                     <td
                       className="cell-num cell-pending cell-clickable"
                       onClick={() => handleOpenDrilldown('pending', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
@@ -1326,9 +1325,6 @@ export default function CodinhPage() {
 
                     {hasCabinets && (
                       <>
-                        <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: '#8b5cf6' }}>
-                          {activeEmpSummary.cabinet_rate ?? 0}%
-                        </td>
                         <td
                           className="cell-num cell-clickable"
                           onClick={() => handleOpenDrilldown('cabinet_pending', selectedGroupFilter ? 'group' : null, selectedGroupFilter || null)}
@@ -1377,7 +1373,7 @@ export default function CodinhPage() {
                   {/* Data Rows */}
                   {sortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={hasCabinets ? 12 : 9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <td colSpan={hasCabinets ? 10 : 9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         Không tìm thấy nhân viên nào phù hợp bộ lọc tìm kiếm.
                       </td>
                     </tr>
@@ -1403,9 +1399,11 @@ export default function CodinhPage() {
                               {formatGroupName(row.group_name)}
                             </span>
                           </td>
-                          <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
-                            {row.wo_rate}%
-                          </td>
+                          {!hasCabinets && (
+                            <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
+                              {row.wo_rate}%
+                            </td>
+                          )}
                           <td
                             className="cell-num cell-pending cell-clickable"
                             onClick={() => handleOpenDrilldown('pending', 'employee', row.key_name)}
@@ -1425,9 +1423,6 @@ export default function CodinhPage() {
 
                           {hasCabinets && (
                             <>
-                              <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
-                                {row.cabinet_rate}%
-                              </td>
                               <td
                                 className="cell-num cell-clickable"
                                 onClick={() => handleOpenDrilldown('cabinet_pending', 'employee', row.key_name)}
@@ -1500,13 +1495,15 @@ export default function CodinhPage() {
                     >
                       Nhóm / Cụm {renderSortIndicator('key_name')}
                     </th>
-                    <th
-                      style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => handleSort('wo_rate')}
-                      title="Nhấn để sắp xếp theo % Đóng WO"
-                    >
-                      % Đóng {renderSortIndicator('wo_rate')}
-                    </th>
+                    {!hasCabinets && (
+                      <th
+                        style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success-dark)', cursor: 'pointer', userSelect: 'none' }}
+                        onClick={() => handleSort('wo_rate')}
+                        title="Nhấn để sắp xếp theo % Đóng WO"
+                      >
+                        % Đóng {renderSortIndicator('wo_rate')}
+                      </th>
+                    )}
                     <th
                       style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('pending_wos')}
@@ -1524,13 +1521,6 @@ export default function CodinhPage() {
 
                     {hasCabinets && (
                       <>
-                        <th
-                          style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleSort('cabinet_rate')}
-                          title="Nhấn để sắp xếp theo % Tủ Xong"
-                        >
-                          % Tủ Xong {renderSortIndicator('cabinet_rate')}
-                        </th>
                         <th
                           style={{ width: '1%', whiteSpace: 'nowrap', padding: '5px 8px', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--warning-dark)', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('pending_cabinets')}
@@ -1577,9 +1567,11 @@ export default function CodinhPage() {
                     <td className="col-summary-label" colSpan={2} style={{ textAlign: 'right', paddingRight: '16px', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 800 }}>
                       TỔNG CỘNG:
                     </td>
-                    <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)' }}>
-                      {summary.wo_rate ?? 0}%
-                    </td>
+                    {!hasCabinets && (
+                      <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--success-dark)' }}>
+                        {summary.wo_rate ?? 0}%
+                      </td>
+                    )}
                     <td
                       className="cell-num cell-pending cell-clickable"
                       onClick={() => handleOpenDrilldown('pending')}
@@ -1599,9 +1591,6 @@ export default function CodinhPage() {
 
                     {hasCabinets && (
                       <>
-                        <td className="cell-num" style={{ fontSize: '0.92rem', fontWeight: 800, color: '#8b5cf6' }}>
-                          {summary.cabinet_rate ?? 0}%
-                        </td>
                         <td
                           className="cell-num cell-clickable"
                           onClick={() => handleOpenDrilldown('cabinet_pending')}
@@ -1650,7 +1639,7 @@ export default function CodinhPage() {
                   {/* Data Rows */}
                   {sortedGroups.length === 0 ? (
                     <tr>
-                      <td colSpan={hasCabinets ? 11 : 8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <td colSpan={hasCabinets ? 9 : 8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         Không tìm thấy cụm nào phù hợp bộ lọc tìm kiếm.
                       </td>
                     </tr>
@@ -1668,9 +1657,11 @@ export default function CodinhPage() {
                               {shortName}
                             </strong>
                           </td>
-                          <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
-                            {row.wo_rate}%
-                          </td>
+                          {!hasCabinets && (
+                            <td className="cell-num" style={{ fontWeight: 700, color: 'var(--success-dark)' }}>
+                              {row.wo_rate}%
+                            </td>
+                          )}
                           <td
                             className="cell-num cell-pending cell-clickable"
                             onClick={() => handleOpenDrilldown('pending', 'group', row.key_name)}
@@ -1690,9 +1681,6 @@ export default function CodinhPage() {
 
                           {hasCabinets && (
                             <>
-                              <td className="cell-num" style={{ fontWeight: 700, color: '#8b5cf6' }}>
-                                {row.cabinet_rate}%
-                              </td>
                               <td
                                 className="cell-num cell-clickable"
                                 onClick={() => handleOpenDrilldown('cabinet_pending', 'group', row.key_name)}
