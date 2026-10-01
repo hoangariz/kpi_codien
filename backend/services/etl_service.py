@@ -38,12 +38,13 @@ def _enable_fk(db: Session):
 
 def clear_task_tables(db: Session):
     """
-    Xóa sạch toàn bộ dữ liệu task (notes, history, tasks) theo đúng thứ tự FK.
-    Dùng PRAGMA foreign_keys = OFF để tránh lỗi constraint trên SQLite.
+    Xóa sạch dữ liệu task cũ trước khi nạp file mới.
+    BẢO TOÀN NGUYÊN VẸN TaskNote (Ghi chú điều hành theo dõi theo mã WO).
+    Dùng PRAGMA foreign_keys = OFF để tránh lỗi constraint trên SQLite khi thay thế tasks.
     """
     _disable_fk(db)
     try:
-        db.query(TaskNote).delete(synchronize_session=False)
+        # BẢO TỒN TaskNote: Tuyệt đối KHÔNG xóa TaskNote để giữ lại ghi chú người dùng!
         db.query(TaskHistory).delete(synchronize_session=False)
         db.query(Task).delete(synchronize_session=False)
         db.commit()

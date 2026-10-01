@@ -49,7 +49,7 @@ class Task(Base):
     task_type = relationship("TaskType", foreign_keys=[task_type_id], lazy="joined")
 
     history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
-    notes = relationship("TaskNote", back_populates="task", cascade="all, delete-orphan")
+    notes = relationship("TaskNote", back_populates="task")
 
 
 # Composite index for faster status & assignment queries
