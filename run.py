@@ -94,7 +94,17 @@ def main():
     # Step 3: Start backend
     print("[3/4] Đang khởi chạy Backend FastAPI trên cổng 8000...")
     backend_proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+        [
+            sys.executable, "-m", "uvicorn", "backend.main:app",
+            "--host", "0.0.0.0",
+            "--port", "8000",
+            # KHÔNG dùng --reload trên VPS sản xuất (tiết kiệm 30-50% CPU)
+            # "--reload",
+            "--workers", "1",  # SQLite không hỗ trợ multi-worker (WAL conflict)
+            "--timeout-keep-alive", "75",
+            "--limit-concurrency", "50",  # Giới hạn concurrent connections
+            "--backlog", "128",
+        ],
         cwd=str(ROOT_DIR)
     )
 

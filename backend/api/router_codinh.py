@@ -106,9 +106,6 @@ async def init_codinh_chunked_upload(
     safe_filename = f"codinh_{timestamp}_{file_name}"
     file_path = UPLOAD_DIR / safe_filename
 
-    with open(file_path, "wb") as f:
-        pass
-
     import_log = ImportLog(
         file_name=file_name,
         stored_filename=safe_filename,
@@ -123,6 +120,15 @@ async def init_codinh_chunked_upload(
     db.commit()
     db.refresh(import_log)
 
+    # Pre-allocate file trước để hỗ trợ ghi song song tại đúng vị trí offset
+    if file_size > 0:
+        with open(file_path, "wb") as f:
+            f.seek(file_size - 1)
+            f.write(b"\x00")
+    else:
+        with open(file_path, "wb") as f:
+            pass
+
     return {
         "import_id": import_log.id,
         "stored_filename": safe_filename,
@@ -136,11 +142,12 @@ async def upload_codinh_chunk(
     request: Request,
     chunk_index: int = Form(0),
     total_chunks: int = Form(1),
+    chunk_size: int = Form(16 * 1024 * 1024),  # Client phải gửi đúng CHUNK_SIZE (16MB)
     chunk: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
     """
-    Tải lên từng chunk cho file CĐBR (mỗi chunk được nối vào file trên đĩa).
+    Tải lên từng chunk cho file CĐBR. Ghi vào đúng byte offset để hỗ trợ concurrent upload.
     """
     import_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
     if not import_log:
@@ -151,7 +158,11 @@ async def upload_codinh_chunk(
 
     file_path = UPLOAD_DIR / import_log.stored_filename
     chunk_data = await chunk.read()
-    with open(file_path, "ab") as f:
+
+    # Ghi vào đúng offset (hỗ trợ concurrent, không cần thứ tự tuần tự)
+    byte_offset = chunk_index * chunk_size
+    with open(file_path, "r+b" if file_path.exists() and file_path.stat().st_size > 0 else "wb") as f:
+        f.seek(byte_offset)
         f.write(chunk_data)
 
     upload_progress = int(((chunk_index + 1) / total_chunks) * 100)

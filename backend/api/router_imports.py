@@ -113,6 +113,12 @@ async def init_chunked_upload(
     db.commit()
     db.refresh(import_log)
 
+    # Pre-allocate file trước để hỗ trợ ghi song song tại đúng vị trí offset
+    if file_size > 0:
+        with open(file_path, "wb") as f:
+            f.seek(file_size - 1)
+            f.write(b"\x00")
+
     return {
         "import_id": import_log.id,
         "stored_filename": safe_filename,
@@ -126,12 +132,13 @@ async def upload_chunk(
     request: Request,
     chunk_index: int = Form(0),
     total_chunks: int = Form(1),
+    chunk_size: int = Form(16 * 1024 * 1024),  # Client phải gửi đúng CHUNK_SIZE (16MB)
     chunk: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
     """
-    Upload a single chunk. Each chunk is appended to the file on disk.
-    Cloudflare typically allows up to 100MB per request, so 5MB chunks are safe.
+    Upload a single chunk. Ghi vào đúng byte offset để hỗ trợ concurrent upload (không cần thứ tự).
+    Mỗi chunk 8MB, Cloudflare cho phép lên tới 100MB/request nên rất an toàn.
     """
     import_log = db.query(ImportLog).filter(ImportLog.id == import_id).first()
     if not import_log:
@@ -142,9 +149,13 @@ async def upload_chunk(
 
     file_path = UPLOAD_DIR / import_log.stored_filename
 
-    # Append chunk data to the file
+    # Đọc chunk data
     chunk_data = await chunk.read()
-    with open(file_path, "ab") as f:
+
+    # Ghi vào đúng offset (hỗ trợ concurrent, không cần thứ tự tuần tự)
+    byte_offset = chunk_index * chunk_size
+    with open(file_path, "r+b" if file_path.exists() and file_path.stat().st_size > 0 else "wb") as f:
+        f.seek(byte_offset)
         f.write(chunk_data)
 
     # Update progress (upload phase: 0-100% of upload)
@@ -246,6 +257,8 @@ def delete_import_file(import_id: int, db: Session = Depends(get_db)):
     """
     from backend.models import Task, TaskHistory
 
+    from backend.services.etl_service import clear_task_tables
+
     import_log = db.query(ImportLog).filter(ImportLog.id == import_id).first()
     if not import_log:
         raise HTTPException(status_code=404, detail="Không tìm thấy file cần xoá")
@@ -263,9 +276,9 @@ def delete_import_file(import_id: int, db: Session = Depends(get_db)):
                 print(f"Warning deleting file from disk: {e}")
 
     # 2. If the active file was deleted, clean DB tasks as well
+    # Dùng clear_task_tables để tắt FK trước khi xoá, tránh FOREIGN KEY constraint error
     if is_active == 1:
-        db.query(TaskHistory).delete()
-        db.query(Task).delete()
+        clear_task_tables(db)
 
     # 3. Delete record from ImportLog
     db.delete(import_log)
