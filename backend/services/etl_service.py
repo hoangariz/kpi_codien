@@ -221,9 +221,32 @@ def _build_tasks_vectorized(
     Xây dựng danh sách tasks bằng vectorized pandas thay vì Python for-loop.
     Nhanh hơn 5-10x, tốn ít CPU hơn nhiều so với iterrows/to_dict loop.
     """
-    def _map_series(series: pd.Series, cache, default=None):
-        """Map một pandas Series thông qua dict cache (vectorized)."""
-        return series.map(lambda v: cache.get(str(v).strip()) if pd.notna(v) and str(v).strip() else default)
+
+    def _fk_int(v):
+        """
+        Chuyển đổi giá trị FK từ pandas về int hoặc None.
+        Pandas tự convert None -> NaN (float) khi Series có mixed int/None.
+        Hàm này đảm bảo NaN float không lọt vào SQLite INTEGER column.
+        """
+        if v is None:
+            return None
+        try:
+            if isinstance(v, float) and math.isnan(v):
+                return None
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _map_series(series: pd.Series, cache, default=None) -> pd.Series:
+        """
+        Map một pandas Series thông qua dict cache.
+        Dùng astype(object) để pandas không auto-convert None -> NaN.
+        """
+        result = series.map(
+            lambda v: cache.get(str(v).strip()) if pd.notna(v) and str(v).strip() else default
+        )
+        # Ép object dtype để giữ None, tránh pandas convert None→NaN→crash khi INSERT INTEGER
+        return result.astype(object).where(result.notna(), None)
 
     def _clean_series(series: pd.Series) -> pd.Series:
         """Convert NaN → None, strip string."""
@@ -249,6 +272,7 @@ def _build_tasks_vectorized(
     unit_s        = _clean_series(_get_col(df, "Đơn vị tạo"))
     station_s     = _clean_series(_get_col(df, "Mã trạm"))
 
+    # FK integer series - dùng _map_series với object dtype để giữ None
     task_type_ids  = _map_series(loai_cv_s, type_cache)
     assigned_ids   = _map_series(assigned_s, emp_cache)
     created_ids    = _map_series(created_s, emp_cache)
@@ -285,17 +309,18 @@ def _build_tasks_vectorized(
         tasks.append({
             "ma_cong_viec":                    ma_cv,
             "ma_cong_viec_cha":                ma_cha_s.iloc[i],
-            "task_type_id":                    task_type_ids.iloc[i],
+            # Dùng _fk_int() để đảm bảo NaN float không lọt vào cột INTEGER
+            "task_type_id":                    _fk_int(task_type_ids.iloc[i]),
             "loai_cong_viec":                  loai_cv_s.iloc[i],
             "noi_dung_cong_viec":              noi_dung_s.iloc[i],
             "ghi_chu":                         ghi_chu_s.iloc[i],
             "trang_thai":                      trang_thai_s.iloc[i],
             "trang_thai_hoan_thanh":           trang_thai_ht.iloc[i],
-            "system_id":                       system_ids.iloc[i],
-            "created_by_id":                   created_ids.iloc[i],
+            "system_id":                       _fk_int(system_ids.iloc[i]),
+            "created_by_id":                   _fk_int(created_ids.iloc[i]),
             "thoi_diem_tao":                   dt_tao_s.iloc[i],
-            "group_id":                        group_ids.iloc[i],
-            "assigned_to_id":                  assigned_ids.iloc[i],
+            "group_id":                        _fk_int(group_ids.iloc[i]),
+            "assigned_to_id":                  _fk_int(assigned_ids.iloc[i]),
             "loi":                             loi_s.iloc[i],
             "thoi_diem_bat_dau_thuc_hien":     dt_bat_dau_s.iloc[i],
             "thoi_diem_yeu_cau_ket_thuc":      dt_ket_thuc_s.iloc[i],
@@ -304,9 +329,9 @@ def _build_tasks_vectorized(
             "thoi_diem_cd_dong":               dt_cd_dong_s.iloc[i],
             "thoi_diem_ft_tiep_nhan":          dt_ft_tn_s.iloc[i],
             "thue_bao":                        thue_bao_s.iloc[i],
-            "unit_id":                         unit_ids.iloc[i],
+            "unit_id":                         _fk_int(unit_ids.iloc[i]),
             "worklog":                         worklog_s.iloc[i],
-            "station_id":                      station_ids.iloc[i],
+            "station_id":                      _fk_int(station_ids.iloc[i]),
             "ft_comment":                      ft_comment_s.iloc[i],
             "ft_mobile":                       ft_mobile_s.iloc[i],
             "created_at":                      now,
@@ -314,6 +339,7 @@ def _build_tasks_vectorized(
             "last_import_id":                  import_id,
         })
     return tasks
+
 
 
 def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True):
