@@ -1,0 +1,763 @@
+Số Thuê Bao	Dịch vụ	Địa chỉ khách hàng	Mức thuê bao	Mức thiết bị	Tổng tbi phải thu	"TB thường (0)
+TB Mesh (Mesh)"	Tuổi thọ TB Mesh	Số tbi Mesh phải thu (ONT+HW)	Trung tâm Cụm xã	Tên FT	MNV
+vt0983877184	TV360_BoxTV trả sau	Thôn Trung Bằng - Sơn Bằng, Hương Sơn, Hà Tĩnh	1	1	1	0			HTH-007-SGG	Đoàn Mạnh Tiến	218964
+h039_gmts2_huyenntt9	Multiscreen 2 chiều	Xóm Phúc Đình Sơn Bằng xã Hương Sơn tỉnh Hà Tĩnh	3	3	0	0			HTH-007-SGG	Đoàn Mạnh Tiến	218964
+hth_gftth_dungut0	FTTH	Thôn Trung Hoa xã Kim Hoa tỉnh Hà Tĩnh	2	2	4	MESH	13	4	HTH-007-SGG	Đoàn Mạnh Tiến	218964
+h039_gftth_tainm10	FTTH	Thôn Hội Sơn Kim Hoa Hương Sơn Hà Tĩnh	3	3	1	0	28	1	HTH-007-SGG	Đoàn Mạnh Tiến	218964
+vt0973927169	TV360_BoxTV trả sau	. Khối 1 Phố Châu Hương Sơn Hà Tĩnh	2	2	1	0			HTH-007-SGG	Đoàn Vĩnh Hào	413519
+vt0946558789	TV360_BoxTV trả sau	tdp5 Khối 3 Phố Châu Hương Sơn Hà Tĩnh	2	2	1	0			HTH-007-SGG	Đoàn Vĩnh Hào	413519
+vt09465587891	TV360_BoxTV trả sau	tdp5 Khối 3 Phố Châu Hương Sơn Hà Tĩnh	1	1	1	0			HTH-007-SGG	Đoàn Vĩnh Hào	413519
+vt0973220737	TV360_BoxTV trả sau	tdp6 Khối 12 Phố Châu Hương Sơn Hà Tĩnh	3	3	1	0			HTH-007-SGG	Đoàn Vĩnh Hào	413519
+vt03654294212	TV360_BoxTV trả sau	Tổ Dân Phố 6 Thị Trấn Phố Châu, Hương Sơn, Hà Tĩnh	3	3	1	0			HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_thucvv	FTTH	Khối 1, Phố Châu Hương Sơn Hà Tĩnh	3	2	1	0	117	1	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_vuvx0	FTTH	Thôn Tây Nam Sơn Lễ Hương Sơn Hà Tĩnh	3	3	2	MESH	40	2	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_diepct0	FTTH	Thôn Cửa Nương - Sơn Phú, Hương Sơn, Hà Tĩnh	3	3	1	0	100	1	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_toantv49	FTTH	  Phố Châu Hương Sơn Hà Tĩnh	3	3	1	0	33	1	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_cuongpt5	FTTH	Khối 9 Phố Châu Hương Sơn Hà Tĩnh	3	3	3	MESH	95	3	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_quynhntn13	FTTH	  xóm 09 Sơn Châu Hương Sơn Hà Tĩnh	3	3	1	0	66	1	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_vanht67	FTTH	  Thôn 6 Sơn Giang Hương Sơn Hà Tĩnh	2	2	1	0	17	1	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+hth_gftth_dungpt9	FTTH	Thôn Tân Thắng Tân Mỹ Hà, Hương Sơn, Hà Tĩnh	1	1	4	MESH	6	4	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+h039_gftth_namnv94	FTTH	Tổ Dân Khối 8 Phố Châu Hương Sơn Hà Tĩnh	3	3	1	0	35	1	HTH-007-SGG	Đoàn Vĩnh Hào	413519
+vt0942436688	TV360_BoxTV trả sau	  Thôn 4 Quang Diệm Hương Sơn Hà Tĩnh	3	3	1	0			HTH-007-SGG	Hồ Minh Đức	486990
+h039_gftth_cuclt14	FTTH	Thôn Cây Chanh, Sơn Tây, Hương Sơn, Hà Tĩnh	3	3	0	0	36	0	HTH-007-SGG	Hồ Minh Đức	486990
+h039_gftth_bangtv11	FTTH	Sơn Giang Hương Sơn Hà Tĩnh	3	3	1	0	28	1	HTH-007-SGG	Hồ Minh Đức	486990
+vt0987998840	TV360_BoxTV trả sau	Thôn Đức Thịnh, Xã Sơn Tiến, Tỉnh Hà Tĩnh	2	2	1	0			HTH-007-SGG	ngô viết hùng	413537
+h039_gmts2_thaoltt0	Multiscreen 2 chiều	Thôn Bắc Hà - Tân Mỹ Hà, Hương Sơn, Hà Tĩnh	3	3	1	0			HTH-007-SGG	ngô viết hùng	413537
+vt0977918159	TV360_BoxTV trả sau	Ngõ 127 thôn Trung Mỹ xã Sơn Tiến tỉnh Hà Tĩnh	2	2	1	0			HTH-007-SGG	ngô viết hùng	413537
+h039_gmts2_huongdt	Multiscreen 2 chiều	Đông Mỹ An Hòa Thịnh Hương Sơn Hà Tĩnh	3	3	0	0			HTH-007-SGG	ngô viết hùng	413537
+h039_gftth_phungt	FTTH	  Hương Sơn Hà Tĩnh	3	3	3	MESH	49	3	HTH-007-SGG	ngô viết hùng	413537
+h039_gftth_thutv8	FTTH	Xóm Thịnh Nam Sơn Thịnh Hương Sơn Hà Tĩnh	3	3	3	MESH	87	3	HTH-007-SGG	ngô viết hùng	413537
+vt03268027011	TV360_BoxTV trả sau	Đức Lĩnh, Vũ Quang, Hà Tĩnh	1	1	1	0			HTH-007-SGG	Nguyễn Đình Đạt	849881
+vt09841822301	TV360_BoxTV trả sau	Đức Giang, Vũ Quang, Hà Tĩnh	2	2	1	0			HTH-007-SGG	Nguyễn Đình Đạt	849881
+h039_gmts2_dungdt2	Multiscreen 2 chiều	Thôn Tân Hồ Tân Mỹ Hà, Hương Sơn, Hà Tĩnh	3	3	0	0			HTH-007-SGG	Nguyễn Đình Đạt	849881
+h039_gftth_hunglm10	FTTH	thôn 1 Xã Hương Sơn Tỉnh Hà Tĩnh	3	3	1	0	40	1	HTH-007-SGG	Nguyễn Đình Đạt	849881
+vt09238537731	TV360_BoxTV trả sau	Tây Sơn Hương Sơn Hà Tĩnh	2	2	1	0			HTH-007-SGG	nguyễn mạnh hùng	413520
+h039_gmts2_duongtv8	Multiscreen 2 chiều	Tổ Dân Phố 2, Tây Sơn, Hương Sơn, Hà Tĩnh	3	3	1	0			HTH-007-SGG	nguyễn mạnh hùng	413520
+vt0389639214	TV360_BoxTV trả sau	Xã Sơn Kim 1, Tỉnh Hà Tĩnh	2	2	1	0			HTH-007-SGG	nguyễn mạnh hùng	413520
+h039_gftth_tinhctcmfsh4	FTTH	  Cửa Khẩu Cầu Treo Sơn Kim 1 Hương Sơn Hà Tĩnh	2	2	1	0	14	1	HTH-007-SGG	nguyễn mạnh hùng	413520
+h039_gftth_nhanpt2	FTTH	Khô?i 5 , Tây Sơn Hương Sơn Hà Tĩnh	3	1	2	MESH	117	2	HTH-007-SGG	nguyễn mạnh hùng	413520
+h039_gftth_lampd9	FTTH	Thôn Khe Chè-Sơn Kim 2, Xã Sơn Kim 2, Tỉnh Hà Tĩnh	2	1	2	MESH	19	2	HTH-007-SGG	nguyễn mạnh hùng	413520
+vt08686264991	TV360_BoxTV trả sau	Thọ Điền Vũ Quang Hà Tĩnh	2	2	1	0			HTH-007-SGG	nguyễn văn hợp	413538
+h039_gmts2_khoinv0	Multiscreen 2 chiều	Quang Thọ, Vũ Quang, Hà Tĩnh	3	3	1	0			HTH-007-SGG	nguyễn văn hợp	413538
+h039_gmts2_hactcpdtxdv0	Multiscreen 2 chiều	Vũ Quang Hà Tĩnh	3	3	1	0			HTH-007-SGG	nguyễn văn hợp	413538
+vt0325643161	TV360_BoxTV trả sau	Đức Bồng Vũ Quang Hà Tĩnh	2	2	1	0			HTH-007-SGG	nguyễn văn hợp	413538
+vt0963227124	TV360_BoxTV trả sau	Quang Thọ Vũ Quang Hà Tĩnh	2	2	1	0			HTH-007-SGG	nguyễn văn hợp	413538
+hth_gftth_phongpv0	FTTH	Xã Vũ Quang, Tỉnh Hà Tĩnh	1	1	1	0	10	1	HTH-007-SGG	nguyễn văn hợp	413538
+h039_gftth_tuanla60	FTTH	Thôn thắng lợi  xã vũ quang tỉnh Hà Tĩnh Thôn 3-Hương Minh, Xã Vũ Quang, Tỉnh Hà Tĩnh	3	3	1	0	30	1	HTH-007-SGG	nguyễn văn hợp	413538
+vt03975855571	TV360_BoxTV trả sau	Xã Sơn Giang Tỉnh Hà Tĩnh	2	2	1	0			HTH-007-SGG	Phạm Mạnh Nho	413574
+vt09134365158	TV360_BoxTV trả sau	 17 cầm bá thước P.07 Q.Phú Nhuận TPHCM	1	1	1	0			HTH-007-SGG	Phạm Mạnh Nho	413574
+vt09828754592	TV360_BoxTV trả sau	Tổ Dân Phố 3 Thị Trấn Phố Châu, Hương Sơn, Hà Tĩnh	3	3	1	0			HTH-007-SGG	Phạm Mạnh Nho	413574
+vt09153678882	TV360_BoxTV trả sau	Xã Hương Sơn, Tỉnh Hà Tĩnh	2	2	1	0			HTH-007-SGG	Phạm Mạnh Nho	413574
+h039_gftth_tinhtt1	FTTH	Tổ Dân Phố 3 Thị Trấn Phố Châu, Hương Sơn, Hà Tĩnh	3	2	3	MESH	127	3	HTH-007-SGG	Phạm Mạnh Nho	413574
+vt0868022374	TV360_BoxTV trả sau	hòa tiến Xóm 1 Sơn Tiến Hương Sơn Hà Tĩnh	1	1	1	0			HTH-007-SGG	Phan Thái Sơn	810137
+h039_gftth_haopl0	FTTH	Thôn tân tiến, Xóm 3-Sơn Tiến, Xã Sơn Tiến, Tỉnh Hà Tĩnh	3	3	4	MESH	39	4	HTH-007-SGG	Phan Thái Sơn	810137
+h039_gftth_vuip0	FTTH	Sơn Tiến, Hương Sơn, Hà Tĩnh	3	3	1	0	29	1	HTH-007-SGG	Phan Thái Sơn	810137
+h039_gftth_thanlt3	FTTH	Xóm Quán Sơn An Hương Sơn Hà Tĩnh	3	3	1	0	86	1	HTH-007-SGG	Phan Thái Sơn	810137
+vt0386009675	TV360_BoxTV trả sau	Lộc Yên, Hương Khê, Hà Tĩnh	2	2	1	0			HTH-006-HKE	cao phương nam	413478
+vt0911121913	TV360_BoxTV trả sau	Hương Xuân Hương Khê Hà Tĩnh	2	2	1	0			HTH-006-HKE	cao phương nam	413478
+vt0385009155	TV360_BoxTV trả sau	Xã Phúc Trạch, Tỉnh Hà Tĩnh	3	3	1	0			HTH-006-HKE	cao phương nam	413478
+h039_gmts2_chautv0	Multiscreen 2 chiều	Xóm 9 Phúc Trạch Hương Khê Hà Tĩnh	3	3	0	0			HTH-006-HKE	cao phương nam	413478
+h039_gftth_huynt43	FTTH	Xóm 2 Phúc Trạch Hương Khê Hà Tĩnh	3	3	1	0	28	1	HTH-006-HKE	cao phương nam	413478
+h039_gftth_ngant178	FTTH	Xóm 1 Hương Trà Hương Khê Hà Tĩnh	3	2	3	MESH	73	3	HTH-006-HKE	cao phương nam	413478
+h039_gftth_tientq	FTTH	Xóm 09, Khối 9 Hương Khê Hương Khê Hà Tĩnh	3	3	1	0	112	1	HTH-006-HKE	cao phương nam	413478
+h039_gftth_diepth2	FTTH	Phúc Trạch Phúc Trạch Hương Khê Hà Tĩnh	2	2	1	0	19	1	HTH-006-HKE	cao phương nam	413478
+h039_gftth_dungnt377	FTTH	Trung Lĩnh-Hương Trạch, Xã Phúc Trạch, Tỉnh Hà Tĩnh	3	3	0	0	37	0	HTH-006-HKE	cao phương nam	413478
+h039_gftth_phuongvv3	FTTH	Phúc Trạch, Hương Khê, Hà Tĩnh	2	2	1	0	19	1	HTH-006-HKE	cao phương nam	413478
+h039_gftth_huyenntt137	FTTH	Xã Phúc Trạch, Tỉnh Hà Tĩnh	2	2	1	0	16	1	HTH-006-HKE	cao phương nam	413478
+hth_gftth_lienntk0	FTTH	Phú Hương 2-Hương Xuân, Xã Hương Xuân, Tỉnh Hà Tĩnh	1	1	1	0	8	1	HTH-006-HKE	Hoàng Quang Huy	849803
+h039_gftth_daold3	FTTH	Xóm Bình Hải-Hương Bình, Xã Hương Bình, Tỉnh Hà Tĩnh	2	2	1	0	24	1	HTH-006-HKE	Mai Hồng Quân	833714
+h039_gmts2_hoannk	Multiscreen 2 chiều	Gia Phố Hương Khê Hà Tĩnh	3	3	1	0			HTH-006-HKE	Nguyễn Thanh Sơn	413476
+vt0967320048	TV360_BoxTV trả sau	Xã Hương Phố Tỉnh Hà Tĩnh	1	1	1	0			HTH-006-HKE	Nguyễn Thanh Sơn	413476
+h039_gftth_trinhttk5	FTTH	  Xã Hương Đô Tỉnh Hà Tĩnh	2	2	1	0	20	1	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+hth_gftth_phoubndxh0	FTTH	Trung Phố-Gia Phố Xã Hương Phố Tỉnh Hà Tĩnh	1	1	4	MESH	12	4	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+h039_gftth_phuhh3	FTTH	SN 108 Phan Đình Phùng Khối 3 Hương Khê Hương Khê Hà Tĩnh	2	2	1	0	22	1	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+h039_gftth_lailt15	FTTH	Xóm 1 Phú Phong Hương Khê Hà Tĩnh	3	3	3	MESH	53	3	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+hth_gftth_dailv0	FTTH	Xã Hương Phố, Tỉnh Hà Tĩnh	1	1	1	0	6	1	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+h039_gftth_ngocdt28	FTTH	Hương Khê Hương Khê Hà Tĩnh	2	2	1	0	20	1	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+h039_gftth_longnp21	FTTH	Xã Hương Khê Tỉnh Hà Tĩnh	2	2	1	0	15	1	HTH-006-HKE	Nguyễn Thanh Sơn	413476
+C966865733	Camera	Hương Liên, Hương Khê, Hà Tĩnh	1	1	1	0			HTH-006-HKE	Phan Mạnh Tường	432650
+h039_gftth_namnv31	FTTH	Gia Phố Hương Khê Hà Tĩnh	3	1	1	0	84	1	HTH-006-HKE	Phan Mạnh Tường	432650
+h039_gftth_trampth0	FTTH	Phú Phong Hương Khê Hà Tĩnh	3	2	3	MESH	38	3	HTH-006-HKE	Phan Mạnh Tường	432650
+h039_gftth_tranglt	FTTH	 Khối 06, Hương Khê Hương Khê Hà Tĩnh	3	3	3	MESH	134	3	HTH-006-HKE	Phan Mạnh Tường	432650
+hth_gftth_anhlk0	FTTH	Phú Gia Hương Khê Hà Tĩnh	1	1	1	0	10	1	HTH-006-HKE	Phan Xuân Kim	845062
+h039_gftth_linhnt89	FTTH	Hòa Hải, Hương Khê, Hà Tĩnh	3	2	1	MESH	71	1	HTH-006-HKE	Phan Xuân Kim	845062
+vt0364308489	TV360_BoxTV trả sau	Xã Trừ Văn Thố Thành phố Hồ Chí Minh	2	2	1	0			HTH-005-STI	Đặng Hữu Thuận	413547
+h039_gftth_tunv51	FTTH	Phúc Thọ Nghi Lộc Nghệ An	3	3	1	0	43	1	HTH-005-STI	Đặng Hữu Thuận	413547
+h039_gftth_ngocnt148	FTTH	Phường Vũng Áng, Tỉnh Hà Tĩnh	2	2	1	0	23	1	HTH-005-STI	Đặng Hữu Thuận	413547
+hth_gftth_chiennt3	FTTH	Phường Kỳ Thịnh Thị xã Kỳ Anh Hà Tĩnh	1	1	1	0	10	1	HTH-005-STI	Đặng Hữu Thuận	413547
+h039_gftth_sonc1	FTTH	  Liên Phú Phường Kỳ Liên Thị xã Kỳ Anh Hà Tĩnh	3	3	1	0	53	1	HTH-005-STI	Đặng Hữu Thuận	413547
+h039_gftth_ninhlx1	FTTH	Trường mầm non	3	3	1	0	32	1	HTH-005-STI	Đặng Hữu Thuận	413547
+vt0961664815	TV360_BoxTV trả sau	Trung Tiến Kỳ Khang Kỳ Anh Hà Tĩnh	2	2	1	0			HTH-005-STI	Hoàng Bá Thái	218959
+vt0984864169	TV360_BoxTV trả sau	Thôn Sơn Hải, Kỳ Khang, Kỳ Anh, Hà Tĩnh	1	1	1	0			HTH-005-STI	Hoàng Bá Thái	218959
+vt0395869092	TV360_BoxTV trả sau	Trung Tân Kỳ Khang Kỳ Anh Hà Tĩnh	1	1	1	0			HTH-005-STI	Hoàng Bá Thái	218959
+hth_gftth_hanhnt28	FTTH	Thôn Trung Tân Xã Kỳ Khang Tỉnh Hà Tĩnh	1	1	1	0	8	1	HTH-005-STI	Hoàng Bá Thái	218959
+h039_gftth_phongdv11	FTTH	Cẩm Lạc Cẩm Xuyên Hà Tĩnh	3	3	2	MESH	52	2	HTH-005-STI	Hoàng Bá Thái	218959
+hth_gftth_thinhhtxcxh1	FTTH	Đường Hà Hoa, Khu phố 3, Hưng Trí Thị xã Kỳ Anh Hà Tĩnh	1	1	2	MESH	11	2	HTH-005-STI	Hoàng Bá Thái	218959
+h039_gmts_minhlt7	Multiscreen 2 chiều	Hoành Nam Phường Kỳ Liên Thị xã Kỳ Anh Hà Tĩnh	3	3	0	0			HTH-005-STI	Lê Văn Thăng	434733
+vt0962445345	TV360_BoxTV trả sau	P. Kỳ Phương Thị Xã, Kỳ Anh, Hà Tĩnh	2	2	1	0			HTH-005-STI	Lê Văn Thăng	434733
+vt0964059440	TV360_BoxTV trả sau	Kỳ Nam Thị Xã, Kỳ Anh, Hà Tĩnh	2	2	1	0			HTH-005-STI	Lê Văn Thăng	434733
+h039_gftth_vanma	FTTH	Kỳ Lợi Thị xã Kỳ Anh Hà Tĩnh	3	3	1	0	116	1	HTH-005-STI	Lê Văn Thăng	434733
+h039_gftth_thuylx10	FTTH	Hoành Nam Phường Kỳ Liên Thị xã Kỳ Anh Hà Tĩnh	2	2	1	0	20	1	HTH-005-STI	Lê Văn Thăng	434733
+hth_gftth_thaont23	FTTH	Xã Hòa Trạch Tỉnh Quảng Trị	1	1	1	0	8	1	HTH-005-STI	Lê Văn Thăng	434733
+hth_gftth_huyenmt0	FTTH	Thôn 3 Đông Yên Ba Đồng Phường Kỳ Phương Thị xã Kỳ Anh Hà Tĩnh	1	1	2	MESH	12	2	HTH-005-STI	Lê Văn Thăng	434733
+h039_gmts2_hiennn0	Multiscreen 2 chiều	Nam Tiến Kỳ Bắc Kỳ Anh Hà Tĩnh	3	3	1	0			HTH-005-STI	Nguyễn Chí Công	210379
+vt0359781440	TV360_BoxTV trả sau	Tượng Phong Kỳ Phong Kỳ Anh Hà Tĩnh	3	3	1	0			HTH-005-STI	Nguyễn Chí Công	210379
+h039_gftth_lorapt0	FTTH	Kỳ Bắc Kỳ Anh Hà Tĩnh	3	3	0	0	52	0	HTH-005-STI	Nguyễn Chí Công	210379
+h039_gftth_hoannq12	FTTH	  Hợp Tiến Kỳ Bắc Kỳ Anh Hà Tĩnh	3	3	1	0	27	1	HTH-005-STI	Nguyễn Chí Công	210379
+h039_gftth_hungnx29	FTTH	Xuân Thắng Kỳ Xuân Kỳ Anh Hà Tĩnh	3	3	1	0	45	1	HTH-005-STI	Nguyễn Chí Công	210379
+vt0387595848	TV360_BoxTV trả sau	Phường Hải Ninh Tỉnh Hà Tĩnh	1	1	1	0			HTH-005-STI	Nguyễn Sỹ Hiền	294134
+vt0923853686	TV360_BoxTV trả sau	Tây Hà Kỳ Hà Thị xã Kỳ Anh Hà Tĩnh	2	2	1	0			HTH-005-STI	Nguyễn Sỹ Hiền	294134
+h039_gftth_namctcpbv0	FTTH	Lô B44, Khu đấu giá 3Ha Tổ dân phố số 1 Đức Diễn, Phường Phú Diễn Thành phố Hà Nội	3	3	1	MESH	79	1	HTH-005-STI	Nguyễn Văn Anh	440929
+hth_gftth_tuantd1	FTTH	522 lê thánh tông Đông Trinh-Phường Kỳ Trinh Phường Sông Trí Tỉnh Hà Tĩnh	1	1	1	0	12	1	HTH-005-STI	Nguyễn Văn Anh	440929
+h039_gftth_linhdt43	FTTH	Tdp Hòa Lộc, Kỳ Trinh, Thị Xã Kỳ Anh, Hà Tĩnh	3	3	1	0	30	1	HTH-005-STI	Nguyễn Văn Anh	440929
+vt03871138711	TV360_BoxTV trả sau	Xã Kỳ Anh Tỉnh Hà Tĩnh	1	1	1	0			HTH-005-STI	Nguyễn Văn Hậu	239705
+h039_gftth_tuongtd1	FTTH	Kỳ Khang Kỳ Anh Hà Tĩnh	3	3	1	0	95	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+h039_gftth_phongdt7	FTTH	Cẩm Trung, Cẩm Xuyên, Hà Tĩnh	3	1	1	0	64	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+h039_gftth_trinhtt19	FTTH	  Kỳ Đồng Kỳ Anh Hà Tĩnh	2	2	1	0	18	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+h039_gftth_gianguxk0	FTTH	Xã Kỳ Anh Tỉnh Hà Tĩnh	3	3	1	0	66	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+hth_gftth_tuantx0	FTTH	Xã Kỳ Anh, Tỉnh Hà Tĩnh	1	1	1	0	8	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+h039_gftth_ybt0	FTTH	kim mẹ anh hường chương, Nam Tiến-Kỳ Tiến, Xã Kỳ Anh Tỉnh Hà Tĩnh	2	2	1	0	15	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+h039_gftth_thaont277	FTTH	  Kỳ Tiến Kỳ Anh Hà Tĩnh	3	3	1	0	29	1	HTH-005-STI	Nguyễn Văn Hậu	239705
+vt0862241813	TV360_BoxTV trả sau	Lạc Thắng Kỳ Lạc Kỳ Anh Hà Tĩnh	2	2	1	0			HTH-005-STI	nguyễn văn hiền	413551
+vt0348787041	TV360_BoxTV trả sau	  Kỳ Sơn Kỳ Anh Hà Tĩnh	2	2	1	0			HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_thuytt347	FTTH	xóm 9	2	2	1	0	21	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_bacnv24	FTTH	Trung Tiến Kỳ Thượng Kỳ Anh Hà Tĩnh	2	2	1	0	24	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_anhtv17	FTTH	Kỳ Hợp Kỳ Anh Hà Tĩnh	3	3	1	0	100	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_lamntm0	FTTH	Xã Kỳ Lạc, Tỉnh Hà Tĩnh	2	2	1	0	22	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_huynhnh1	FTTH	Lạc Vinh Kỳ Lạc Kỳ Anh Hà Tĩnh	3	2	4	MESH	35	4	HTH-005-STI	nguyễn văn hiền	413551
+hth_gftth_thuongbchqsxk0	FTTH	Sơn Bình 2 Sơn Bình 2-Kỳ Sơn Xã Kỳ Thượng  Tỉnh Hà Tĩnh	1	1	2	MESH	11	2	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_loannt300	FTTH	  Thôn Lạc Vinh Kỳ Lạc Kỳ Anh Hà Tĩnh	2	2	1	0	23	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_maint188	FTTH	Đông Xuân-Kỳ Tây, Xã Kỳ Văn, Tỉnh Hà Tĩnh	3	3	1	MESH	40	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gftth_cutv10	FTTH	Lạc Thắng Kỳ Lạc Kỳ Anh Hà Tĩnh	2	2	1	0	21	1	HTH-005-STI	nguyễn văn hiền	413551
+h039_gmts2_huynt0	Multiscreen 2 chiều	Phú Trung-Kỳ Phú, Xã Kỳ Anh Tỉnh Hà Tĩnh	3	3	0	0			HTH-005-STI	Nguyễn Văn Tư	225141
+C964382599	Camera	Tổ dân phố Quyền Thượng, phường Sông Trí, tỉnh Hà Tĩnh	3	3	2	0			HTH-005-STI	Trần Anh Sơn	275504
+vt0961035167	TV360_BoxTV trả sau	Kỳ Tân Kỳ Anh Hà Tĩnh	3	3	1	0			HTH-005-STI	Trần Anh Sơn	275504
+h039_gmts2_trinhnx0	Multiscreen 2 chiều	Trung Đức, Xã Kỳ Hoa, Tỉnh Hà Tĩnh	3	3	0	0			HTH-005-STI	Trần Anh Sơn	275504
+hth_gftth_huongct0	FTTH	Thôn Hoa Thắng Kỳ Hoa Thị xã Kỳ Anh Hà Tĩnh	2	2	1	0	13	1	HTH-005-STI	Trần Anh Sơn	275504
+h039_gftth_duongnx15	FTTH	  Kỳ Lợi Thị xã Kỳ Anh Hà Tĩnh	3	3	1	0	42	1	HTH-005-STI	Trần Anh Sơn	275504
+h039_gftth_hungnv216	FTTH	  Kỳ Khang Kỳ Anh Hà Tĩnh	3	3	1	MESH	48	1	HTH-005-STI	Trần Anh Sơn	275504
+h039_gftth_nhunght29	FTTH	Kỳ Tân, Kỳ Anh, Hà Tĩnh	3	3	1	0	54	1	HTH-005-STI	Trần Anh Sơn	275504
+hth_gftth_hungtv2	FTTH	Thôn 9-Cẩm Minh, Xã Cẩm Lạc, Tỉnh Hà Tĩnh	2	3	0	0	13	0	HTH-005-STI	Trần Anh Sơn	275504
+h039_gftth_chungpq3	FTTH	Thị Trấn Kỳ Anh, Kỳ Anh, Hà Tĩnh	3	3	1	0	47	1	HTH-005-STI	Trần Anh Sơn	275504
+h039_gftth_anhltm3	FTTH	Phường Nam Định, Tỉnh Ninh Bình	3	3	1	0	72	1	HTH-005-STI	Trần Anh Sơn	275504
+h039_gftth_vietctcptmdvvt1	FTTH	 Lầu 8, Tòa Nhà CMARD2 số 45 Đinh Tiên Hoàng Phường Sài Gòn Thành phố Hồ Chí Minh	3	3	1	0	83	1	HTH-005-STI	Trần Anh Sơn	275504
+vt0345033400	TV360_BoxTV trả sau	Thôn Hồng Xuân Hồng Xuân Kỳ Tây Kỳ Anh Hà Tĩnh	2	2	1	0			HTH-005-STI	Trần Hữu Thành	817889
+h039_gftth_thinhnt32	FTTH	Thôn Nam Sơn - Kỳ Trung, Kỳ Anh, Hà Tĩnh	2	2	1	0	16	1	HTH-005-STI	Trần Hữu Thành	817889
+hth_gftth_hungtc1	FTTH	Thôn Đất Đỏ Đất Đỏ Kỳ Trung Kỳ Anh Hà Tĩnh	1	1	1	0	10	1	HTH-005-STI	Trần Hữu Thành	817889
+h039_gftth_longnv93	FTTH	Thôn Hồng Xuân, Kỳ Tây, Kỳ Anh, Hà Tĩnh	3	3	1	0	26	1	HTH-005-STI	Trần Hữu Thành	817889
+h039_gftth_phuongnt494	FTTH	Xã Cẩm Bình, Tỉnh Hà Tĩnh	3	2	3	MESH	37	3	HTH-004-CXN		
+C332928350	Camera	Cẩm Duệ Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Bùi Anh Việt	856916
+vt0978904513	TV360_BoxTV trả sau	Xã Cẩm Xuyên Tỉnh Hà Tĩnh	2	2	1	0			HTH-004-CXN	Bùi Anh Việt	856916
+hth_gftth_kiendt2	FTTH	thôn 4 Xã Biển Hồ Tỉnh Gia Lai	1	1	1	0	10	1	HTH-004-CXN	Bùi Anh Việt	856916
+vt0395756620	TV360_BoxTV trả sau	Thôn 8B Cẩm Trung Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gmts2_anhtv8	Multiscreen 2 chiều	Thôn 5-Cẩm Lộc, Xã Cẩm Trung, Tỉnh Hà Tĩnh	3	3	1	0			HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gftth_hoahtm3	FTTH	Cẩm Hưng Cẩm Xuyên Hà Tĩnh	3	3	1	0	39	1	HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gftth_hoahtm4	FTTH	Cẩm Hưng Cẩm Xuyên Hà Tĩnh	3	3	1	0	27	1	HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gftth_sangnv41	FTTH	Xã Cẩm Trung Tỉnh Hà Tĩnh	3	3	1	0	42	1	HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gftth_hanhdth0	FTTH	Quảng Liên Quảng Trạch Quảng Bình	3	1	1	MESH	44	1	HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gftth_phuonglt93	FTTH	Cẩm Hà, Cẩm Xuyên, Hà Tĩnh	3	2	3	MESH	56	3	HTH-004-CXN	Lê Anh Tuấn	838214
+h039_gftth_tinhnt232	FTTH	Thôn 4 Cẩm Trung Cẩm Xuyên Hà Tĩnh	2	2	1	0	17	1	HTH-004-CXN	Lê Anh Tuấn	838214
+hth_gftth_huyentt20	FTTH	3804 v2 the terra an hưng, dương nội, hà nội	1	1	1	0	3	1	HTH-004-CXN	Lê Quang Vũ	225025
+hth_gftth_baupt0	FTTH	Thôn 2-Cẩm Quan Xã Cẩm Xuyên Tỉnh Hà Tĩnh	1	1	1	0	10	1	HTH-004-CXN	Lê Quang Vũ	225025
+h039_gftth_vutq13	FTTH	Xã Cẩm Xuyên, Tỉnh Hà Tĩnh	3	3	1	0	31	1	HTH-004-CXN	Lê Quang Vũ	225025
+vt09758182334	TV360_BoxTV trả sau	Thôn 6 Cẩm Thịnh Cẩm Xuyên Hà Tĩnh	2	2	1	0			HTH-004-CXN	Lê Xuân Sơn	238788
+vt09859024631	TV360_BoxTV trả sau	Cẩm Hưng Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Lê Xuân Sơn	238788
+vt0338653384	TV360_BoxTV trả sau	Thôn 3-Cẩm Sơn, Xã Cẩm Lạc Tỉnh Hà Tĩnh	1	1	1	0			HTH-004-CXN	Lê Xuân Sơn	238788
+C865202589	Camera	Khu 2 Phong Hải, Quảng Yên, Quảng Ninh	1	1	1	0			HTH-004-CXN	Nguyễn Đức Anh	154273
+vt09644919482	TV360_BoxTV trả sau	Xã Thiên Cầm, Tỉnh Hà Tĩnh	1	1	1	0			HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gmts2_giapnh0	Multiscreen 2 chiều	  Thôn Trần Phú, Thiên Cầm Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Nguyễn Đức Anh	154273
+vt0988684757	TV360_BoxTV trả sau	Xóm Tân Hải Thôn Tân Hải Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Nguyễn Đức Anh	154273
+vt0367945078	TV360_BoxTV trả sau	Thôn Xóm Chùa-Cẩm Nhượng, Xã Thiên Cầm, Tỉnh Hà Tĩnh	3	3	1	0			HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_lakss17	FTTH	khách sạn sông la Thôn Xóm Chùa Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	1	0	28	1	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_lakss19	FTTH	, Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	2	MESH	26	2	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_oanhht6	FTTH	Sơn Quang, Hương Sơn, Hà Tĩnh	3	1	1	0	90	1	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_anhtt91	FTTH	Thiên Cầm Cẩm Xuyên Hà Tĩnh	3	3	2	MESH	76	2	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_hienvt57	FTTH	thôn hải bắc, Thôn Hy Dy-Cẩm Nhượng, Xã Thiên Cầm, Tỉnh Hà Tĩnh	2	2	1	0	15	1	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_thannt16	FTTH	  Thiên Cầm Cẩm Xuyên Hà Tĩnh	3	1	2	MESH	61	2	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_2ctcpty12	FTTH	  Thôn Trần Phú Thiên Cầm Cẩm Xuyên Hà Tĩnh	3	3	1	MESH	65	1	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_longpx5	FTTH	Hương Thủy Hương Khê Hà Tĩnh	3	3	2	MESH	61	2	HTH-004-CXN	Nguyễn Đức Anh	154273
+h039_gftth_tamtq3	FTTH	Xã Thiên Cầm Tỉnh Hà Tĩnh	3	3	1	MESH	57	1	HTH-004-CXN	Nguyễn Đức Anh	154273
+vt0973824594	TV360_BoxTV trả sau	Đường nguyễn biên,ngõ 422 số nhà 12 Thôn 5-TT Cẩm Xuyên, Xã Cẩm Xuyên, Tỉnh Hà Tĩnh	1	1	1	0			HTH-004-CXN	Nguyễn Hữu Phùng	225138
+hth_gftth_luanpv4	FTTH	Thôn Đại Hòa	1	1	1	0	5	1	HTH-004-CXN	Nguyễn Hữu Phùng	225138
+h039_gftth_lactmnc2	FTTH	  Thôn Yên Lạc Cẩm Lạc Cẩm Xuyên Hà Tĩnh	3	1	4	MESH	71	4	HTH-004-CXN	Nguyễn Hữu Phùng	225138
+h039_gftth_nguyennt43	FTTH	Nam Phúc Thăng Cẩm Xuyên Hà Tĩnh	2	2	3	MESH	15	3	HTH-004-CXN	Nguyễn Hữu Phùng	225138
+C342852335	Camera	Cẩm Vịnh, Cẩm Xuyên, Hà Tĩnh	1	1	1	0			HTH-004-CXN	Nguyễn Nhân Đức	826199
+vt0338846040	TV360_BoxTV trả sau	Cẩm Bình, Cẩm Xuyên, Hà Tĩnh	1	1	1	0			HTH-004-CXN	Nguyễn Nhân Đức	826199
+vt0379463197	TV360_BoxTV trả sau	  Tổ dân phố 13 TT Cẩm Xuyên Cẩm Xuyên Hà Tĩnh	2	2	1	0			HTH-004-CXN	Nguyễn Nhân Đức	826199
+h039_gftth_hungpd26	FTTH	P.Tăng Nhơn Phú A Tp.Thủ Đức TPHCM	2	2	1	0	15	1	HTH-004-CXN	Nguyễn Nhân Đức	826199
+h039_gftth_chinhnv40	FTTH	Thôn Nam Tiến-Cẩm Bình, Xã Cẩm Bình, Tỉnh Hà Tĩnh	2	2	1	0	14	1	HTH-004-CXN	Nguyễn Nhân Đức	826199
+h039_gftth_khoanv16	FTTH	Xã Cẩm Trung Tỉnh Hà Tĩnh	3	3	2	MESH	46	2	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_loint38	FTTH	Thôn 7 Cẩm Minh Cẩm Xuyên Hà Tĩnh	3	3	1	0	40	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_namvk0	FTTH	  Cẩm Lạc Cẩm Xuyên Hà Tĩnh	2	2	1	0	24	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_binhtq10	FTTH	Thôn 8 Cẩm Minh Cẩm Xuyên Hà Tĩnh	3	3	1	0	32	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_kieuvh0	FTTH	Thôn Lạc Thọ Nguyễn Du Hà Tĩnh Hà Tĩnh	2	2	1	0	16	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_hanhlt87	FTTH	Thôn 9 Cẩm Minh Cẩm Xuyên Hà Tĩnh	2	2	1	0	16	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_loanhnt1	FTTH	Thôn Yên Lạc Cẩm Lạc Cẩm Xuyên Hà Tĩnh	2	2	1	0	16	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+h039_gftth_haupd3	FTTH	hà hậu thể Thôn Trần Phú Cẩm Lạc Cẩm Xuyên Hà Tĩnh	3	3	1	0	27	1	HTH-004-CXN	Nguyễn Văn Hưng	483674
+vt0364400893	TV360_BoxTV trả sau	Thôn Xuân Bắc - Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	1	0			HTH-004-CXN	Phạm Đình Mại	413463
+vt09644714101	TV360_BoxTV trả sau	thôn hải bắc, Thôn Hy Dy-Cẩm Nhượng, Xã Thiên Cầm, Tỉnh Hà Tĩnh	3	3	1	0			HTH-004-CXN	Phạm Đình Mại	413463
+vt0942514602	TV360_BoxTV trả sau	  Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Phạm Đình Mại	413463
+h039_gftth_2ctcpty13	FTTH	  Thôn Trần Phú Thiên Cầm Cẩm Xuyên Hà Tĩnh	3	3	3	MESH	61	3	HTH-004-CXN	Phạm Đình Mại	413463
+h039_gftth_haiht	FTTH	Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	1	3	MESH	122	3	HTH-004-CXN	Phạm Đình Mại	413463
+h039_gftth_hanhth3	FTTH	Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	2	2	3	MESH	17	3	HTH-004-CXN	Phạm Đình Mại	413463
+h039_gftth_baotd3	FTTH	Thôn Hoàng Quý-Cẩm Nhượng, Xã Thiên Cầm, Tỉnh Hà Tĩnh	3	1	3	MESH	84	3	HTH-004-CXN	Phạm Đình Mại	413463
+vt0978436266	TV360_BoxTV trả sau	Cẩm Hòa, Cẩm Xuyên, Hà Tĩnh	3	3	1	0			HTH-004-CXN	Trần Nam Huy	413464
+h039_gftth_locvv3	FTTH	Yên Hòa, Cẩm Xuyên, Hà Tĩnh	2	2	1	0	24	1	HTH-004-CXN	Trần Nam Huy	413464
+h039_gftth_longnv30	FTTH	Thôn Mỹ Hòa Cẩm Hòa Cẩm Xuyên Hà Tĩnh	3	2	1	0	98	1	HTH-004-CXN	Trần Nam Huy	413464
+C962763113	Camera	  Cẩm Mỹ Cẩm Xuyên Hà Tĩnh	3	3	1	0			HTH-004-CXN	Trương Quang Thuận	061161
+h039_gftth_hongnt235	FTTH	  Cẩm Thạch Cẩm Xuyên Hà Tĩnh	3	3	1	0	43	1	HTH-004-CXN	Trương Quang Thuận	061161
+h039_gftth_maubt0	FTTH	Cẩm Duệ Cẩm Xuyên Hà Tĩnh	3	3	1	0	66	1	HTH-004-CXN	Trương Quang Thuận	061161
+h039_gftth_huongnt717	FTTH	Cẩm Thạch Cẩm Xuyên Hà Tĩnh	3	3	1	0	33	1	HTH-004-CXN	Trương Quang Thuận	061161
+h039_gftth_hungnv269	FTTH	Xã Thạch Lạc, Tỉnh Hà Tĩnh	3	3	1	0	33	1	HTH-003-THA	bùi tuấn anh	413581
+h039_gftth_ngudt6	FTTH	Xã Đồng Tiến, Tỉnh Hà Tĩnh	2	2	1	0	17	1	HTH-003-THA	bùi tuấn anh	413581
+vt0911611336	TV360_BoxTV trả sau	Thạch Linh, Thành Phố Hà Tĩnh, Hà Tĩnh	2	2	1	0			HTH-003-THA	Dương Mạnh Vũ	432649
+vt0378688738	TV360_BoxTV trả sau	Thạch Xuân, Thạch Hà, Hà Tĩnh	2	2	1	0			HTH-003-THA	Dương Mạnh Vũ	432649
+h039_gftth_vudd5	FTTH	Thạch Đài Thạch Hà Hà Tĩnh	3	1	2	MESH	60	2	HTH-003-THA	Dương Mạnh Vũ	432649
+hth_gftth_phuongnt0	FTTH	Thôn Liên Vinh Xóm 8- Tây Đài-Thạch Đài	2	2	1	0	13	1	HTH-003-THA	Dương Mạnh Vũ	432649
+h039_gftth_hanhhb0	FTTH	Phường Thành Sen, Tỉnh Hà Tĩnh	2	2	1	0	19	1	HTH-003-THA	Dương Mạnh Vũ	432649
+hth_gftth_tudm0	FTTH	Nguyễn Du Hà Tĩnh Hà Tĩnh	1	1	1	0	12	1	HTH-003-THA	Dương Mạnh Vũ	432649
+h039_gftth_xoannt62	FTTH	Xã Thạch Xuân Tỉnh Hà Tĩnh	2	2	1	0	17	1	HTH-003-THA	Dương Mạnh Vũ	432649
+C969139456	Camera	Tô 10 - Hoàng Diệu, Thành Phố Thái Bình, Thái Bình	1	1	1	0			HTH-003-THA	Hoàng Xuân Quốc	413553
+vt0382867523	TV360_BoxTV trả sau	Thạch Hà Thạch Hà Hà Tĩnh	2	2	1	0			HTH-003-THA	Hoàng Xuân Quốc	413553
+vt09099160581	TV360_BoxTV trả sau	  Thạch Long Thạch Hà Hà Tĩnh	2	2	1	0			HTH-003-THA	Hoàng Xuân Quốc	413553
+h039_gftth_phuongdtm3	FTTH	Xã Hương Đô, Tỉnh Hà Tĩnh	2	2	1	0	15	1	HTH-003-THA	Hoàng Xuân Quốc	413553
+h039_gftth_tuanld28	FTTH	Xóm Phúc-Việt Tiến, Xã Việt Xuyên, Tỉnh Hà Tĩnh	3	3	1	0	47	1	HTH-003-THA	Hoàng Xuân Quốc	413553
+h039_gftth_hongnh10	FTTH	Thôn Nam Giang	2	2	1	0	19	1	HTH-003-THA	Hoàng Xuân Quốc	413553
+hth_gftth_huelv2	FTTH	Thạch Long, Thạch Hà, Hà Tĩnh	1	1	1	0	6	1	HTH-003-THA	Hoàng Xuân Quốc	413553
+vt09885699081	TV360_BoxTV trả sau	Văn Yên, Thành Phố Hà Tĩnh, Hà Tĩnh	3	3	1	0			HTH-003-THA	hoàng xuân thái	413584
+vt0799045949	TV360_BoxTV trả sau	Thạch Đài Thạch Hà Hà Tĩnh	3	3	1	0			HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_lanntp5	FTTH	  Đại Nài Hà Tĩnh Hà Tĩnh	3	1	1	0	51	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_hantt122	FTTH	Nam Điền Thạch Hà Hà Tĩnh	2	2	1	0	18	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_thanhnt508	FTTH	Xóm 2	3	3	1	0	35	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_hieunm4	FTTH	Phường Hà Huy Tập, Tỉnh Hà Tĩnh	3	3	1	0	98	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_hunghb0	FTTH	Phường Thành Sen Tỉnh Hà Tĩnh	3	3	3	MESH	99	3	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_hant516	FTTH	kiệt 5 Nguyễn Hữu Cảnh, Phường An Cựu, Thành phố Huế	2	2	1	0	22	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_thuongnt192	FTTH	Xóm 13 Thịnh Lộc, Xã Lộc Hà, Tỉnh Hà Tĩnh	2	2	1	0	24	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_chintq0	FTTH	126 Xuân Diệu Khối phố 8 Nguyễn Du Hà Tĩnh Hà Tĩnh	3	2	3	MESH	101	3	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_locpv5	FTTH	  Nguyễn Du Hà Tĩnh Hà Tĩnh	3	2	2	MESH	51	2	HTH-003-THA	hoàng xuân thái	413584
+hth_gftth_duccttdvcsskh0	FTTH	Số 57 Đường Hải Thượng Lãn Ông, Tổ 1-Bắc Hà Phường Thành Sen  Tỉnh Hà Tĩnh	1	1	1	0	12	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_phudv23	FTTH	  Thôn Hưng Mỹ 1 Cẩm Thành Cẩm Xuyên Hà Tĩnh	2	2	1	0	18	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_vietnv59	FTTH	Nguyễn hoành từ Phường Thành Sen Tỉnh Hà Tĩnh	3	2	3	MESH	30	3	HTH-003-THA	hoàng xuân thái	413584
+hth_gftth_linhln0	FTTH	Thanh Châu-TT Thạch Hà Xã Thạch Hà Tỉnh Hà Tĩnh	1	1	1	0	10	1	HTH-003-THA	hoàng xuân thái	413584
+hth_gftth_tuanna0	FTTH	Thôn Tân Thủy tân mỹ hà mới Sơn Tân Hương Sơn Hà Tĩnh	2	2	1	0	13	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_mayntt0	FTTH	 phòng kế toán Sở TTTT 66 phan đình phùng Nam Hà Hà Tĩnh Hà Tĩnh	2	2	2	MESH	19	2	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_kynv34	FTTH	Trung Lộc Can Lộc Hà Tĩnh	3	3	1	0	30	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_chaupt11	FTTH	Thạch Tân Thạch Hà Hà Tĩnh	3	3	1	0	98	1	HTH-003-THA	hoàng xuân thái	413584
+h039_gftth_toanht5	FTTH	Phường Hà Huy Tập, Tỉnh Hà Tĩnh	3	3	1	0	29	1	HTH-003-THA	hoàng xuân thái	413584
+C977586839	Camera	Bắc Lâm Thạch Ngọc Thạch Hà Hà Tĩnh	3	3	1	0			HTH-003-THA	Lãi Thế Ngoãn	067831
+C337562022	Camera	Sơn Lộc Can Lộc Hà Tĩnh	3	3	2	0			HTH-003-THA	Lãi Thế Ngoãn	067831
+vt0378654985	TV360_BoxTV trả sau	Bắc Lâm Thạch Ngọc Thạch Hà Hà Tĩnh	2	2	1	0			HTH-003-THA	Lãi Thế Ngoãn	067831
+vt0968736268	TV360_BoxTV trả sau	  Mộc Hải Thạch Ngọc Thạch Hà Hà Tĩnh	2	2	1	0			HTH-003-THA	Lãi Thế Ngoãn	067831
+hth_gftth_thupt7	FTTH	Bắc Lâm-Thạch Ngọc, Xã Việt Xuyên, Tỉnh Hà Tĩnh	1	1	1	0	10	1	HTH-003-THA	Lãi Thế Ngoãn	067831
+h039_gftth_nhuannh0	FTTH	Bắc Lâm-Thạch Ngọc, Xã Việt Xuyên, Tỉnh Hà Tĩnh	2	2	2	0	15	2	HTH-003-THA	Lãi Thế Ngoãn	067831
+h039_gftth_duongnk6	FTTH	tĩnh lộ 3, Xã Toàn Lưu, Tỉnh Hà Tĩnh	3	3	1	0	33	1	HTH-003-THA	Lãi Thế Ngoãn	067831
+h039_gftth_thilt13	FTTH	Xã Thạch Hà Tỉnh Hà Tĩnh	2	2	1	0	16	1	HTH-003-THA	Lãi Thế Ngoãn	067831
+h039_gftth_thangtv77	FTTH	Yên Nghĩa Lưu Vĩnh Sơn Thạch Hà Hà Tĩnh	2	2	1	0	15	1	HTH-003-THA	Lãi Thế Ngoãn	067831
+h039_gmts2_dungttt0	Multiscreen 2 chiều	Thạch Hạ, TP. Hà Tĩnh, Hà Tĩnh	3	3	1	0			HTH-003-THA	Nguyễn Văn Bình	832423
+vt08888432341	TV360_BoxTV trả sau	  Thạch Trung Hà Tĩnh Hà Tĩnh	1	1	1	0			HTH-003-THA	Nguyễn Văn Bình	832423
+vt0941099928	TV360_BoxTV trả sau	Thạch Hạ Hà Tĩnh Hà Tĩnh	2	2	1	0			HTH-003-THA	Nguyễn Văn Bình	832423
+h039_gmts2_hienntt16	Multiscreen 2 chiều	Xóm Tân Học-Thạch Hạ, Phường Trần Phú Tỉnh Hà Tĩnh	3	3	0	0			HTH-003-THA	Nguyễn Văn Bình	832423
+h039_gftth_hoangnv133	FTTH	Đồng Yên, Bắc Quang, Hà Giang	2	2	1	0	19	1	HTH-003-THA	Nguyễn Văn Bình	832423
+h039_gftth_manhnt28	FTTH	Khối phố 1 Nguyễn Du Hà Tĩnh Hà Tĩnh	2	2	1	0	17	1	HTH-003-THA	Nguyễn Văn Bình	832423
+h039_gftth_khangctcxdtmt0	FTTH	Xóm Liên Hà Thạch Hạ Hà Tĩnh Hà Tĩnh	2	2	1	0	20	1	HTH-003-THA	Nguyễn Văn Bình	832423
+h039_gftth_dungth26	FTTH	Bắc Hà Hà Tĩnh Hà Tĩnh	2	2	1	0	18	1	HTH-003-THA	Nguyễn Văn Bình	832423
+h039_gftth_anhvth1	FTTH	thạch trung, tp hà tĩnh, hà tĩnh	3	3	1	0	44	1	HTH-003-THA	Nguyễn Văn Bình	832423
+hth_gftth_tinhctcphlh0	FTTH	số 208 đường Trần Phú Phường Thành Sen Tỉnh Hà Tĩnh	1	1	4	MESH	10	4	HTH-003-THA	Nguyễn Văn Bình	832423
+hth_gftth_kienpt0	FTTH	sn 20, ngõ 149 hà tông chính Tổ 3-Bắc Hà Phường Thành Sen Tỉnh Hà Tĩnh	1	1	1	0	9	1	HTH-003-THA	Nguyễn Văn Bình	832423
+vt0915082560	TV360_BoxTV trả sau	Phường Sơn Trà, Thành phố Đà Nẵng	2	2	1	0			HTH-003-THA	Nguyễn Văn Hòa	193715
+vt0819180118	TV360_BoxTV trả sau	Trần Phú, Thành Phố Hà Tĩnh, Hà Tĩnh	3	3	1	0			HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_nhanth9	FTTH	  Lưu Vĩnh Sơn Thạch Hà Hà Tĩnh	2	2	1	0	16	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_tuda7	FTTH	  Hưng Lộc Vinh Nghệ An	3	3	1	0	69	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_xuandt32	FTTH	  Thạch Trung Hà Tĩnh Hà Tĩnh	3	1	3	MESH	66	3	HTH-003-THA	Nguyễn Văn Hòa	193715
+hth_gftth_tiepnv1	FTTH	Thạch Linh Hà Tĩnh Hà Tĩnh	1	1	1	0	5	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_khuyenpt9	FTTH	Xuân Phú 1	2	2	1	0	16	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_namlh32	FTTH	Tân Giang Hà Tĩnh Hà Tĩnh	2	2	2	MESH	16	2	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_thuanlt33	FTTH	Xã Thạch Hà, Tỉnh Hà Tĩnh	2	2	1	0	20	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_thanhht107	FTTH	Hà Huy Tập Hà Tĩnh Hà Tĩnh	2	2	1	0	21	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+hth_gftth_phonglh1	FTTH	Phường Thành Sen Tỉnh Hà Tĩnh	1	1	1	0	10	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+h039_gftth_trangtth61	FTTH	Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	1	0	26	1	HTH-003-THA	Nguyễn Văn Hòa	193715
+vt0393151539	TV360_BoxTV trả sau	Đình Bàn, Thạch Hà, Hà Tĩnh	1	1	1	0			HTH-003-THA	Trần Đức Sơn	446135
+h039_gftth_lent115	FTTH	Tổ 2 Khu 4 Giếng Đày, Hạ Long, Quảng Ninh	2	3	1	0	24	1	HTH-003-THA	Trần Đức Sơn	446135
+h039_gftth_dunght73	FTTH	Liên Hải-Thạch Hải, Xã Thạch Khê, Tỉnh Hà Tĩnh	3	3	1	0	25	1	HTH-003-THA	Trần Đức Sơn	446135
+h039_gftth_luongpd5	FTTH	Thạch Bàn Thạch Hà Hà Tĩnh	3	3	1	0	46	1	HTH-003-THA	Trần Đức Sơn	446135
+h039_gftth_bactv10	FTTH	Thôn Vĩnh Hòa, Xã Thạch Khê, Tỉnh Hà Tĩnh	3	3	1	0	29	1	HTH-003-THA	Trần Đức Sơn	446135
+h039_gftth_thanhtv92	FTTH	Tân Phong Đỉnh Bàn Thạch Hà Hà Tĩnh	3	3	1	0	45	1	HTH-003-THA	Trần Đức Sơn	446135
+h039_gftth_yenvt7	FTTH	Xóm Pham Ruyễn, Hải Phúc, Hải Hậu, Nam Định	2	2	1	0	20	1	HTH-003-THA	Trần Đức Sơn	446135
+vt0972166898	TV360_BoxTV trả sau	Khối phố Hòa Linh, Thạch Linh Hà Tĩnh Hà Tĩnh	2	2	1	0			HTH-003-THA	Trương Hữu Ninh	413595
+vt0919778236	TV360_BoxTV trả sau	Phường Thành Sen Tỉnh Hà Tĩnh	1	1	1	0			HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_vula0	FTTH	Nam Hà Hà Tĩnh Hà Tĩnh	3	3	3	MESH	34	3	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_thuytt285	FTTH	Nhật Tân Mỹ Lộc Can Lộc Hà Tĩnh	3	1	3	MESH	37	3	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_khoand14	FTTH	Nam Hà Hà Tĩnh Hà Tĩnh	3	3	1	0	74	1	HTH-003-THA	Trương Hữu Ninh	413595
+hth_gftth_trieunh1	FTTH	Xã Thạch Hà, Tỉnh Hà Tĩnh	1	1	1	0	11	1	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_hoapn1	FTTH	Khối phố 5, Nam Hà Hà Tĩnh Hà Tĩnh	3	3	1	0	106	1	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_dailv2	FTTH	Trường Lâm Tĩnh Gia Thanh Hóa	3	2	2	MESH	93	2	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_huongbt31	FTTH	Bắc Hà Hà Tĩnh Hà Tĩnh	3	3	0	0	47	0	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_tienpc5	FTTH	Đỉnh Bàn Thạch Hà Hà Tĩnh	2	2	3	MESH	23	3	HTH-003-THA	Trương Hữu Ninh	413595
+hth_gftth_hoangnx2	FTTH	Thạch Linh, Thành Phố Hà Tĩnh, Hà Tĩnh	1	1	3	MESH	10	3	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gftth_canhlv7	FTTH	Phường Thành Sen, Tỉnh Hà Tĩnh	3	3	1	0	26	1	HTH-003-THA	Trương Hữu Ninh	413595
+h039_gmts2_quyetnt	Multiscreen 2 chiều	Thạch Sơn Thạch Hà Hà Tĩnh	3	3	1	0			HTH-003-THA	Trương Hữu Quân	847670
+vt09736454641	TV360_BoxTV trả sau	Bùi Xá Việt Tiến Thạch Hà Hà Tĩnh	3	3	1	0			HTH-003-THA	Trương Hữu Quân	847670
+h039_gftth_cannd4	FTTH	Việt Tiến, Thạch Hà, Hà Tĩnh	2	2	1	0	21	1	HTH-003-THA	Trương Hữu Quân	847670
+h039_gftth_nguyetnt81	FTTH	Phù Việt Thạch Hà Hà Tĩnh	3	1	2	MESH	81	2	HTH-003-THA	Trương Hữu Quân	847670
+h039_gftth_anhtd17	FTTH	Thạch Quý Hà Tĩnh Hà Tĩnh	3	3	1	0	72	1	HTH-003-THA	Trương Hữu Quân	847670
+h039_gftth_ngocnt104	FTTH	Thạch Sơn Thạch Hà Hà Tĩnh	3	3	0	0	51	0	HTH-003-THA	Trương Hữu Quân	847670
+h039_gftth_quynhnd11	FTTH	Việt Tiến Thạch Hà Hà Tĩnh	3	3	1	0	29	1	HTH-003-THA	Trương Hữu Quân	847670
+C359843738	Camera	Xóm Hoà Lạc Thạch Lạc Hòa Thuận-Thạch Lạc, Xã Thạch Lạc, Tỉnh Hà Tĩnh	2	2	1	0			HTH-003-THA	Võ Quốc Hải	471571
+vt0988660444	TV360_BoxTV trả sau	Thạch Văn Thạch Hà Hà Tĩnh	2	2	1	0			HTH-003-THA	Võ Quốc Hải	471571
+vt0333729677	TV360_BoxTV trả sau	Thạch Lạc Hà Tĩnh Hà Tĩnh	3	3	1	0			HTH-003-THA	Võ Quốc Hải	471571
+vt0869772763	TV360_BoxTV trả sau	Xã Trường Giang Tỉnh Quảng Ngãi	2	2	1	0			HTH-003-THA	Võ Quốc Hải	471571
+h039_gftth_danlh1	FTTH	  Thạch Thắng Thạch Hà Hà Tĩnh	3	1	1	0	50	1	HTH-003-THA	Võ Quốc Hải	471571
+h039_gftth_hanhhv16	FTTH	Xã Thạch Xuân, Tỉnh Hà Tĩnh	3	3	2	MESH	25	2	HTH-003-THA	Võ Tá Hạnh	007178
+h039_gftth_thachnn6	FTTH	Đông Tân Tân Lâm Hương Thạch Hà Hà Tĩnh	2	2	1	0	23	1	HTH-003-THA	Võ Tá Hạnh	007178
+h039_gftth_dongnt45	FTTH	Nam Điền Thạch Hà Hà Tĩnh	3	3	1	0	43	1	HTH-003-THA	Võ Tá Hạnh	007178
+h039_gftth_baotv18	FTTH	Thạch Hương Minh Đình	2	2	1	0	17	1	HTH-003-THA	Võ Tá Hạnh	007178
+h039_gftth_dathkddd0	FTTH	Thống Nhất Nam Điền Thạch Hà Hà Tĩnh	3	3	1	0	27	1	HTH-003-THA	Võ Tá Hạnh	007178
+C985775123	Camera	Khánh Vĩnh Yên Can Lộc Hà Tĩnh	1	1	1	0			HTH-003-THA	vũ xuân sơn	016828
+vt09140983581	TV360_BoxTV trả sau	Tân Lâm Hương Thạch Hà Hà Tĩnh	1	1	1	0			HTH-003-THA	vũ xuân sơn	016828
+vt09866308762	TV360_BoxTV trả sau	Phường Thành Sen, Tỉnh Hà Tĩnh	2	2	1	0			HTH-003-THA	vũ xuân sơn	016828
+vt0852342034	TV360_BoxTV trả sau	đối diện trường mần non I Tổ dân phố 4 TT Thạch Hà Thạch Hà Hà Tĩnh	3	3	1	0			HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_haltn4	FTTH	  Trần Phú Hà Tĩnh Hà Tĩnh	3	3	1	0	32	1	HTH-003-THA	vũ xuân sơn	016828
+hth_gftth_linhntt5	FTTH	Xóm Minh Tiến Thạch Hạ, Thành Phố Hà Tĩnh, Hà Tĩnh	1	1	1	0	7	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_quynhptn3	FTTH	Trần Phú Hà Tĩnh Hà Tĩnh	3	3	1	0	55	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_anhnd73	FTTH	Tổ Tiến Tiến - Hoàng Văn Thụ, Tp. Bắc Giang, Bắc Giang	2	2	1	0	23	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_vanbt18	FTTH	Thị Trấn Thạch Hà, Thạch Hà, Hà Tĩnh	2	2	1	0	19	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_linhnth4	FTTH	Trần Phú Hà Tĩnh Hà Tĩnh	3	2	2	MESH	115	2	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_tholtp0	FTTH	Trần Phú Hà Tĩnh Hà Tĩnh	2	2	1	0	15	1	HTH-003-THA	vũ xuân sơn	016828
+hth_gftth_hangltd0	FTTH	Hộ Độ, Lộc Hà, Hà Tĩnh	1	1	1	0	11	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_vync0	FTTH	Bồi Sơn Đô Lương Nghệ An	3	3	1	MESH	103	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_loanpt33	FTTH	Bắc Hà Hà Tĩnh Hà Tĩnh	3	2	1	0	71	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_thonv32	FTTH	  Bắc Hà Hà Tĩnh Hà Tĩnh	3	3	3	MESH	56	3	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_anttt5	FTTH	Nam Hà Hà Tĩnh Hà Tĩnh	2	2	1	0	18	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_thienpv10	FTTH	Phú Nhuận Huế Thừa Thiên Huế	3	3	1	0	29	1	HTH-003-THA	vũ xuân sơn	016828
+hth_gftth_tuha0	FTTH	Nam Hà Hà Tĩnh Hà Tĩnh	1	1	1	0	11	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_thanhlv77	FTTH	Khối 15 Lê Lợi Vinh Nghệ An	2	2	1	0	16	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_hiendt135	FTTH	Trần Phú Hà Tĩnh Hà Tĩnh	2	2	1	0	21	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_nguyen1	FTTH	Xã Thạch Hà Tỉnh Hà Tĩnh	2	2	1	0	13	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gftth_hangptt21	FTTH	TT Đức Thọ Đức Thọ Hà Tĩnh	3	3	1	0	41	1	HTH-003-THA	vũ xuân sơn	016828
+hth_gftth_giangtt1	FTTH	Số 188 Nguyễn Huy Tự Tổ 7-Bắc Hà	2	2	1	0	13	1	HTH-003-THA	vũ xuân sơn	016828
+h039_gmts2_giapvh1	Multiscreen 2 chiều	  Thiên Lộc Can Lộc Hà Tĩnh	3	3	1	0			HTH-002-CLC	đặng anh tuấn	413503
+h039_gftth_thongtk0	FTTH	Xã Can Lộc Tỉnh Hà Tĩnh	2	2	1	0	18	1	HTH-002-CLC	đặng anh tuấn	413503
+h039_gftth_tamvtt9	FTTH	Xã Can Lộc, Tỉnh Hà Tĩnh	2	2	1	0	22	1	HTH-002-CLC	đặng anh tuấn	413503
+h039_gftth_tuyetnt280	FTTH	Xã Xuân Lộc Tỉnh Hà Tĩnh	2	2	1	0	18	1	HTH-002-CLC	Ngô Đức Tuân	845996
+hth_gftth_congnd5	FTTH	yên lạc quang lộc can lộc hà tĩnh	1	1	1	0	6	1	HTH-002-CLC	Ngô Đức Tuân	845996
+h039_gftth_tuongtp0	FTTH	Quang Lộc, Can Lộc, Hà Tĩnh	3	3	1	0	34	1	HTH-002-CLC	Ngô Đức Tuân	845996
+hth_gftth_luongtv	FTTH	Xã Đồng Lộc Tỉnh Hà Tĩnh	1	1	1	0	12	1	HTH-002-CLC	Ngô Đức Tuân	845996
+C988246245	Camera	Tân Qúy Hộ Độ Lộc Hà Hà Tĩnh	1	1	1	0			HTH-002-CLC	nguyễn đình nam	413501
+vt0975998987	TV360_BoxTV trả sau	Hồng Lạc Thạch Châu Thạch Hà Hà Tĩnh	3	3	1	0			HTH-002-CLC	nguyễn đình nam	413501
+h039_gmts2_thaopv0	Multiscreen 2 chiều	Châu Hạ-Thạch Châu, Xã Mai Phụ Tỉnh Hà Tĩnh	3	3	1	0			HTH-002-CLC	nguyễn đình nam	413501
+vt08650577781	TV360_BoxTV trả sau	Châu Hạ Thạch Châu, Xã Mai Phụ, Tỉnh Hà Tĩnh	3	3	1	0			HTH-002-CLC	nguyễn đình nam	413501
+vt0824998087	TV360_BoxTV trả sau	  Hộ Độ Lộc Hà Hà Tĩnh	2	2	1	0			HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_duongnv85	FTTH	Long Hải	2	2	1	0	17	1	HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_hoant864	FTTH	Xuân Phượng 1 Thạch Kim, Xã Lộc Hà, Tỉnh Hà Tĩnh	2	2	1	0	22	1	HTH-002-CLC	nguyễn đình nam	413501
+hth_gftth_giangnb0	FTTH	Xuân Phượng 1-Thạch Kim, Xã Lộc Hà, Tỉnh Hà Tĩnh	1	1	1	0	9	1	HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_hoangdd5	FTTH	Thạch Mỹ Lộc Hà Hà Tĩnh	3	3	1	0	70	1	HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_yenlt26	FTTH	Thạch Châu Lộc Hà Hà Tĩnh	3	3	0	0	86	0	HTH-002-CLC	nguyễn đình nam	413501
+hth_gftth_syld0	FTTH	Thạch Châu Thạch Hà Hà Tĩnh	1	1	1	0	11	1	HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_thaopv2	FTTH	Châu Hạ-Thạch Châu, Xã Mai Phụ Tỉnh Hà Tĩnh	3	1	1	0	91	1	HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_hatt168	FTTH	Sơn Bằng 1 Thạch Kim Lộc Hà Hà Tĩnh	3	3	1	0	54	1	HTH-002-CLC	nguyễn đình nam	413501
+h039_gftth_thaunq1	FTTH	Khánh Vĩnh Yên, Can Lộc, Hà Tĩnh	2	2	1	0	24	1	HTH-002-CLC	Nguyễn Duy Trường	413481
+h039_gftth_binhtv72	FTTH	TT Nghèn Can Lộc Hà Tĩnh	2	1	3	MESH	23	3	HTH-002-CLC	Nguyễn Duy Trường	413481
+h039_gftth_phuongptm3	FTTH	Tổ dân phố 1A-Thị trấn Nghèn, Xã Can Lộc Tỉnh Hà Tĩnh	3	2	2	MESH	37	2	HTH-002-CLC	Nguyễn Duy Trường	413481
+h039_gftth_uypd1	FTTH	TT Nghèn Can Lộc Hà Tĩnh	3	3	1	0	47	1	HTH-002-CLC	Nguyễn Duy Trường	413481
+h039_gmts2_dinhlt3	Multiscreen 2 chiều	Thịnh Lộc, Lộc Hà, Hà Tĩnh	3	3	1	0			HTH-002-CLC	Nguyễn Khắc Hoàng	833152
+vt0582130891	TV360_BoxTV trả sau	Thịnh Lộc Lộc Hà Hà Tĩnh	3	3	1	0			HTH-002-CLC	Nguyễn Khắc Hoàng	833152
+vt0969664032	TV360_BoxTV trả sau	Xóm 3 Thịnh Lộc Lộc Hà Hà Tĩnh	3	3	1	0			HTH-002-CLC	Nguyễn Khắc Hoàng	833152
+h039_gftth_loctmnt15	FTTH	Xóm 6 Tân Lộc Lộc Hà Hà Tĩnh	2	2	1	MESH	24	1	HTH-002-CLC	Nguyễn Khắc Hoàng	833152
+h039_gftth_haptt37	FTTH	Nguyễn Du Hà Tĩnh Hà Tĩnh	2	2	1	0	20	1	HTH-002-CLC	Nguyễn Khắc Hoàng	833152
+h039_gftth_yenntn6	FTTH	0 Xóm 1 Thịnh Lộc Thạch Hà Hà Tĩnh	2	2	1	0	17	1	HTH-002-CLC	Nguyễn Khắc Hoàng	833152
+h039_gftth_chuongnt43	FTTH	Thôn phú mỹ Tây Đình Thạch Mỹ Lộc Hà Hà Tĩnh	3	3	1	0	30	1	HTH-002-CLC	Nguyễn Minh Vương	487658
+h039_gftth_khanglq0	FTTH	Thanh Lộc Can Lộc Hà Tĩnh	3	2	2	MESH	66	2	HTH-002-CLC	Nguyễn Trọng Dũng	113558
+h039_gftth_hiendt89	FTTH	Khánh Vĩnh Yên, Can Lộc, Hà Tĩnh	3	3	1	0	54	1	HTH-002-CLC	Nguyễn Trọng Dũng	113558
+h039_gftth_namnd47	FTTH	Khánh Vĩnh Yên Can Lộc Hà Tĩnh	2	2	2	MESH	20	2	HTH-002-CLC	Nguyễn Trọng Dũng	113558
+h039_gftth_huandd1	FTTH	Xã Gia Hanh, Tỉnh Hà Tĩnh	3	2	3	MESH	105	3	HTH-002-CLC	Nguyễn Trọng Dũng	113558
+vt0982842983	TV360_BoxTV trả sau	  Nam Hà Hà Tĩnh Hà Tĩnh	3	3	1	0			HTH-002-CLC	Nguyễn Văn Tình	810463
+vt0972444848	TV360_BoxTV trả sau	Kỳ Thọ Kỳ Anh Hà Tĩnh	3	3	1	0			HTH-002-CLC	Nguyễn Văn Tình	810463
+h039_gftth_hoadt170	FTTH	Kim Song Trường Can Lộc Hà Tĩnh	3	3	1	0	36	1	HTH-002-CLC	Nguyễn Văn Tình	810463
+h039_gftth_huongtt186	FTTH	Đức La Đức Thọ Hà Tĩnh	3	3	1	0	76	1	HTH-002-CLC	Nguyễn Văn Tình	810463
+vt0978680123	TV360_BoxTV trả sau	P. Thạch Linh, TP. Hà Tĩnh T. Hà Tĩnh	3	3	1	0			HTH-002-CLC	Phan Văn Định	845929
+h039_gmts2_vanhta0	Multiscreen 2 chiều	, Phù Lưu, Lộc Hà, Hà Tĩnh	3	3	1	0			HTH-002-CLC	Phan Văn Định	845929
+vt08890186641	TV360_BoxTV trả sau	Báo Ân Thạch Mỹ Lộc Hà Hà Tĩnh	2	2	1	0			HTH-002-CLC	Phan Văn Định	845929
+vt0399083795	TV360_BoxTV trả sau	Tổ Dân Phố 10 Mường Thanh Điện Biên Phủ Điện Biên	2	2	1	0			HTH-002-CLC	Phan Văn Định	845929
+h039_gmts2_dunglt10	Multiscreen 2 chiều	q Phù Lưu Lộc Hà Hà Tĩnh	3	3	1	0			HTH-002-CLC	Phan Văn Định	845929
+h039_gftth_ngocpv0	FTTH	005 Thạch Mỹ Lộc Hà Hà Tĩnh	3	2	1	0	94	1	HTH-002-CLC	Phan Văn Định	845929
+h039_gftth_tydv6	FTTH	Phù Lưu, Lộc Hà, Hà Tĩnh	2	2	1	0	24	1	HTH-002-CLC	Phan Văn Định	845929
+h039_gftth_hanhtv39	FTTH	Thôn Sơn Thủy, Mỹ Lộc, Can Lộc, Hà Tĩnh	2	2	1	0	20	1	HTH-002-CLC	phan văn thọ	413483
+h039_gftth_hoangnh89	FTTH	Khu 8 Tiên Thắng Tiên Lãng Hải Phòng	2	2	1	0	15	1	HTH-002-CLC	phan văn thọ	413483
+h039_gftth_hongnt299	FTTH	Xã Đồng Lộc Tỉnh Hà Tĩnh	3	3	1	0	28	1	HTH-002-CLC	phan văn thọ	413483
+vt0919425059	TV360_BoxTV trả sau	TDP Phú Mậu	3	3	1	0			HTH-002-CLC	Trần Danh Nhật	413502
+h039_gmts_luatlt4	Multiscreen 2 chiều	  Thạch Châu Lộc Hà Hà Tĩnh	3	3	0	0			HTH-002-CLC	Trần Danh Nhật	413502
+vt09875738151	TV360_BoxTV trả sau	Mai Phú, Lộc Hà, Hà Tĩnh	3	3	1	0			HTH-002-CLC	Trần Danh Nhật	413502
+vt0986381038	TV360_BoxTV trả sau	Đồng Môn Hà Tĩnh Hà Tĩnh	3	3	1	0			HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_vanntt28	FTTH	Xã Tân Hưng Tỉnh Tây Ninh	2	2	1	0	14	1	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_luult12	FTTH	Thị trấn Lộc Hà Thạch Hà Hà Tĩnh	2	2	1	0	18	1	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_batnt1	FTTH	Thạch Bằng Lộc Hà Hà Tĩnh	3	1	2	MESH	66	2	HTH-002-CLC	Trần Danh Nhật	413502
+hth_gftth_sontn3	FTTH	Xuân Hải-Thị trấn Lộc Hà Xã Lộc Hà Tỉnh Hà Tĩnh	1	1	1	0	8	1	HTH-002-CLC	Trần Danh Nhật	413502
+hth_gftth_cuonglm0	FTTH	TT Lộc Hà Lộc Hà Hà Tĩnh	1	1	1	0	8	1	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_hapt130	FTTH	Thạch Bằng Lộc Hà Hà Tĩnh	2	2	1	0	19	1	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_quynhnd17	FTTH	Xã Mai Phụ Tỉnh Hà Tĩnh	2	2	2	MESH	14	2	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_binhnt251	FTTH	Xã Mai Phụ Tỉnh Hà Tĩnh	3	3	1	0	41	1	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_hienttt68	FTTH	Hợp Tiến Mai Phụ Lộc Hà Hà Tĩnh	3	3	1	0	38	1	HTH-002-CLC	Trần Danh Nhật	413502
+h039_gftth_hoadx9	FTTH	Mai Phụ Lộc Hà Hà Tĩnh	3	1	2	MESH	44	2	HTH-002-CLC	Trần Danh Nhật	413502
+vt0354401206	TV360_BoxTV trả sau	TT EA DRăng Ea Hleo Đắk Lắk	2	2	1	0			HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gmts2_xuanpt9	Multiscreen 2 chiều	Xóm 2 Trung Lộc Can Lộc Hà Tĩnh	3	3	1	0			HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gftth_xuandv12	FTTH	Trung Lộc Can Lộc Hà Tĩnh	2	2	1	0	20	1	HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gftth_thedh2	FTTH	Vĩnh Xá, Thượng Lộc, Can Lộc, Hà Tĩnh	2	2	1	0	22	1	HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gftth_hoanlt15	FTTH	Khánh Lộc Can Lộc Hà Tĩnh	3	2	3	MESH	60	3	HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gftth_hiennt696	FTTH	  Tổ Dân Khối 8 Bắc Hồng Hồng Lĩnh Hà Tĩnh	2	2	1	0	16	1	HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gftth_xuanpt31	FTTH	Xóm 2 Trung Lộc Can Lộc Hà Tĩnh	3	2	2	MESH	60	2	HTH-002-CLC	Trần Văn Hồng Nguyên	446149
+h039_gftth_daolx1	FTTH	  Lương Trung 1 ích Hậu Lộc Hà Hà Tĩnh	2	2	1	0	21	1	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_minhnd10	FTTH	  ích Hậu Lộc Hà Hà Tĩnh	3	2	3	MESH	90	3	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_chunght12	FTTH	Hồng Lộc, Lộc Hà, Hà Tĩnh	2	3	1	0	24	1	HTH-002-CLC	Trần Xuân Cường	857655
+hth_gftth_kiendh0	FTTH	Minh Tiến Tùng Lộc Can Lộc Hà Tĩnh	1	1	1	0	7	1	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_hangltt21	FTTH	Ích Mỹ	3	3	1	MESH	76	1	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_tientd23	FTTH	Liên Tài Năng 	3	3	1	0	27	1	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_tinhnx24	FTTH	Nam Tân Dân Tùng Lôc, Can Lộc, Hà Tĩnh	2	2	1	0	16	1	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_hiennt428	FTTH	Hồng Lộc Lộc Hà Hà Tĩnh	3	3	1	0	48	1	HTH-002-CLC	Trần Xuân Cường	857655
+h039_gftth_danbv2	FTTH	Xóm 3 Hồng Lộc, Xã Hồng Lộc, Tỉnh Hà Tĩnh	3	3	1	0	31	1	HTH-002-CLC	Trần Xuân Cường	857655
+vt09839857221	TV360_BoxTV trả sau	Thôn Hồng Thịnh Xuân Giang Nghi Xuân Hà Tĩnh	2	2	1	0			HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+h039_gftth_trangpt74	FTTH	Xóm 7 Sơn Lễ Hương Sơn Hà Tĩnh	2	2	1	0	22	1	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+h039_gftth_quannv47	FTTH	Thòn Thành Yên, Xuân Thành, Nghi Xuân, Hà Tĩnh	2	2	1	0	21	1	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+h039_gftth_minhdth1	FTTH	Tổ Dân Phố An Mỹ, TT Tiên Điền, Nghi Xuân, Hà Tĩnh	3	3	1	0	26	1	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+h039_gftth_thucph0	FTTH	Xuân Thành Nghi Xuân Hà Tĩnh	3	3	1	0	67	1	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+h039_gftth_xuanttythn3	FTTH	  Tổ dân phố 4-TT Tiên Điền Xã Tiên Điền Tỉnh Hà Tĩnh	3	3	1	0	47	1	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+h039_gftth_thanghq5	FTTH	Thôn Hồng Thịnh Xuân Giang Nghi Xuân Hà Tĩnh	3	3	2	MESH	83	2	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+hth_gftth_binhnt31	FTTH	gì bình gần quán sửa xe a hải Hồng Lam-TT Tiên Điền Xã Tiên Điền Tỉnh Hà Tĩnh	1	1	1	0	7	1	HTH-001-BHL	Cao Trọng Tuấn Anh	485974
+vt0904536456	TV360_BoxTV trả sau	Phường Cầu Giấy Thành phố Hà Nội	2	2	1	0			HTH-001-BHL	Đậu Quốc Bảo	839742
+h039_gftth_quytt33	FTTH	Trường Thanh - Đan Trường, Nghi Xuân, Hà Tĩnh	3	3	0	0	26	0	HTH-001-BHL	Đậu Quốc Bảo	839742
+vt0988155546	TV360_BoxTV trả sau	Bắc Sơn-Cương Gián, Xã Cổ Đạm, Tỉnh Hà Tĩnh	3	3	1	0			HTH-001-BHL	Lê Duy Công	218963
+vt0329406263	TV360_BoxTV trả sau	Thôn Tân Trù, Xuân Liên, Nghi Xuân, Hà Tĩnh	2	2	1	0			HTH-001-BHL	Lê Duy Công	218963
+vt0984430919	TV360_BoxTV trả sau	Cương Gián, Nghi Xuân, Hà Tĩnh	1	1	1	0			HTH-001-BHL	Lê Duy Công	218963
+vt03383994691	TV360_BoxTV trả sau	Tổ dân phố 4 TT Tiên Điền Nghi Xuân Hà Tĩnh	2	2	1	0			HTH-001-BHL	Lê Duy Công	218963
+vt0977060829	TV360_BoxTV trả sau	Linh Tân-Xuân Liên, Xã Cổ Đạm, Tỉnh Hà Tĩnh	1	1	1	0			HTH-001-BHL	Lê Duy Công	218963
+h039_gftth_landt19	FTTH	Thôn Trung Vượng, Xuân Liên, Nghi Xuân, Hà Tĩnh	3	2	1	0	97	1	HTH-001-BHL	Lê Duy Công	218963
+h039_gftth_tuanta7	FTTH	0964657534 , Lâm Vượng Xuân Liên Nghi Xuân Hà Tĩnh	3	3	2	MESH	128	2	HTH-001-BHL	Lê Duy Công	218963
+h039_gftth_tunv58	FTTH	Cương Thịnh, Xuân Liên, Nghi Xuân, Hà Tĩnh	3	3	1	0	29	1	HTH-001-BHL	Lê Duy Công	218963
+vt0355440307	TV360_BoxTV trả sau	Đức Đồng, Đức Thọ, Hà Tĩnh	1	1	1	0			HTH-001-BHL	Lê Nam Thắng	016734
+vt0383111867	TV360_BoxTV trả sau	  Đức Đồng Đức Thọ Hà Tĩnh	1	1	1	0			HTH-001-BHL	Lê Nam Thắng	016734
+vt03780189241	TV360_BoxTV trả sau	Tân Dân, Đức Thọ, Hà Tĩnh	2	2	1	0			HTH-001-BHL	Lê Nam Thắng	016734
+vt0976597105	TV360_BoxTV trả sau	  Xã Đức Đồng Tỉnh Hà Tĩnh	1	1	1	0			HTH-001-BHL	Lê Nam Thắng	016734
+h039_gftth_quett22	FTTH	Đức Đồng Đức Thọ Hà Tĩnh	3	3	1	0	26	1	HTH-001-BHL	Lê Nam Thắng	016734
+h039_gftth_hoangnv97	FTTH	Sơn Thành Đức Đồng Đức Thọ Hà Tĩnh	3	3	1	0	43	1	HTH-001-BHL	Lê Nam Thắng	016734
+h039_gftth_thonh10	FTTH	Đức Lập, Đức Thọ, Hà Tĩnh	3	3	1	0	92	1	HTH-001-BHL	Lê Nam Thắng	016734
+vt0963715127	TV360_BoxTV trả sau	Khối 1-Nam Hồng, Phường Nam Hồng Lĩnh, Tỉnh Hà Tĩnh	1	1	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0962628707	TV360_BoxTV trả sau	Tổ Dân Phố 1 Nam Hồng Thi Xã, Hồng Lĩnh, Hà Tĩnh	3	3	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt09870253871	TV360_BoxTV trả sau	Nam Hồng Hồng Lĩnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0915469156	TV360_BoxTV trả sau	Thuận Lộc, TX. Hồng Lĩnh, Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0355335667	TV360_BoxTV trả sau	Nam Hồng Hồng Lĩnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0387216179	TV360_BoxTV trả sau	Tổ Dân Phố 8 Nam Hồng Thị Xã, Hồng Lĩnh, Hà Tĩnh	3	3	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt09138298861	TV360_BoxTV trả sau	Đức Thuận Hồng Lĩnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0975794105	TV360_BoxTV trả sau	Tổ 23, Bồ Đề, Long Biên, Hà Nội	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0978528534	TV360_BoxTV trả sau	 147 Trần Phú Khối 9 Nam Hồng Hồng Lĩnh Hà Tĩnh	3	3	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt03570337882	TV360_BoxTV trả sau	  Lô 18 B 07 Kđtm Đông Sơn An Hưng Thanh Hóa Thanh Hóa	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0986264598	TV360_BoxTV trả sau	Xóm 3 Đậu Liêu Hồng Lĩnh Hà Tĩnh	1	1	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0868326703	TV360_BoxTV trả sau	Thôn 3 Xuân Lám, Nghi Xuân, Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0915125442	TV360_BoxTV trả sau	Tổ 1, Khối 1, Nam Hồng Hồng Lĩnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt3423224051	TV360_BoxTV trả sau	Phường Bắc Hồng Lĩnh Tỉnh Hà Tĩnh	3	3	1	0			HTH-001-BHL	nguyễn cao cường	413571
+vt0336230378	TV360_BoxTV trả sau	Khối 6-Nam Hồng, Phường Nam Hồng Lĩnh, Tỉnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	nguyễn cao cường	413571
+hth_gftth_tript0	FTTH	Phường Bắc Hồng Lĩnh Tỉnh Hà Tĩnh	1	1	1	0	6	1	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_binhnt117	FTTH	Bắc Hồng Hồng Lĩnh Hà Tĩnh	3	1	2	MESH	82	2	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_khoicttgdt2	FTTH	  Đức Thọ Hà Tĩnh	3	3	0	0	81	0	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_hopnx3	FTTH	Đức Quang Đức Thọ Hà Tĩnh	3	1	1	0	68	1	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_hangntt94	FTTH	7 Ngõ 46 Hoàng Xuân Hãn, Khối 8-Bắc Hồng, Phường Bắc Hồng Lĩnh Tỉnh Hà Tĩnh	2	2	1	0	22	1	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_lytt66	FTTH	Tổ Dân Phố 1 Nam Hồng Thị Xã, Hồng Lĩnh, Hà Tĩnh	3	1	1	0	60	1	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_danlm0	FTTH	Tổ Dân Phố 4 Nam Hồng Thị Xã Hồng Linh, Hà Tĩnh	2	2	1	0	19	1	HTH-001-BHL	nguyễn cao cường	413571
+hth_gftth_taitv0	FTTH	32 kính dương vương Khối 3-Nam Hồng Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	1	1	1	0	12	1	HTH-001-BHL	nguyễn cao cường	413571
+hth_gftth_victoryctcpdt1	FTTH	Phường Kim Liên Thành phố Hà Nội	1	1	1	0	4	1	HTH-001-BHL	nguyễn cao cường	413571
+h039_gftth_huedt58	FTTH	Phường Bắc Hồng Lĩnh, Tỉnh Hà Tĩnh	3	3	1	0	31	1	HTH-001-BHL	nguyễn cao cường	413571
+vt03988053611	TV360_BoxTV trả sau	Xã Đức Thọ, Tỉnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+vt09778988741	TV360_BoxTV trả sau	  Liên Minh Đức Thọ Hà Tĩnh	3	3	1	0			HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+vt09626567881	TV360_BoxTV trả sau	Xã Đức Minh, Tỉnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+vt09825615312	TV360_BoxTV trả sau	  Đức Thọ Hà Tĩnh	2	2	1	0			HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+vt03890350941	TV360_BoxTV trả sau	Thượng Tứ Bùi La Nhân Đức Thọ Hà Tĩnh	1	1	1	0			HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+vt0389035094	TV360_BoxTV trả sau	Thượng Tứ Bùi La Nhân Đức Thọ Hà Tĩnh	1	1	1	0			HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_thaoltt9	FTTH	Sâm Văn Hội Trường Sơn Đức Tho, Hà Tĩnh	2	2	1	0	14	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+hth_gftth_lientt17	FTTH	Thôn Ngõ Lối Trường Sơn Đức Thọ Hà Tĩnh	1	1	1	0	7	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_quanglm2	FTTH	Liên Minh, Đức Thọ, Hà Tĩnh	3	3	1	0	48	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_hent1	FTTH	TT Đức Thọ Đức Thọ Hà Tĩnh	2	2	1	0	18	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_senlt32	FTTH	Tổ dân phố 2 TT Đức Thọ Đức Thọ Hà Tĩnh	2	2	1	0	19	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_vanlth15	FTTH	Thạch Thành Tùng ảnh Đức Thọ Hà Tĩnh	3	3	1	0	27	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_hanglt104	FTTH	Thôn Châu Trinh Tùng ảnh Đức Thọ Hà Tĩnh	2	2	1	0	18	1	HTH-001-BHL	Nguyễn Thanh Tuấn	188173
+h039_gftth_tinhnt151	FTTH	Đồng Thanh Lâm Lâm Trung Thủy Đức Thọ Hà Tĩnh	3	3	1	0	40	1	HTH-001-BHL	Nguyễn Trọng Tới	225154
+h039_gftth_vanhtc1	FTTH	Đức Dũng, Đức Thọ, Hà Tĩnh	3	2	3	MESH	98	3	HTH-001-BHL	Nguyễn Trọng Tới	225154
+h039_gftth_xuyenpt6	FTTH	Đan Trường Nghi Xuân Hà Tĩnh	2	2	1	0	19	1	HTH-001-BHL	Nguyễn Văn Minh	006377
+h039_gftth_myntt13	FTTH	thôn hợp giáp Xã Tiên Điền, Tỉnh Hà Tĩnh	2	2	2	MESH	23	2	HTH-001-BHL	Nguyễn Văn Minh	006377
+h039_gftth_anhbv12	FTTH	Thôn Lam Long, Xuân Hải, Nghi Xuân, Hà Tĩnh	3	3	1	0	28	1	HTH-001-BHL	Nguyễn Văn Minh	006377
+h039_gftth_luongdt32	FTTH	Xuân Hải Nghi Xuân Hà Tĩnh	3	3	1	0	41	1	HTH-001-BHL	Nguyễn Văn Minh	006377
+h039_gmts2_mailt10	Multiscreen 2 chiều	Xuân An Nghi Xuân Hà Tĩnh	3	3	1	0			HTH-001-BHL	Nguyễn Viết Thiện	211362
+vt0385115024	TV360_BoxTV trả sau	Xã Nghi Xuân Tỉnh Hà Tĩnh	1	1	1	0			HTH-001-BHL	Nguyễn Viết Thiện	211362
+vt03358455961	TV360_BoxTV trả sau	Xã Nghi Xuân, Tỉnh Hà Tĩnh	2	2	1	0			HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gmts2_khiemdd1	Multiscreen 2 chiều	Xuân An Nghi Xuân Hà Tĩnh	3	3	1	0			HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gmts2_haitt15	Multiscreen 2 chiều	  Xuân An Nghi Xuân Hà Tĩnh	3	3	1	0			HTH-001-BHL	Nguyễn Viết Thiện	211362
+vt09629286787	TV360_BoxTV trả sau	Xã Thuần Trung, Tỉnh Nghệ An	2	2	1	0			HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_huyennt229	FTTH	Xuân An Nghi Xuân Hà Tĩnh	3	3	1	0	46	1	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_lybt	FTTH	Khối 10, Xuân An Nghi Xuân Hà Tĩnh	3	3	1	0	136	1	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_quangnv74	FTTH	Tổ Dân Phố Giang Đình - Tiên Điền, Nghi Xuân, Hà Tĩnh	3	1	2	MESH	33	2	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_thupt100	FTTH	Xã Nghi Xuân Tỉnh Hà Tĩnh	2	1	2	MESH	17	2	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_xuanhctdhn	FTTH	Khối 2, Nghi Xuân Nghi Xuân Hà Tĩnh	3	1	1	0	93	1	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_thuongvt5	FTTH	  Nghi Xuân Hà Tĩnh	3	2	2	MESH	87	2	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_thuytq4	FTTH	Xuân An Nghi Xuân Hà Tĩnh	2	2	1	0	20	1	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_tuongnv44	FTTH	Xã Nghi Xuân, Tỉnh Hà Tĩnh	2	2	1	0	18	1	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_thangnv40	FTTH	Tổ dân Phố 12 Xuân An Nghi Xuân Hà Tĩnh	3	3	3	MESH	87	3	HTH-001-BHL	Nguyễn Viết Thiện	211362
+h039_gftth_hoaintt46	FTTH	Tổ dân Phố 10 Trường Thi Vinh Nghệ An	2	2	1	0	23	1	HTH-001-BHL	Nguyễn Viết Thiện	211362
+vt0832818847	TV360_BoxTV trả sau	Đức Thọ Đức Thọ Hà Tĩnh	2	2	1	0			HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+vt3769343612	TV360_BoxTV trả sau	Thôn Đại Lợi Đức Yên Đức Thọ Hà Tĩnh	3	3	1	0			HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+h039_gmts2_houbndxy	Multiscreen 2 chiều	Yên Hồ Đức Thọ Hà Tĩnh	3	3	0	0			HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+h039_gftth_datlm2	FTTH	Bùi La Nhân, Đức Thọ, Hà Tĩnh	3	3	1	0	42	1	HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+h039_gftth_sonth14	FTTH	Đức Quang Đức Thọ Hà Tĩnh	3	2	1	0	83	1	HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+h039_gftth_hanhhp0	FTTH	đê la giang TT Đức Thọ TT Đức Thọ Đức Thọ Hà Tĩnh	2	2	1	0	24	1	HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+h039_gftth_tinhdtt	FTTH	TT Đức Thọ Đức Thọ Hà Tĩnh	3	2	1	0	137	1	HTH-001-BHL	Nguyễn Xuân Tĩnh	413575
+C919649579	Camera	Gần trường cấp 2 Thành Mỹ Thôn 7 Xuân Mỹ Nghi Xuân Hà Tĩnh	3	3	1	0			HTH-001-BHL	trần huy thắng	413568
+C899102672	Camera	Xã Thiên Nhẫn, Tỉnh Nghệ An	1	1	1	0			HTH-001-BHL	trần huy thắng	413568
+vt0968838028	TV360_BoxTV trả sau	Tổ dân Phố 6A-Xuân An Xã Nghi Xuân Tỉnh Hà Tĩnh	1	1	1	0			HTH-001-BHL	trần huy thắng	413568
+vt09769785312	TV360_BoxTV trả sau	Xuân Viên, Nghi Xuân, Hà Tĩnh	2	2	1	0			HTH-001-BHL	trần huy thắng	413568
+h039_gftth_thanhnv207	FTTH	Xuân Mỹ Xuân Mỹ Nghi Xuân Hà Tĩnh	2	2	1	0	21	1	HTH-001-BHL	trần huy thắng	413568
+h039_gftth_hainx23	FTTH	Thôn2, Xuân Hồng Nghi Xuân Hà Tĩnh	3	2	2	MESH	49	2	HTH-001-BHL	trần huy thắng	413568
+vt0349842546	TV360_BoxTV trả sau	Cương Gián, Nghi Xuân, Hà Tĩnh	3	3	1	0			HTH-001-BHL	trần thanh tuấn	413579
+h039_gmts2_thoangpd0	Multiscreen 2 chiều	Phường Ba Đình Thành phố Hà Nội	3	3	0	0			HTH-001-BHL	trần thanh tuấn	413579
+h039_gftth_lynd6	FTTH	0984481388 Thôn Nam Mới 012 Cương Gián Nghi Xuân Hà Tĩnh	3	3	2	MESH	92	2	HTH-001-BHL	trần thanh tuấn	413579
+h039_gftth_dienth4	FTTH	Thôn 10-Cổ Đạm, Xã Cổ Đạm, Tỉnh Hà Tĩnh	2	2	1	0	15	1	HTH-001-BHL	trần thanh tuấn	413579
+h039_gftth_trahtt1	FTTH	Cổ Đạm, Nghi Xuân, Hà Tĩnh	3	1	1	0	95	1	HTH-001-BHL	trần thanh tuấn	413579
+h039_gftth_duongdn4	FTTH	Trung Đô Vinh Nghệ An	2	2	1	0	23	1	HTH-001-BHL	trần thanh tuấn	413579
+C862885345	Camera	Xã Hương Khê, Tỉnh Hà Tĩnh	3	3	0	0					
+C342953854	Camera	Yên Hòa, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+C983336777	Camera	Trần Phú Hà Tĩnh Hà Tĩnh	3	3	0	0					
+C332365967	Camera	Tân Tiến Thạch Ngọc Thạch Hà Hà Tĩnh	3	3	0	0					
+C362283648	Camera	Ngọc Sơn Thạch Ngọc Thạch Hà Hà Tĩnh	3	3	0	0					
+C972244782	Camera	Đông Vinh Tùng Lộc Can Lộc Hà Tĩnh	3	3	0	0					
+h039_gmts2_gamlh0	Multiscreen 2 chiều	Trường Thành Xuân Trường Nghi Xuân Hà Tĩnh	3	3	0	0					
+h039_gmts_trangnth1	Multiscreen 2 chiều	tdp5 Khối 3 Phố Châu Hương Sơn Hà Tĩnh	3	3	0	0					
+h039_gmts2_vuongdq	Multiscreen 2 chiều	Phường Thành Sen, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_huongdt7	Multiscreen 2 chiều	Tr&#432;&#7901;ng m&#7847;m non Th&#7841;ch Ch&#226;u 003 Thạch Bằng Lộc Hà Hà Tĩnh	3	3	0	0					
+h039_gmts2_huongdt15	Multiscreen 2 chiều	  Văn Phương Nho Quan Ninh Bình	3	3	0	0					
+h039_gmts2_dungnv16	Multiscreen 2 chiều	Tân Thắng Tân Mỹ Hà Hương Sơn Hà Tĩnh	3	3	0	0					
+h039_gmts2_namnd1	Multiscreen 2 chiều	Thôn Liên Thành Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_kiemtd0	Multiscreen 1 chiều	Thôn Xuân Bắc, Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_sinhth0	Multiscreen 2 chiều	Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+h039_gmts2_hoind1	Multiscreen 2 chiều	Hương Khê Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_toanl0	Multiscreen 2 chiều	Trường Sơn, Đức Thọ, Hà Tĩnh	3	3	0	0					
+h039_gmts2_thuatnv0	Multiscreen 2 chiều	Đức Đồng Đức Thọ Hà Tĩnh	3	3	0	0					
+h039_gmts2_thaidv2	Multiscreen 2 chiều	Xã Đồng Tiến Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_thachdq	Multiscreen 2 chiều	Trần Thị Kim Oanh - Khoa Nhi Bệnh viện tỉnh Hà tỉnh	3	3	0	0					
+h039_gmts2_tiennv4	Multiscreen 2 chiều	Thuận Ngại Thạch Trị Hà Tĩnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_huent24	Multiscreen 2 chiều	Thanh Lộc, Can Lộc, Hà Tĩnh	3	3	0	0					
+h039_gmts2_loantt9	Multiscreen 2 chiều	Cổ Đạm Nghi Xuân Hà Tĩnh	3	3	0	0					
+h039_gmts_anhnt9	Multiscreen 2 chiều	Chợ Sơn Khối 7 , Hương Khê Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_chungtd0	Multiscreen 2 chiều	Cương Gián Nghi Xuân Hà Tĩnh	3	3	0	0					
+h039_gmts_oanhnt7	Multiscreen 1 chiều	Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+h039_gmts_mannt	Multiscreen 1 chiều	Thôn Tân Hải Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_thachpx0	Multiscreen 2 chiều	Xã Hương Khê, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_sonnh11	Multiscreen 2 chiều	Hương Khê Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_thuypt9	Multiscreen 2 chiều	Hương Long Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_trungth4	Multiscreen 2 chiều	Phường Thành Sen Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_uocnd	Multiscreen 2 chiều	  Xóm Đức Châu xã Thạch Châu Lộc Hà Hà Tĩnh	3	3	0	0					
+h039_gmts2_phuongdh2	Multiscreen 2 chiều	Cam Hòa Cam Xuyên, Hà Tĩnh	3	3	0	0					
+h039_mts2_uthb0	Multiscreen 2 chiều	Phú Gia Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_mucm0	Multiscreen 2 chiều	Đông yên 1 Kỳ Lợi Thị xã Kỳ Anh Hà Tĩnh	3	3	0	0					
+h039_gmts2_dacpv0	Multiscreen 2 chiều	Xóm Khánh Yên, Thạch Bằng Lộc Hà Hà Tĩnh	3	3	0	0					
+h039_gmts2_truongbq0	Multiscreen 2 chiều	  Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_anhtt21	Multiscreen 2 chiều	Hương Khê Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts_hieuvt1	Multiscreen 1 chiều	Đường Hoa Thưởng, Thôn Trung Hải, Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_tamnt20	Multiscreen 2 chiều	Xóm Hoàng Quý Xã Cẩm Nhượng Huyện Cẩm Xuyên Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_sonnt9	Multiscreen 1 chiều	Thôn Hữu Dương Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_cuvd0	Multiscreen 2 chiều	  Xóm Hà Chua Sơn Tây Hương Sơn Hà Tĩnh	3	3	0	0					
+h039_gmts_trangdt0	Multiscreen 1 chiều	Thôn Tân Hải Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_hatx0	Multiscreen 1 chiều	Bình Lộc, Lộc Hà, Hà Tĩnh	3	3	0	0					
+h039_gmts2_taodx0	Multiscreen 2 chiều	Xã Hương Đô Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_binhpt1	Multiscreen 2 chiều	TT Nghèn Can Lộc Hà Tĩnh	3	3	0	0					
+h039_gmts2_annt12	Multiscreen 2 chiều	Phúc Trạch Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts_tientm	Multiscreen 1 chiều	Chợ Đón, Thôn Tân Dinh Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_huannt	Multiscreen 2 chiều	Thôn Liên Thành Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_hoanv10	Multiscreen 1 chiều	Thôn Liên Thành Xã Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_anhptk	Multiscreen 2 chiều	  Kỳ Châu Kỳ Anh Hà Tĩnh	3	3	0	0					
+h039_gmts2_nghiamv5	Multiscreen 2 chiều	06 Xuân Diệu, Khối 2, Hương Khê Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts_hyvp	Multiscreen 1 chiều	Thôn xuân bắc, Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_yenlt3	Multiscreen 2 chiều	Thạch Châu Lộc Hà Hà Tĩnh	3	3	0	0					
+h039_gmts_nghiand2	Multiscreen 1 chiều	Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+h039_gmts2_xuantd0	Multiscreen 2 chiều	Đông Vĩnh Mai Phụ, Xã Mai Phụ, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_binhnt2	Multiscreen 2 chiều	TT Nghèn Can Lộc Hà Tĩnh	3	3	0	0					
+h039_gmts2_hoangtn	Multiscreen 2 chiều	Thôn Sâm - Văn Hội, Trường Sơn Đức Thọ Hà Tĩnh	3	3	0	0					
+h039_gmts2_ngant24	Multiscreen 2 chiều	Khối 8 Nam Hồng Hồng Lĩnh Hà Tĩnh	3	3	0	0					
+h039_gmts_thanhtv5	Multiscreen 2 chiều	Nam Hồng Hồng Lĩnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_nghiala0	Multiscreen 2 chiều	 Thôn Dương Tượng, Tùng ảnh Đức Thọ Hà Tĩnh	3	3	0	0					
+h039_gmts2_hungtd5	Multiscreen 2 chiều	 thôn 9, Cổ Đạm Nghi Xuân Hà Tĩnh	3	3	0	0					
+h039_gmts2_hoanlv1	Multiscreen 2 chiều	 tổ dân phố 1, Đức Thọ Đức Thọ Hà Tĩnh	3	3	0	0					
+h039_gmts2_trangpth2	Multiscreen 2 chiều	  Đức Giang Vũ Quang Hà Tĩnh	3	3	0	0					
+h039_gmts_tienld	Multiscreen 2 chiều	Văn Yên Hà Tĩnh Hà Tĩnh	3	3	0	0					
+vt0932300698	TV360_BoxTV trả sau	Thôn Tiến Hòa, Yên Hồ, Đức Thọ, Hà Tĩnh	2	3	0	0					
+h039_gmts2_xuanlt4	Multiscreen 2 chiều	Xóm 4, An Lộc Lộc Hà Hà Tĩnh	3	3	0	0					
+h039_gmts2_longdtt	Multiscreen 2 chiều	P. Hà Huy Tập, TP. Hà Tĩnh, Hà Tĩnh	3	3	0	0					
+h039_gmts_chathd1	Multiscreen 2 chiều	Kỳ Lợi Thị xã Kỳ Anh Hà Tĩnh	3	3	0	0					
+h039_gmts2_thaipv0	Multiscreen 2 chiều	Xã Hương Khê Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_chienhv	Multiscreen 2 chiều	Xuân Liên, Nghi Xuân, Hà Tĩnh	3	3	0	0					
+h039_mts2_thangnn0	Multiscreen 2 chiều	  Đức Hương Vũ Quang Hà Tĩnh	3	3	0	0					
+h039_gmts2_daolt5	Multiscreen 2 chiều	Thôn 5 Thôn 5 Quang Diệm Hương Sơn Hà Tĩnh	3	3	0	0					
+h039_gmts2_anhnx2	Multiscreen 2 chiều	Xã Hương Khê Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_yennt21	Multiscreen 2 chiều	Cẩm Bình, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+h039_gmts2_chinnn0	Multiscreen 2 chiều	phúc hải Thôn Phúc Yên, Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+h039_gmts2_tungld1	Multiscreen 2 chiều	Hương Thọ Vũ Quang Hà Tĩnh	3	3	0	0					
+h039_gmts2_muibt0	Multiscreen 2 chiều	Xã Hương Phố Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_liemtv0	Multiscreen 2 chiều	Phường Thành Sen, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_huyennt8	Multiscreen 2 chiều	Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_myntt2	Multiscreen 2 chiều	Tổ Dân Phố 5 Thị Trấn Phố Châu, Hương Sơn, Hà Tĩnh	3	3	0	0					
+h039_gmts2_haht4	Multiscreen 2 chiều	Thôn, Tây Hà-Tân Mỹ Hà, Xã Tứ Mỹ, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_vannt6	Multiscreen 2 chiều	Bắc Sơn-Cương Gián, Xã Cổ Đạm, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_vuongnd0	Multiscreen 2 chiều	Thuận Ngại Thạch Trị Hà Tĩnh Hà Tĩnh	3	3	0	0					
+h039_gmts2_quydv3	Multiscreen 2 chiều	Tổ dân phố 4, Cẩm Xuyên Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_kynb	Multiscreen 2 chiều	Thị Trấn Nghèn, Can Lộc, Hà Tĩnh	3	3	0	0					
+h039_gmts2_binhnv9	Multiscreen 2 chiều	Kỳ Phú Kỳ Anh Hà Tĩnh	3	3	0	0					
+h039_gmts2_hiennx2	Multiscreen 2 chiều	Phú Trung Kỳ Phú Kỳ Anh Hà Tĩnh	3	3	0	0					
+h039_gmts2_quocdx0	Multiscreen 2 chiều	Thôn Trung Hải, Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_ngant39	Multiscreen 2 chiều	  Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts_thanhnd4	Multiscreen 1 chiều	Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0					
+h039_gmts2_hongnt31	Multiscreen 2 chiều	Vĩnh Hương Hương Vĩnh Hương Khê Hà Tĩnh	3	3	0	0					
+h039_gmts2_thanhnt70	Multiscreen 2 chiều	Nguyễn Huê Kỳ Xuân Kỳ Anh Hà Tĩnh	3	3	0	0					
+h039_gmts2_tuyetlt7	Multiscreen 2 chiều	Bắc Sơn, Huyện Đô Lương, Nghệ An	3	3	0	0					
+h039_gmts2_linhnt4	Multiscreen 2 chiều	Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	0	0					
+vt09788736691	TV360_BoxTV trả sau	  Khánh Vĩnh Yên Can Lộc Hà Tĩnh	2	2	1	0					
+vt0918518270	TV360_BoxTV trả sau	Khối 4 , Tây Sơn Hương Sơn Hà Tĩnh	2	2	1	0					
+vt0983086356	TV360_BoxTV trả sau	  Xóm 1 Thạch Kênh Thạch Hà Hà Tĩnh	3	3	0	0					
+vt0888891892	TV360_BoxTV trả sau	Phường Thành Sen, Tỉnh Hà Tĩnh	3	3	0	0					
+h039_gmts_huongpt1	Multiscreen 2 chiều	Thị Trấn Nghèn, Can Lộc, Hà Tĩnh	3	3	0	0					
+h039_gftth_loanvt16	FTTH	  Thuần Thiện Can Lộc Hà Tĩnh	3	3	0	0	49	0			
+h039_gftth_thuyht93	FTTH	Lộc Hạnh Đan Trường Nghi Xuân Hà Tĩnh	3	3	0	0	49	0			
+h039_gftth_thanhtt51	FTTH	Xuân Phổ Nghi Xuân Hà Tĩnh	3	3	0	0	96	0			
+h039_gftth_nganctttmk	FTTH	 Số 24-26 Đường Phan Đình Phùng Nam Hà Hà Tĩnh Hà Tĩnh	3	3	0	0	122	0			
+h039_gftth_hunglq13	FTTH	Khang Ninh Bùi La Nhân Đức Thọ Hà Tĩnh	3	3	0	0	66	0			
+h039_gftth_trangnth1	FTTH	tdp5 Khối 3 Phố Châu Hương Sơn Hà Tĩnh	3	3	0	0	129	0			
+h039_gftth_hoaptk3	FTTH	Sơn Tiến Hương Sơn Hà Tĩnh	3	3	0	0	63	0			
+h039_gftth_dangnh5	FTTH	Xuân Giang, Nghi Xuân, Hà Tĩnh	3	3	0	0	68	0			
+h039_gftth_dunght46	FTTH	Thạch Tri, Thạch Hà, Hà Tĩnh	3	3	0	MESH	58	0			
+h039_gftth_tungld9	FTTH	  Xóm Minh Tiến Thạch Hạ Hà Tĩnh Hà Tĩnh	2	3	0	0	17	0			
+h039_gftth_mantt5	FTTH	Cẩm Lộc Cẩm Xuyên Hà Tĩnh	3	3	0	0	72	0			
+h039_gftth_thuytth2	FTTH	Tân Hương Thạch Khê Thạch Hà Hà Tĩnh	3	3	0	0	89	0			
+h039_gftth_thuyntb8	FTTH	Xuân Hồng Nghi Xuân Hà Tĩnh	3	3	0	MESH	88	0			
+h039_gftth_trangnth73	FTTH	TDP Phú Mậu	3	3	0	0	53	0			
+h039_gftth_hongnv38	FTTH	Xóm 8 Quỳnh Tân Quỳnh Lưu Nghệ An	3	3	0	MESH	60	0			
+h039_gftth_hanhnl0	FTTH	 17 cầm bá thước P.07 Q.Phú Nhuận TPHCM	3	3	0	MESH	43	0			
+h039_gftth_thaont265	FTTH	Thị Trấn Cẩm Xuyên, Cẩm Xuyên, Hà Tĩnh	3	3	0	0	31	0			
+h039_gftth_ngattt8	FTTH	Sơn Quang Hương Sơn Hà Tĩnh	3	3	0	0	105	0			
+h039_gftth_sentt3	FTTH	. Khối 1 Phố Châu Hương Sơn Hà Tĩnh	3	3	0	0	113	0			
+h039_gftth_phuongtt165	FTTH	Thạch Hội Thạch Hà Hà Tĩnh	3	3	0	0	50	0			
+h039_gftth_daova0	FTTH	Đức Bồng, Vũ Quang, Hà Tĩnh	3	3	0	0	81	0			
+h039_gftth_dungnv60	FTTH	Đức Lập Đức Thọ Hà Tĩnh	3	3	0	0	92	0			
+h039_gftth_nhampt	FTTH	Khai Sơn Anh Sơn Nghệ An	3	3	0	0	116	0			
+h039_gftth_thuyettt7	FTTH	Vĩnh Tiến Thạch Bàn Thạch Hà Hà Tĩnh	3	3	0	0	59	0			
+h039_gftth_thangnt81	FTTH	Thôn Tây Bắc, Thạch Bình, Thành Phố Hà Tĩnh, Hà Tĩnh	3	3	0	0	38	0			
+h039_gftth_doln0	FTTH	thôn tân thượng Tân Thượng Cương Gián Nghi Xuân Hà Tĩnh	3	3	0	0	72	0			
+h039_gftth_vanlt10	FTTH	Thôn Kênh Cẩm Thành Cẩm Xuyên Hà Tĩnh	3	3	0	MESH	103	0			
+h039_gftth_thangnt40	FTTH	Cẩm Vịnh Cẩm Xuyên Hà Tĩnh	3	3	0	0	76	0			
+h039_gftth_phucpt9	FTTH	Đại Nải, Thành Phố Hà Tĩnh, Hà Tĩnh	3	3	0	0	37	0			
+h039_gftth_temlt0	FTTH	Hương Thủy, Hương Khê, Hà Tĩnh	3	3	0	MESH	65	0			
+h039_gftth_duanld4	FTTH	Thạch Văn Thạch Hà Hà Tĩnh	3	3	0	0	85	0			
+h039_gftth_hoadt172	FTTH	Bắc Sơn-Cương Gián, Xã Cổ Đạm, Tỉnh Hà Tĩnh	3	3	0	0	34	0			
+h039_gftth_namtg3	FTTH	  Sơn Trung Hương Sơn Hà Tĩnh	3	3	0	0	92	0			
+h039_gftth_dungct5	FTTH	Xuân Hải Nghi Xuân Hà Tĩnh	3	3	0	0	102	0			
+h039_gftth_xuanttythn16	FTTH	  Tổ dân phố 4-TT Tiên Điền Xã Tiên Điền Tỉnh Hà Tĩnh	3	3	0	0	46	0			
+hth_gftth_giatb0	FTTH	Thôn Tiến Thọ Thôn Tiến Thọ Yên Hồ Đức Thọ Hà Tĩnh	1	3	0	0	6	0			
+h039_gftth_lyvt21	FTTH	Thôn Hoa Thám Cẩm Lạc Cẩm Xuyên Hà Tĩnh	3	3	0	0	53	0			
+h039_gftth_tinhtx10	FTTH	Tân An Tùng Châu Đức Thọ Hà Tĩnh	3	3	0	0	56	0			
+h039_gftth_chungnv18	FTTH	Cẩm Thành Cẩm Xuyên Hà Tĩnh	3	3	0	0	79	0			
+h039_gftth_hanhnt72	FTTH	Xuân Hải Nghi Xuân Hà Tĩnh	3	3	0	0	94	0			
+hth_gftth_tampm0	FTTH	Tô 10 - Hoàng Diệu, Thành Phố Thái Bình, Thái Bình	1	3	0	0	8	0			
+h039_gftth_thuynt220	FTTH	Nam Tiến Kỳ Bắc Kỳ Anh Hà Tĩnh	3	3	0	0	89	0			
+h039_gftth_phuonglt50	FTTH	Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0	85	0			
+h039_gftth_thuyht105	FTTH	Xã Đức Thọ, Tỉnh Hà Tĩnh	3	3	0	0	36	0			
+h039_gftth_thuctv7	FTTH	Xã Hương Bình, Tỉnh Hà Tĩnh	3	3	0	0	49	0			
+h039_gftth_cuongctqcmtq0	FTTH	 Số 109 Nguyễn Công Trứ Phường  , Bắc Hà Hà Tĩnh Hà Tĩnh	3	3	0	0	69	0			
+h039_gftth_khiemdd0	FTTH	Xuân An Nghi Xuân Hà Tĩnh	3	3	0	0	91	0			
+h039_gftth_dangtt2	FTTH	Cẩm Lạc Cẩm Xuyên Hà Tĩnh	3	3	0	0	96	0			
+h039_gftth_tintt2	FTTH	Gần sân bóng Thôn Tiến Lạng Đức Lạng Đức Thọ Hà Tĩnh	3	3	0	MESH	98	0			
+h039_gftth_anhntn13	FTTH	Thạch Thanh Thạch Hà Hà Tĩnh	3	3	0	0	81	0			
+h039_gftth_hungld7	FTTH	TT Thạch Hà Thạch Hà Hà Tĩnh	3	3	0	0	84	0			
+h039_gftth_senlt8	FTTH	Tân Hương Đức Thọ Hà Tĩnh	3	3	0	0	85	0			
+h039_gftth_linhptk4	FTTH	Thạch Kim, Lộc Hà, Hà Tĩnh	3	3	0	0	80	0			
+h039_gftth_halt65	FTTH	Cẩm Trung Cẩm Xuyên Hà Tĩnh	3	3	0	0	79	0			
+h039_gftth_nhanpt13	FTTH	Thạch Bằng, Lộc Hà, Hà Tĩnh	3	3	0	0	85	0			
+h039_gftth_hanm23	FTTH	Nghi Xuân Nghi Xuân Hà Tĩnh	3	3	0	0	68	0			
+h039_gftth_thuongpt33	FTTH	Trường Hải Xuân Trường Nghi Xuân Hà Tĩnh	3	3	0	0	67	0			
+h039_gftth_dinhvx2	FTTH	  Kỳ Thư Kỳ Anh Hà Tĩnh	3	3	0	0	69	0			
+h039_gftth_phuongttn1	FTTH	  Kỳ Ninh Thị xã Kỳ Anh Hà Tĩnh	3	3	0	0	65	0			
+h039_gftth_tiennd20	FTTH	Cẩm Hưng Cẩm Xuyên Hà Tĩnh	3	3	0	0	73	0			
+h039_gftth_loitx1	FTTH	Xóm 6 Kim Lộc Can Lộc Hà Tĩnh	3	3	0	0	78	0			
+h039_gftth_viettv1	FTTH	Thạch Tân Thạch Hà Hà Tĩnh	3	3	0	0	106	0			
+h039_gftth_hauht2	FTTH	Thôn Tân Dinh Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0	115	0			
+h039_gftth_quannd10	FTTH	Đỉnh Sơn Anh Sơn Nghệ An	3	3	0	0	77	0			
+h039_gftth_vanct8	FTTH	Phượng Thành, Đức Long, Đức Thọ, Hà Tĩnh	3	3	0	0	58	0			
+h039_gftth_yendth2	FTTH	Tổ Dân Khối 2 Hương Khê Hương Khê Hà Tĩnh	3	3	0	0	134	0			
+h039_gftth_danhnv4	FTTH	Đỉnh Bàn, Thạch Hà, Hà Tĩnh	3	3	0	0	103	0			
+h039_gftth_ducdv2	FTTH	Thịnh Lộc Lộc Hà Hà Tĩnh	3	3	0	0	103	0			
+h039_gftth_ngupt2	FTTH	Song Lộc, Can Lộc, Hà Tĩnh	3	3	0	0	105	0			
+h039_gftth_thuytt75	FTTH	Kim Lộc Can Lộc Hà Tĩnh	3	3	0	0	98	0			
+h039_gftth_hangtt187	FTTH	  Tdp Giang Thùy TT Tiên Điền Nghi Xuân Hà Tĩnh	2	3	0	0	21	0			
+h039_gftth_giangntq1	FTTH	Thiên Cầm Cẩm Xuyên Hà Tĩnh	3	3	0	0	61	0			
+h039_gftth_dungntt35	FTTH	Hộ Độ Lộc Hà Hà Tĩnh	3	3	0	0	59	0			
+h039_gftth_68ctttvtkvdtx0	FTTH	Nhà số 5 ngõ 103 đường Nguyễn Sinh Sắc, Khối 11-Cửa Nam, Phường Thành Vinh Tỉnh Nghệ An	3	3	0	0	65	0			
+h039_gftth_phucpc2	FTTH	Xóm 1 Trung Lộc Can Lộc Hà Tĩnh	3	3	0	0	58	0			
+h039_gftth_hungnv175	FTTH	  Can Lộc Hà Tĩnh	3	3	0	0	59	0			
+h039_gftth_minhnv60	FTTH	Phường 9 Tuy Hòa Phú Yên	3	3	0	0	68	0			
+h039_gftth_hungtm23	FTTH	Thôn Nam Hải, Cẩm Nhượng Cẩm Xuyên Hà Tĩnh	3	3	0	0	82	0			
+h039_gftth_nhonns	FTTH	Thạch Châu Lộc Hà Hà Tĩnh	3	3	0	0	94	0			
+h039_gftth_quynhnt63	FTTH	Cẩm Hưng Cẩm Xuyên Hà Tĩnh	3	3	0	0	46	0			
+h039_gftth_daipv2	FTTH	Quyết Tiến Đức La Đức Thọ Hà Tĩnh	3	3	0	0	95	0			
+h039_gftth_nhungnt115	FTTH	Tân Sơn Kỳ Thọ Kỳ Anh Hà Tĩnh	3	3	0	0	76	0			
+h039_gftth_canct1	FTTH	Kỳ Phong, Kỳ Anh, Hà Tĩnh	3	3	0	0	66	0			
+h039_gftth_quyvt18	FTTH	Thôn Xuân Bắc - Cẩm Nhượng, Cẩm Xuyên, Hà Tĩnh	3	3	0	0	36	0			
+h039_gftth_yendt22	FTTH	Sơn Lộc Can Lộc Hà Tĩnh	3	3	0	0	66	0			
+h039_ftth_haopx1	FTTH	Phường Thành Sen, Tỉnh Hà Tĩnh	3	3	0	0	142	0			
+h039_gftth_thuytt114	FTTH	Thanh Mỹ Thanh Lộc Can Lộc Hà Tĩnh	3	3	0	0	88	0			
+h039_gftth_xuanns0	FTTH	Thôn Nam Phong Thượng Lộc Can Lộc Hà Tĩnh	2	3	0	0	24	0			
+h039_gftth_hoatt400	FTTH	Thôn Đức Thịnh, Xã Sơn Tiến, Tỉnh Hà Tĩnh	2	3	0	0	20	0			
+h039_gftth_thuanbd2	FTTH	Kỳ Tân Kỳ Anh Hà Tĩnh	3	3	0	0	35	0			
+h039_gftth_nhungtth20	FTTH	Phúc Trạch, Hương Khê, Hà Tĩnh	3	3	0	0	37	0			
+h039_gftth_huyenpt63	FTTH	Thái Yên Đức Thọ Hà Tĩnh	3	3	0	0	61	0			
+hth_gftth_huonght5	FTTH	Thôn bến nậy	1	3	0	0	10	0			
+h039_gftth_nhinth1	FTTH	Thạch Khê Thạch Hà Hà Tĩnh	3	3	0	0	95	0			
+h039_gftth_tuyenhv2	FTTH	Yên Lộc Can Lộc Hà Tĩnh	3	3	0	0	104	0			
+h039_gftth_toanhv6	FTTH	  Cẩm Hưng Cẩm Xuyên Hà Tĩnh	3	3	0	0	70	0			
+h039_gftth_binhdt21	FTTH	Đức Thọ, Đức Thọ, Hà Tĩnh	3	3	0	0	78	0			
+h039_gftth_toandt12	FTTH	Lâm Trung Thủy Đức Thọ Hà Tĩnh	3	3	0	0	50	0			
+h039_gftth_thangtq14	FTTH	Thạch Kim Lộc Hà Hà Tĩnh	3	3	0	0	50	0			
+h039_gftth_xuanttythn11	FTTH	Thôn Xuân An 9, Xã Nghi Xuân Tỉnh Hà Tĩnh	3	3	0	0	47	0			
+h039_gftth_namnt104	FTTH	Xã Trừ Văn Thố Thành phố Hồ Chí Minh	3	3	0	0	25	0			
+h039_gftth_chiennt30	FTTH	Thôn Mỹ Thành, Cẩm Thạch, Cẩm Xuyên, Hà Tĩnh	3	3	0	0	59	0			
+h039_gftth_anhnt132	FTTH	Đình Bàn, Thạch Hà, Hà Tĩnh	3	3	0	0	80	0			
+h039_gftth_hueht42	FTTH	Kỳ Giang Kỳ Anh Hà Tĩnh	3	3	0	MESH	45	0			
+h039_gftth_tynv29	FTTH	Thanh Lộc Can Lộc Hà Tĩnh	3	3	0	0	53	0			
+h039_gftth_sennt50	FTTH	Cẩm Thịnh Cẩm Xuyên Hà Tĩnh	3	3	0	0	44	0			
+h039_gftth_khettythh0	FTTH	Xã Hương Khê Tỉnh Hà Tĩnh	3	3	0	0	47	0			
+hth_gftth_giangvht0	FTTH	Thiên Lộc, Can Lộc, Hà Tĩnh	1	3	0	0	6	0			
+h039_gftth_baont31	FTTH	Tổ Dân Phố 10 Mường Thanh Điện Biên Phủ Điện Biên	2	3	0	0	16	0			
+h039_gftth_thuanlt37	FTTH	Hương Khê Hương Khê Hà Tĩnh	2	3	0	0	18	0			
+h039_gftth_quynn8	FTTH	  Thạch Long Thạch Hà Hà Tĩnh	2	3	0	0	18	0			
+hth_gftth_namnv10	FTTH	Xã Sơn Kim 2 Tỉnh Hà Tĩnh	1	3	0	0	8	0			
+h039_gftth_khanhmv1	FTTH	Kỳ Nam Thị Xã, Kỳ Anh, Hà Tĩnh	2	3	0	0	23	0			
+h039_ftth_chattv1	FTTH	Đức Lập Đức Thọ Hà Tĩnh	3	3	0	0	106	0			
+h039_gftth_hoapt38	FTTH	Đức Thanh Đức Thọ Hà Tĩnh	3	3	0	0	100	0			
+h039_gftth_chungmtk	FTTH	Hành Minh Nghĩa Hành Quảng Ngãi	3	3	0	0	123	0			
+h039_gftth_longctcpxdt2	FTTH	Trần Phú Hà Tĩnh Hà Tĩnh	3	3	0	0	105	0			
+h039_gftth_thanghq11	FTTH	Thôn Hồng Thịnh Xuân Giang Nghi Xuân Hà Tĩnh	3	3	0	0	40	0			
+h039_gftth_duongld8	FTTH	  Xóm 5 Nghi Phương Nghi Lộc Nghệ An	3	3	0	0	48	0			
+h039_gftth_havt44	FTTH	Thi Trấn Nghèn, Can Lộc, Hà Tĩnh	3	3	0	0	38	0			
+h039_gftth_hant434	FTTH	hưng phú Trần Phú Kỳ Tiến Kỳ Anh Hà Tĩnh	3	3	0	0	36	0			
+h039_gftth_nguyentt14	FTTH	Ấp Thuận Long, Tân Tiến, Đầm Dơi, Cà Mau	3	3	0	0	37	0			
+h039_gftth_lannt338	FTTH	Thôn Hồng Nhất, Xuân Giang, Nghi Xuân, Hà Tĩnh	3	3	0	0	28	0			
+h039_gftth_yennt128	FTTH	Đông Nam Thiên Lộc Can Lộc Hà Tĩnh	3	3	0	0	50	0			
+h039_gftth_thanhpv46	FTTH	Thạch Bằng, Lộc Hà, Hà Tĩnh	3	3	0	0	60	0			
+h039_gftth_oanhpk0	FTTH	Hương Trạch, Hương Khê, Hà Tĩnh	3	3	0	0	36	0			
+h039_gftth_thomnt17	FTTH	Long Sơn, Tân Dân, Đức Thọ, Hà Tĩnh	3	3	0	0	84	0			
+h039_gftth_thinhdv1	FTTH	Xã Thạch Liên, Huyện Thạch Hà, Hà Tĩnh	3	3	0	0	94	0			
+h039_gftth_ngoctx1	FTTH	Thạch Liên Thạch Hà Hà Tĩnh	3	3	0	0	60	0			
+h039_gftth_hanglt10	FTTH	Đức Lập Đức Thọ Hà Tĩnh	3	3	0	0	107	0			
+h039_gftth_duyenht15	FTTH	Kỳ Xuân Kỳ Anh Hà Tĩnh	3	3	0	0	49	0			
+h039_gftth_lucpv6	FTTH	Vĩnh Hòa Quang Vĩnh Đức Thọ Hà Tĩnh	3	3	0	0	45	0			
+hth_gftth_thuongnt4	FTTH	Khánh Vĩnh Yên Can Lộc Hà Tĩnh	1	3	0	0	11	0			
+h039_gftth_giangtc2	FTTH	Thôn Tiến Lạng Đức Lạng Đức Thọ Hà Tĩnh	3	3	0	0	98	0			
+h039_gftth_lamtt25	FTTH	Xuân Hải Thạch Bằng Lộc Hà Hà Tĩnh	3	3	0	0	92	0			
+h039_gftth_quynhtt19	FTTH	Kỳ Tiến Kỳ Anh Hà Tĩnh	3	3	0	0	51	0			
+h039_gftth_huent202	FTTH	Xóm Tân Xuân, Quỳnh Bảng, Quỳnh Lưu, Nghệ An	3	3	0	0	53	0			
+h039_gftth_khoibqldtdtl0	FTTH	đền thờ lê Khôi Mai Lâm Mai Phụ Lộc Hà Hà Tĩnh	3	3	0	0	90	0			
+h039_gftth_aint15	FTTH	Tầng 2 SN 315 Đường Hà Huy Tập Tổ Dân Phố 12, Cẩm Xuyên Cẩm Xuyên Hà Tĩnh	3	3	0	0	76	0			
+h039_gftth_trungnd21	FTTH	Xã Can Lộc Tỉnh Hà Tĩnh	3	3	0	0	69	0			
+h039_gftth_lamnv14	FTTH	Phú Phong, Hương Khê, Hà Tĩnh	3	3	0	0	108	0			
+h039_gftth_hiepns0	FTTH	Khối 4 Hương Khê Hương Khê Hà Tĩnh	3	3	0	0	78	0			
+h039_gftth_hangnt163	FTTH	Hương Khê Hương Khê Hà Tĩnh	3	3	0	0	77	0			

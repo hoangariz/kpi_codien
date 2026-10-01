@@ -9,6 +9,7 @@ from backend.models.report_category import ReportCategory, ReportSubCategory
 from backend.models.fixed_wo_report import FixedWoReport, FixedWoItem
 from backend.models.cabinet import Cabinet
 from backend.models.task_codinh import TaskCodinh
+from backend.models.device_recall import DeviceRecall
 
 __all__ = [
     "Employee",
@@ -30,6 +31,7 @@ __all__ = [
     "FixedWoItem",
     "Cabinet",
     "TaskCodinh",
+    "DeviceRecall",
 ]
 
 

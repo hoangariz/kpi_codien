@@ -109,6 +109,7 @@ from backend.api.router_tracking import router as tracking_router
 from backend.api.router_report_categories import router as reports_router
 from backend.api.router_fixed_wo import router as fixed_wo_router
 from backend.api.router_codinh import router as codinh_router
+from backend.api.router_device_recall import router as device_recall_router
 
 app = FastAPI(
     title=APP_TITLE,
@@ -137,6 +138,7 @@ app.include_router(tracking_router)
 app.include_router(reports_router)
 app.include_router(fixed_wo_router)
 app.include_router(codinh_router)
+app.include_router(device_recall_router, prefix="/api/device-recall", tags=["Thu Hồi Thiết Bị"])
 
 
 @app.get("/api/health")

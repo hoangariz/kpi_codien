@@ -501,6 +501,58 @@ export default function CodinhPage() {
         </button>
       </div>
 
+      {/* Đường link xem danh sách Thu Hồi Thiết Bị theo yêu cầu */}
+      <div
+        style={{
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: '10px',
+          padding: '8px 14px',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '1rem' }}>📦</span>
+          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Thu Hồi Thiết Bị CĐBR:
+          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Tra cứu danh sách thiết bị tồn đọng cần thu hồi theo Cụm &amp; Nhân viên FT
+          </span>
+        </div>
+
+        <button
+          onClick={() => {
+            window.history.pushState({}, '', '/thuhoithietbi');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
+          className="btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            background: '#ef4444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '5px 14px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 2px 6px rgba(239, 68, 68, 0.25)',
+          }}
+        >
+          <RotateCcw size={13} /> Xem Danh Sách Thu Hồi Thiết Bị →
+        </button>
+      </div>
+
       {/* 1. Category Selector Cards (Matching Dashboard ReportSelectorCards style) */}
       {categories.length > 0 && (
         <div style={{ marginBottom: '22px' }}>

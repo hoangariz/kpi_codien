@@ -26,11 +26,12 @@ import {
 } from 'lucide-react';
 
 import { codinhApi } from '../api/codinhApi';
+import { deviceRecallApi } from '../api/deviceRecallApi';
 
 export default function AdminCodinhPage({ onNavigateToCodinh }) {
   const queryClient = useQueryClient();
 
-  // Active navigation tab inside admin: 'upload_base_wo' | 'upload_cabinets' | 'reports'
+  // Active navigation tab inside admin: 'upload_base_wo' | 'upload_cabinets' | 'reports' | 'upload_device_recall'
   const [activeTab, setActiveTab] = useState('upload_base_wo');
 
   // Base WO file upload & live status state
@@ -49,6 +50,58 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
   const [uploadResult, setUploadResult] = useState(null);
   const [isUploadingCabinet, setIsUploadingCabinet] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+
+  // Device Recall upload state
+  const [deviceRecallFile, setDeviceRecallFile] = useState(null);
+  const [isUploadingDeviceRecall, setIsUploadingDeviceRecall] = useState(false);
+  const [deviceRecallResult, setDeviceRecallResult] = useState(null);
+  const [deviceRecallError, setDeviceRecallError] = useState(null);
+  const deviceRecallInputRef = useRef(null);
+
+  const { data: recallMeta, refetch: refetchRecallMeta } = useQuery({
+    queryKey: ['adminDeviceRecallMeta'],
+    queryFn: () => deviceRecallApi.getMeta(),
+  });
+
+  const handleDeviceRecallUpload = async (e) => {
+    if (e) e.preventDefault();
+    if (!deviceRecallFile) {
+      alert('Vui lòng chọn file văn bản (.txt) danh sách thu hồi thiết bị!');
+      return;
+    }
+    setIsUploadingDeviceRecall(true);
+    setDeviceRecallError(null);
+    setDeviceRecallResult(null);
+    try {
+      const res = await deviceRecallApi.uploadFile(deviceRecallFile);
+      setDeviceRecallResult(res.data);
+      refetchRecallMeta();
+      queryClient.invalidateQueries({ queryKey: ['deviceRecallClusters'] });
+      queryClient.invalidateQueries({ queryKey: ['deviceRecallMeta'] });
+    } catch (err) {
+      setDeviceRecallError(err.response?.data?.detail || err.message || 'Lỗi khi tải file lên!');
+    } finally {
+      setIsUploadingDeviceRecall(false);
+    }
+  };
+
+  const handleReloadDefaultRecall = async () => {
+    if (!window.confirm('Nạp lại dữ liệu từ file thuhoithietbi.txt có sẵn trên máy chủ?')) return;
+    setIsUploadingDeviceRecall(true);
+    setDeviceRecallError(null);
+    try {
+      const res = await deviceRecallApi.reloadDefault();
+      setDeviceRecallResult(res.data);
+      refetchRecallMeta();
+      queryClient.invalidateQueries({ queryKey: ['deviceRecallClusters'] });
+      queryClient.invalidateQueries({ queryKey: ['deviceRecallMeta'] });
+      alert(res.message || 'Nạp thành công!');
+    } catch (err) {
+      setDeviceRecallError(err.response?.data?.detail || err.message);
+    } finally {
+      setIsUploadingDeviceRecall(false);
+    }
+  };
 
   // Modal create/edit category state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -391,6 +444,22 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
           style={{ padding: '8px 18px', fontSize: '0.86rem', gap: '8px', borderRadius: '8px 8px 0 0' }}
         >
           <Layers size={16} /> 3. Danh Mục Báo Cáo CĐBR ({categories.length})
+        </button>
+
+        <button
+          className={`btn ${activeTab === 'upload_device_recall' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setActiveTab('upload_device_recall')}
+          style={{
+            padding: '8px 18px',
+            fontSize: '0.86rem',
+            gap: '8px',
+            borderRadius: '8px 8px 0 0',
+            background: activeTab === 'upload_device_recall' ? '#ef4444' : 'transparent',
+            borderColor: activeTab === 'upload_device_recall' ? '#ef4444' : 'var(--border-color)',
+            color: activeTab === 'upload_device_recall' ? '#fff' : 'var(--text-primary)',
+          }}
+        >
+          <RotateCcw size={16} /> 4. Thu Hồi Thiết Bị (.txt)
         </button>
       </div>
 
@@ -1074,6 +1143,214 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ================= TAB 4: NẠP THU HỒI THIẾT BỊ (.TXT HÀNG THÁNG) ================= */}
+      {activeTab === 'upload_device_recall' && (
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <div className="table-card" style={{ padding: '26px 28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RotateCcw size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Nạp Danh Sách Thu Hồi Thiết Bị (.txt hàng tháng)
+                </h3>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  Hệ thống hỗ trợ nạp file văn bản <strong>.txt (hoặc .tsv)</strong> có sẵn tiêu đề cột. Các dòng không có Trung tâm Cụm xã sẽ được tự động lọc bỏ và đồng bộ sang trang <strong>/thuhoithietbi</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Thông tin file hiện tại đang lưu trữ */}
+            {recallMeta && (
+              <div
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  marginBottom: '20px',
+                }}
+              >
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>📦 Dữ Liệu Thu Hồi Thiết Bị Đang Sử Dụng:</span>
+                  <button
+                    onClick={() => {
+                      window.history.pushState({}, '', '/thuhoithietbi');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }}
+                    className="btn btn-outline"
+                    style={{ fontSize: '0.78rem', padding: '4px 10px', gap: '5px', borderColor: '#ef4444', color: '#ef4444' }}
+                  >
+                    Xem Trang Thu Hồi Thiết Bị <ArrowRight size={13} />
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', fontSize: '0.8rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Tên file: </span>
+                    <strong style={{ color: 'var(--brand-primary)' }}>{recallMeta.filename || 'Chưa nạp'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Cập nhật: </span>
+                    <strong>{recallMeta.last_import_time_vn || 'Chưa có'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Tổng thiết bị: </span>
+                    <strong style={{ color: '#ef4444' }}>{recallMeta.total_devices || 0} TB</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Số thuê bao: </span>
+                    <strong>{recallMeta.total_count || 0} TB</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Số cụm xã: </span>
+                    <strong>{recallMeta.clusters_count || 0} Cụm</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Số nhân viên FT: </span>
+                    <strong>{recallMeta.fts_count || 0} FT</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload Zone */}
+            <form onSubmit={handleDeviceRecallUpload}>
+              <div
+                onClick={() => deviceRecallInputRef.current?.click()}
+                style={{
+                  border: '2px dashed var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '36px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: 'var(--bg-tertiary)',
+                  transition: 'all 0.2s ease',
+                  marginBottom: '18px',
+                }}
+              >
+                <input
+                  ref={deviceRecallInputRef}
+                  type="file"
+                  accept=".txt,.tsv,.csv"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setDeviceRecallFile(e.target.files[0]);
+                      setDeviceRecallResult(null);
+                      setDeviceRecallError(null);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+
+                <UploadCloud size={40} style={{ color: '#ef4444', marginBottom: '10px' }} />
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 6px 0' }}>
+                  {deviceRecallFile ? deviceRecallFile.name : 'Chọn hoặc kéo thả file .txt thu hồi thiết bị vào đây'}
+                </h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  {deviceRecallFile
+                    ? `Dung lượng: ${(deviceRecallFile.size / 1024).toFixed(1)} KB. Bấm "Bắt Đầu Nạp Dữ Liệu" bên dưới.`
+                    : 'Định dạng hỗ trợ: File văn bản .txt (hoặc .tsv) phân cách bằng dấu Tab, có chứa dòng tiêu đề'}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleReloadDefaultRecall}
+                  disabled={isUploadingDeviceRecall}
+                  className="btn btn-outline"
+                  style={{ fontSize: '0.82rem', padding: '8px 14px', gap: '6px' }}
+                >
+                  <RefreshCw size={14} /> Nạp Lại File Mẫu thuhoithietbi.txt
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={!deviceRecallFile || isUploadingDeviceRecall}
+                  className="btn btn-primary"
+                  style={{
+                    fontSize: '0.88rem',
+                    padding: '9px 24px',
+                    gap: '8px',
+                    background: '#ef4444',
+                    borderColor: '#ef4444',
+                    opacity: !deviceRecallFile || isUploadingDeviceRecall ? 0.6 : 1,
+                  }}
+                >
+                  {isUploadingDeviceRecall ? (
+                    <>
+                      <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>
+                      Đang xử lý file...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={16} /> Bắt Đầu Nạp Dữ Liệu Thu Hồi
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Success Message */}
+            {deviceRecallResult && (
+              <div
+                style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#10b981',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.92rem', marginBottom: '6px' }}>
+                  <CheckCircle2 size={18} /> Đồng Bộ File Thu Hồi Thiết Bị Thành Công!
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                  • Nạp thành công: <strong>{deviceRecallResult.valid_rows}</strong> thuê bao hợp lệ ({deviceRecallResult.total_devices} thiết bị)<br />
+                  • Đã lọc bỏ: <strong>{deviceRecallResult.skipped_no_cluster}</strong> dòng không có Trung tâm Cụm xã<br />
+                  • Số Cụm: <strong>{deviceRecallResult.total_clusters}</strong> | Số Nhân viên FT: <strong>{deviceRecallResult.total_fts}</strong>
+                </div>
+                <div style={{ marginTop: '10px' }}>
+                  <button
+                    onClick={() => {
+                      window.history.pushState({}, '', '/thuhoithietbi');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }}
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.82rem', padding: '6px 16px', gap: '6px' }}
+                  >
+                    Xem Trang Thu Hồi Thiết Bị <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {deviceRecallError && (
+              <div
+                style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#ef4444',
+                  fontSize: '0.86rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, marginBottom: '4px' }}>
+                  <AlertCircle size={18} /> Đã xảy ra lỗi khi nạp file!
+                </div>
+                <div>{deviceRecallError}</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

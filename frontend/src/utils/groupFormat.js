@@ -31,6 +31,11 @@ export function formatGroupName(name) {
   if (match && match[1]) {
     return match[1].toUpperCase();
   }
+  // Support HTH-00X-XXX pattern (e.g. HTH-007-SGG -> SGG)
+  const matchHth = trimmed.match(/HTH-\d+-([A-Z0-9]+)/i);
+  if (matchHth && matchHth[1]) {
+    return matchHth[1].toUpperCase();
+  }
   // Otherwise, keep unchanged
   return trimmed;
 }

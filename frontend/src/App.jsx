@@ -8,6 +8,7 @@ import SearchPage from './pages/SearchPage';
 import CsdbPage from './pages/CsdbPage';
 import CodinhPage from './pages/CodinhPage';
 import AdminCodinhPage from './pages/AdminCodinhPage';
+import ThuHoiThietBiPage from './pages/ThuHoiThietBiPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +60,7 @@ export default function App() {
     try {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+      if (path.includes('/thuhoithietbi') || hash.includes('thuhoithietbi')) return 'thuhoithietbi';
       if (path.includes('/admincodinh') || hash.includes('admincodinh')) return 'admincodinh';
       if (path.includes('/codinh') || hash.includes('codinh')) return 'codinh';
       if (path.includes('/admin') || hash.includes('admin')) return 'admin';
@@ -78,7 +80,11 @@ export default function App() {
       window.dispatchEvent(new CustomEvent('reset-codinh-view'));
     }
     setActiveTab(tab);
-    if (tab === 'admincodinh') {
+    if (tab === 'thuhoithietbi') {
+      if (!window.location.pathname.includes('/thuhoithietbi')) {
+        window.history.pushState({}, '', '/thuhoithietbi');
+      }
+    } else if (tab === 'admincodinh') {
       if (!window.location.pathname.includes('/admincodinh')) {
         window.history.pushState({}, '', '/admincodinh');
       }
@@ -109,7 +115,9 @@ export default function App() {
     const handleUrlChange = () => {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (path.includes('/admincodinh') || hash.includes('admincodinh')) {
+      if (path.includes('/thuhoithietbi') || hash.includes('thuhoithietbi')) {
+        setActiveTab('thuhoithietbi');
+      } else if (path.includes('/admincodinh') || hash.includes('admincodinh')) {
         setActiveTab('admincodinh');
       } else if (path.includes('/codinh') || hash.includes('codinh')) {
         setActiveTab('codinh');
@@ -154,7 +162,9 @@ export default function App() {
 
           <main className="main-content">
             <div className="content-body">
-              {activeTab === 'admincodinh' ? (
+              {activeTab === 'thuhoithietbi' ? (
+                <ThuHoiThietBiPage onNavigateToCodinh={() => handleTabChange('codinh')} />
+              ) : activeTab === 'admincodinh' ? (
                 <AdminCodinhPage onNavigateToCodinh={() => handleTabChange('codinh')} />
               ) : activeTab === 'codinh' ? (
                 <CodinhPage />
@@ -174,3 +184,4 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+
