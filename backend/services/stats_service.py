@@ -362,12 +362,14 @@ def get_special_maintenance_stats(
     type_condition = _build_cat_type_conditions(cat_obj, db) if cat_obj else ([Task.loai_cong_viec == target_type] if target_type else [])
 
     # 1. Calculate count of excluded records (Đã đóng của tháng trước)
+    # Xác định tháng công việc theo Thời điểm bắt đầu (thoi_diem_bat_dau_thuc_hien), fallback thoi_diem_tao, fallback thoi_diem_yeu_cau_ket_thuc
+    task_start_expr = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao, Task.thoi_diem_yeu_cau_ket_thuc)
     if exclude_closed:
         excluded_query = db.query(func.count(Task.ma_cong_viec)).filter(
             *type_condition,
             Task.trang_thai.in_(CLOSED_STATUSES),
-            Task.thoi_diem_yeu_cau_ket_thuc != None,
-            Task.thoi_diem_yeu_cau_ket_thuc < month_start
+            task_start_expr != None,
+            task_start_expr < month_start
         )
         if board_id:
             from backend.models.tracking import TrackingBoardTask
@@ -380,8 +382,8 @@ def get_special_maintenance_stats(
         base_conditions = [
             *type_condition,
             or_(
-                Task.thoi_diem_yeu_cau_ket_thuc == None,
-                Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
+                task_start_expr == None,
+                task_start_expr >= month_start,
                 ~Task.trang_thai.in_(CLOSED_STATUSES)
             )
         ]
@@ -1046,10 +1048,11 @@ def get_special_maintenance_tasks(
     type_condition = _build_cat_type_conditions(cat, db) if cat else ([Task.loai_cong_viec == target_type] if target_type else [])
     filters = [*type_condition]
     if exclude_closed:
+        task_start_expr = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao, Task.thoi_diem_yeu_cau_ket_thuc)
         filters.append(
             or_(
-                Task.thoi_diem_yeu_cau_ket_thuc == None,
-                Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
+                task_start_expr == None,
+                task_start_expr >= month_start,
                 ~Task.trang_thai.in_(CLOSED_STATUSES)
             )
         )

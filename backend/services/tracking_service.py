@@ -29,12 +29,12 @@ def get_matching_tasks_by_type(db: Session, loai_cong_viec: str, target_month: O
         now_dt = datetime.utcnow()
         month_start = datetime(now_dt.year, now_dt.month, 1, 0, 0, 0)
 
-    from sqlalchemy import or_
+    task_start_expr = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao, Task.thoi_diem_yeu_cau_ket_thuc)
     matching = db.query(Task.ma_cong_viec).filter(
         Task.loai_cong_viec == loai_cong_viec.strip(),
         or_(
-            Task.thoi_diem_yeu_cau_ket_thuc == None,
-            Task.thoi_diem_yeu_cau_ket_thuc >= month_start,
+            task_start_expr == None,
+            task_start_expr >= month_start,
             ~Task.trang_thai.in_(CLOSED_STATUSES)
         )
     ).all()

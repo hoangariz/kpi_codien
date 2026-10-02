@@ -1,12 +1,16 @@
 import os
 import re
+import sys
+import json
 import math
+import time
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
-from sqlalchemy import select, text
+from sqlalchemy import select, text, or_, insert
 from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal, is_sqlite
@@ -15,30 +19,39 @@ from backend.models import (
     ImportLog, Task, TaskHistory
 )
 from backend.models.note import TaskNote
-from backend.config import CHUNK_SIZE
 
 
 def _disable_fk(db: Session):
     """Tắt FOREIGN KEY check ở connection-level để DELETE không bị lỗi constraint."""
-    if is_sqlite:
-        db.execute(text("PRAGMA foreign_keys = OFF"))
-    else:
-        db.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
-    db.commit()
+    try:
+        if is_sqlite:
+            db.commit()
+            db.execute(text("PRAGMA foreign_keys = OFF"))
+            db.commit()
+        else:
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+            db.commit()
+    except Exception:
+        pass
 
 
 def _enable_fk(db: Session):
     """Bật lại FOREIGN KEY check sau khi xóa xong."""
-    if is_sqlite:
-        db.execute(text("PRAGMA foreign_keys = ON"))
-    else:
-        db.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
-    db.commit()
+    try:
+        if is_sqlite:
+            db.commit()
+            db.execute(text("PRAGMA foreign_keys = ON"))
+            db.commit()
+        else:
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+            db.commit()
+    except Exception:
+        pass
 
 
 def clear_task_tables(db: Session):
     """
-    Xóa sạch dữ liệu task cũ trước khi nạp file mới.
+    Xóa sạch dữ liệu task cũ trước khi nạp file mới hoặc khi xóa file active.
     BẢO TOÀN NGUYÊN VẸN TaskNote (Ghi chú điều hành theo dõi theo mã WO).
     Dùng PRAGMA foreign_keys = OFF để tránh lỗi constraint trên SQLite khi thay thế tasks.
     """
@@ -126,10 +139,103 @@ def clean_dt(val) -> Optional[datetime]:
     return parse_datetime_safe(val)
 
 
-def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
+def _vectorize_str_col(series: Optional[pd.Series], n: int) -> list:
+    """Vectorized string cleaning: strips whitespace and converts empty/nan to None."""
+    if series is None:
+        return [None] * n
+    s = series.astype("string").str.strip()
+    s_lower = s.str.lower()
+    mask = s.isna() | (s == "") | s_lower.isin(["nan", "nat", "none", "<na>"])
+    s_clean = s.mask(mask, None)
+    return [str(x) if x is not None and not pd.isna(x) else None for x in s_clean]
+
+
+def _vectorize_float_col(series: Optional[pd.Series], n: int) -> list:
+    """Vectorized float cleaning: converts to numeric, inf to NaN, rounds to 4 decimals."""
+    if series is None:
+        return [None] * n
+    num = pd.to_numeric(series, errors="coerce")
+    num = num.mask(np.isinf(num), np.nan).round(4)
+    return [float(x) if pd.notna(x) else None for x in num]
+
+
+def _vectorize_dt_col(series: Optional[pd.Series], n: int) -> list:
+    """
+    Vectorized datetime parsing:
+    1. Parses '%d/%m/%Y %H:%M:%S' first
+    2. String fallbacks parsed with dayfirst=True, format='mixed'
+    3. Excel numeric serial dates (e.g. 45000) parsed with origin='1899-12-30' (never 1970)
+    4. Converted via pd.DatetimeIndex(...).to_pydatetime() ensuring no NaT/NaN
+    """
+    if series is None:
+        return [None] * n
+
+    # Step 1: Parse standard dd/MM/yyyy HH:mm:ss format
+    dt = pd.to_datetime(series, format="%d/%m/%Y %H:%M:%S", errors="coerce")
+
+    # Step 2: Fallback for remaining NaTs that are strings
+    mask_na = dt.isna()
+    if mask_na.any():
+        sub_series = series[mask_na]
+        dt_mixed = pd.to_datetime(sub_series, dayfirst=True, format="mixed", errors="coerce")
+        dt.update(dt_mixed)
+
+        # Step 3: Check remaining NaTs for Excel serial date numbers (e.g. 45000)
+        mask_still_na = dt.isna()
+        if mask_still_na.any():
+            nums = pd.to_numeric(series[mask_still_na], errors="coerce")
+            num_valid = nums.notna() & (nums > 10000) & (nums < 100000)
+            if num_valid.any():
+                dt_serial = pd.to_datetime(nums[num_valid], unit="D", origin="1899-12-30", errors="coerce")
+                dt.update(dt_serial)
+
+    # Step 4: Convert via DatetimeIndex to avoid deprecated Series.dt.to_pydatetime
+    arr = pd.DatetimeIndex(dt).to_pydatetime()
+    return [None if (val is None or pd.isna(val) or str(val) == "NaT") else (val.to_pydatetime() if hasattr(val, "to_pydatetime") else val) for val in arr]
+
+
+def _vectorize_fk_col(series: Optional[pd.Series], dim_map: Dict[str, int], n: int) -> list:
+    """Vectorized dimension FK mapping using Series.map on stripped lower-case names."""
+    if series is None:
+        return [None] * n
+    s_lower = series.astype("string").str.strip().str.lower()
+    mapped = s_lower.map(dim_map)
+    return [int(x) if pd.notna(x) else None for x in mapped]
+
+
+def _write_progress_file(file_path: str, progress_percent: int, inserted_count: int, total_rows: int):
+    """Write import progress atomically to <file_path>.progress using temporary file and os.replace."""
+    prog_file = f"{file_path}.progress"
+    tmp_file = f"{file_path}.progress.tmp"
+    data = {
+        "progress_percent": progress_percent,
+        "inserted_count": inserted_count,
+        "total_rows": total_rows,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    try:
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        os.replace(tmp_file, prog_file)
+    except Exception:
+        pass
+
+
+def _cleanup_progress_file(file_path: str):
+    """Remove progress files upon completion or failure."""
+    for p in (f"{file_path}.progress", f"{file_path}.progress.tmp"):
+        try:
+            if os.path.exists(p):
+                os.remove(p)
+        except Exception:
+            pass
+
+
+def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Dict[str, int]]:
     """
     Get-or-create dimension entries in memory cache.
-    Safely handles case-insensitivity, prevents duplicates, and avoids SQLite variable limits.
+    Returns dict {name.strip().lower(): id} for each dimension table.
+    Does NOT create dimension rows for empty or 'nan/none' values.
     """
     cache = {
         "employees": {},
@@ -140,22 +246,29 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
         "task_types": {},
     }
 
-    def resolve_dim(model_cls, name_col, items_set):
-        existing = db.query(getattr(model_cls, name_col), model_cls.id).all()
-        exact_map = {str(k).strip(): v for k, v in existing if k is not None}
-        lower_map = {str(k).strip().lower(): v for k, v in existing if k is not None}
-
-        new_names_dict = {}
+    def resolve_dim(model_cls, name_col: str, items_set: set) -> Dict[str, int]:
+        # Filter out empty strings or nan/none representations
+        valid_items = set()
         for item in items_set:
-            if not item:
+            if item is None or pd.isna(item):
                 continue
             item_str = str(item).strip()
-            if not item_str:
+            if not item_str or item_str.lower() in ("nan", "nat", "none", "<na>"):
                 continue
+            valid_items.add(item_str)
+
+        existing = db.query(getattr(model_cls, name_col), model_cls.id).all()
+        lower_map = {
+            str(k).strip().lower(): v
+            for k, v in existing
+            if k is not None and str(k).strip().lower() not in ("", "nan", "nat", "none", "<na>")
+        }
+
+        new_names_dict = {}
+        for item_str in valid_items:
             item_lower = item_str.lower()
-            if item_str not in exact_map and item_lower not in lower_map:
-                if item_lower not in new_names_dict:
-                    new_names_dict[item_lower] = item_str
+            if item_lower not in lower_map and item_lower not in new_names_dict:
+                new_names_dict[item_lower] = item_str
 
         if new_names_dict:
             try:
@@ -173,19 +286,13 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
                         db.rollback()
 
             existing = db.query(getattr(model_cls, name_col), model_cls.id).all()
-            exact_map = {str(k).strip(): v for k, v in existing if k is not None}
-            lower_map = {str(k).strip().lower(): v for k, v in existing if k is not None}
+            lower_map = {
+                str(k).strip().lower(): v
+                for k, v in existing
+                if k is not None and str(k).strip().lower() not in ("", "nan", "nat", "none", "<na>")
+            }
 
-        class CaseInsensitiveCache(dict):
-            def get(self, key, default=None):
-                if key is None:
-                    return default
-                k_str = str(key).strip()
-                if k_str in exact_map:
-                    return exact_map[k_str]
-                return lower_map.get(k_str.lower(), default)
-
-        return CaseInsensitiveCache(exact_map)
+        return lower_map
 
     # 1. Employees (from both 'Nhân viên khởi tạo' and 'Nhân viên thực hiện' / 'Người nhận việc' / etc.)
     emp_names = set()
@@ -238,123 +345,18 @@ def resolve_dimensions_in_bulk(db: Session, df: pd.DataFrame) -> Dict[str, Any]:
     return cache
 
 
-def _build_tasks_vectorized(
-    df: pd.DataFrame,
-    emp_cache, group_cache, sys_cache, unit_cache, station_cache, type_cache,
-    import_id: int,
-    now: datetime
-) -> list:
-    """
-    Xây dựng danh sách tasks từ DataFrame sang list of dicts.
-    Chuyển đổi các cột sang Python list và zip() thay vì Series .iloc loop:
-    - Nhanh hơn 50x so với iloc loop
-    - Đảm bảo 100% không còn pd.NaT, np.nan, hoặc float NaN lọt vào SQLite
-    - DateTime luôn là python datetime hoặc None (tránh lỗi SQLite crash khi gặp NaT)
-    - Integer FK luôn là int hoặc None (tránh cannot convert float NaN to integer)
-    """
-
-    def _get_col_list(name, default=None) -> list:
-        if name in df.columns:
-            return df[name].tolist()
-        return [default] * len(df)
-
-    # 1. Clean string fields
-    ma_cv_l       = [clean_str(x) for x in _get_col_list("Mã công việc")]
-    ma_cha_l      = [clean_str(x) for x in _get_col_list("Mã công việc cha")]
-    loai_cv_l     = [clean_str(x) for x in _get_col_list("Loại công việc")]
-    noi_dung_l    = [clean_str(x) for x in _get_col_list("Nội dung công việc")]
-    ghi_chu_l     = [clean_str(x) for x in _get_col_list("Ghi chú")]
-    trang_thai_l  = [clean_str(x) for x in _get_col_list("Trạng thái")]
-    trang_thai_ht = [clean_str(x) for x in _get_col_list("Trạng thái hoàn thành")]
-    loi_l         = [clean_str(x) for x in _get_col_list("Lỗi")]
-    thue_bao_l    = [clean_str(x) for x in _get_col_list("Thuê bao")]
-    worklog_l     = [clean_str(x) for x in _get_col_list("Worklog")]
-    ft_comment_l  = [clean_str(x) for x in _get_col_list("FT comment")]
-    ft_mobile_l   = [clean_str(x) for x in _get_col_list("FT mobile")]
-
-    # 2. Map Foreign Key IDs an toàn (luôn là int hoặc None)
-    task_type_ids = [clean_int(type_cache.get(x)) if x else None for x in loai_cv_l]
-    assigned_ids  = [clean_int(emp_cache.get(clean_str(x))) if clean_str(x) else None for x in _get_col_list("Nhân viên thực hiện")]
-    created_ids   = [clean_int(emp_cache.get(clean_str(x))) if clean_str(x) else None for x in _get_col_list("Nhân viên khởi tạo")]
-    group_ids     = [clean_int(group_cache.get(clean_str(x))) if clean_str(x) else None for x in _get_col_list("Nhóm điều phối")]
-    system_ids    = [clean_int(sys_cache.get(clean_str(x))) if clean_str(x) else None for x in _get_col_list("Hệ thống")]
-    unit_ids      = [clean_int(unit_cache.get(clean_str(x))) if clean_str(x) else None for x in _get_col_list("Đơn vị tạo")]
-    station_ids   = [clean_int(station_cache.get(clean_str(x))) if clean_str(x) else None for x in _get_col_list("Mã trạm")]
-
-    # 3. Numeric Float an toàn (luôn là float hoặc None, không bao giờ np.nan)
-    tgcl_l        = [clean_float(x) for x in _get_col_list("Thời gian còn lại (H)")]
-
-    # 4. Datetime fields an toàn (luôn là datetime hoặc None, TUYỆT ĐỐI KHÔNG pd.NaT)
-    dt_tao_l      = [clean_dt(x) for x in _get_col_list("Thời điểm tạo")]
-    dt_bat_dau_l  = [clean_dt(x) for x in _get_col_list("Thời điểm bắt đầu thực hiện (dd/MM/yyyy HH:mm:ss)")]
-    dt_ket_thuc_l = [clean_dt(x) for x in _get_col_list("Thời điểm yêu cầu kết thúc (dd/MM/yyyy HH:mm:ss)")]
-    dt_ft_ht_l    = [clean_dt(x) for x in _get_col_list("Thời điểm FT hoàn thành")]
-    dt_cd_dong_l  = [clean_dt(x) for x in _get_col_list("Thời điểm CD đóng")]
-    dt_ft_tn_l    = [clean_dt(x) for x in _get_col_list("Thời điểm FT tiếp nhận")]
-
-    # 5. Build tasks with zip
-    tasks = []
-    for (
-        ma_cv, ma_cha, task_type_id, loai_cv, noi_dung, ghi_chu,
-        trang_thai, tt_ht, sys_id, created_by, dt_tao,
-        group_id, assigned_to, loi, dt_bat_dau, dt_ket_thuc,
-        tgcl, dt_ft_ht, dt_cd_dong, dt_ft_tn, thue_bao,
-        unit_id, worklog, station_id, ft_comment, ft_mobile
-    ) in zip(
-        ma_cv_l, ma_cha_l, task_type_ids, loai_cv_l, noi_dung_l, ghi_chu_l,
-        trang_thai_l, trang_thai_ht, system_ids, created_ids, dt_tao_l,
-        group_ids, assigned_ids, loi_l, dt_bat_dau_l, dt_ket_thuc_l,
-        tgcl_l, dt_ft_ht_l, dt_cd_dong_l, dt_ft_tn_l, thue_bao_l,
-        unit_ids, worklog_l, station_ids, ft_comment_l, ft_mobile_l
-    ):
-        if not ma_cv:
-            continue
-        tasks.append({
-            "ma_cong_viec":                ma_cv,
-            "ma_cong_viec_cha":            ma_cha,
-            "task_type_id":                task_type_id,
-            "loai_cong_viec":              loai_cv,
-            "noi_dung_cong_viec":          noi_dung,
-            "ghi_chu":                     ghi_chu,
-            "trang_thai":                  trang_thai,
-            "trang_thai_hoan_thanh":       tt_ht,
-            "system_id":                   sys_id,
-            "created_by_id":               created_by,
-            "thoi_diem_tao":               dt_tao,
-            "group_id":                    group_id,
-            "assigned_to_id":              assigned_to,
-            "loi":                         loi,
-            "thoi_diem_bat_dau_thuc_hien": dt_bat_dau,
-            "thoi_diem_yeu_cau_ket_thuc":  dt_ket_thuc,
-            "thoi_gian_con_lai":           tgcl,
-            "thoi_diem_ft_hoan_thanh":     dt_ft_ht,
-            "thoi_diem_cd_dong":           dt_cd_dong,
-            "thoi_diem_ft_tiep_nhan":      dt_ft_tn,
-            "thue_bao":                    thue_bao,
-            "unit_id":                     unit_id,
-            "worklog":                     worklog,
-            "station_id":                  station_id,
-            "ft_comment":                  ft_comment,
-            "ft_mobile":                   ft_mobile,
-            "created_at":                  now,
-            "updated_at":                  now,
-            "last_import_id":              import_id,
-        })
-    return tasks
-
-
-
-
 def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True):
     """
-    Main ETL function executed in background.
+    Main ETL function executed in background process.
     Tối ưu cho VPS 2 vCPU / 2GB RAM:
-    - Vectorized pandas build (5-10x nhanh hơn Python loop)
-    - SQLite WAL PRAGMA tuning cho insert nhanh
-    - time.sleep() giữa batch để nhường CPU cho web server
-    - Batch size nhỏ hơn (3000) để tránh spike CPU
+    - Calamine C/Rust engine đọc file siêu tốc
+    - Xử lý vectorized theo cột bằng Pandas
+    - Dựng + insert theo từng lát 10.000 dòng để tiết kiệm RAM
+    - Một transaction duy nhất: xóa cũ -> insert mới -> cập nhật ImportLog -> commit một lần ở cuối
+    - Ghi tiến độ ra file .progress tránh lock SQLite
+    - Đo thời gian từng bước chi tiết
     """
-    import time
+    t_start = time.perf_counter()
 
     db = SessionLocal()
     try:
@@ -366,44 +368,43 @@ def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True
         import_record.progress_percent = 5
         db.commit()
 
-        # SQLite WAL PRAGMA tối ưu cho insert nhanh trên VPS nhỏ
-        if is_sqlite:
-            db.execute(text("PRAGMA cache_size = -32000"))   # 32MB cache
-            db.execute(text("PRAGMA temp_store = MEMORY"))   # temp tables vào RAM
-            db.execute(text("PRAGMA mmap_size = 268435456")) # 256MB mmap
-            db.commit()
-
         # Step 1: Read excel or csv file
+        t_read_0 = time.perf_counter()
         file_path_lower = file_path.lower()
         if file_path_lower.endswith(".csv"):
             df = pd.read_csv(file_path, low_memory=False, encoding_errors="replace")
         elif file_path_lower.endswith(".xls"):
             try:
-                df = pd.read_excel(file_path, engine="xlrd")
-            except Exception:
-                try:
-                    df = pd.read_excel(file_path)
-                except Exception as ex:
-                    raise ValueError(f"Không thể đọc file .xls (Excel 97-2003). Vui lòng lưu file sang định dạng .xlsx để hệ thống xử lý nhanh: {ex}")
-        else:
-            try:
-                import calamine
                 df = pd.read_excel(file_path, engine="calamine")
-            except Exception:
+            except (ImportError, Exception):
                 try:
-                    df = pd.read_excel(file_path, engine="openpyxl", engine_kwargs={"read_only": True, "data_only": True})
+                    df = pd.read_excel(file_path, engine="xlrd")
                 except Exception:
+                    try:
+                        df = pd.read_excel(file_path)
+                    except Exception as ex:
+                        raise ValueError(f"Không thể đọc file .xls (Excel 97-2003). Vui lòng lưu file sang định dạng .xlsx để hệ thống xử lý nhanh: {ex}")
+        else: # .xlsx
+            try:
+                df = pd.read_excel(file_path, engine="calamine")
+            except (ImportError, Exception):
+                try:
                     df = pd.read_excel(file_path, engine="openpyxl")
+                except Exception as ex:
+                    raise ValueError(f"Không thể đọc file .xlsx: {ex}")
+
+        t_read = time.perf_counter() - t_read_0
+        print(f"[ETL] read: {t_read:.2f}s", flush=True)
 
         total_rows = len(df)
         import_record.total_rows = total_rows
         import_record.progress_percent = 15
         db.commit()
 
-        # Normalize column headers (strip spaces, replace non-breaking spaces, remove BOM)
+        # Step 2: Header normalization & flexible mappings
+        t_filter_0 = time.perf_counter()
         df.columns = [re.sub(r'\s+', ' ', str(c).strip().replace('\ufeff', '')) for c in df.columns]
 
-        # Auto-detect real header row if the file has metadata rows at the top (e.g. 7 title lines from GNOC)
         has_macv = any(str(c).strip().lower() in ("mã công việc", "mã cv", "ma cong viec", "wo") for c in df.columns)
         if not has_macv:
             header_idx = None
@@ -456,9 +457,8 @@ def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True
 
         total_rows = len(df)
         import_record.total_rows = total_rows
-        db.commit()
 
-        # Step 2: Filter out SPM and SPM_VTNET rows (only if filter_spm is True)
+        # Filter out SPM and SPM_VTNET rows (only if filter_spm is True)
         filtered_out_count = 0
         if filter_spm and "Hệ thống" in df.columns:
             sys_series = df["Hệ thống"].fillna("").astype(str).str.strip().str.upper()
@@ -473,90 +473,196 @@ def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True
         df_valid["Mã công việc"] = df_valid["Mã công việc"].astype(str).str.strip()
         df_valid = df_valid[df_valid["Mã công việc"] != ""]
 
-        # CRITICAL: Deduplicate by "Mã công việc" keeping the latest row to prevent UNIQUE constraint collisions!
+        # Deduplicate by "Mã công việc" keeping the latest row
         df_valid = df_valid.drop_duplicates(subset=["Mã công việc"], keep="last")
         df_valid = df_valid.reset_index(drop=True)
+
+        # Free original df immediately to conserve RAM on 2GB VPS
+        del df
+
+        t_filter = time.perf_counter() - t_filter_0
+        print(f"[ETL] filter: {t_filter:.2f}s", flush=True)
 
         import_record.filtered_out_count = filtered_out_count
         import_record.progress_percent = 25
         db.commit()
 
         # Step 3: Resolve dimensions in bulk
+        t_dims_0 = time.perf_counter()
         dim_cache = resolve_dimensions_in_bulk(db, df_valid)
-        emp_cache    = dim_cache["employees"]
-        group_cache  = dim_cache["groups"]
-        sys_cache    = dim_cache["systems"]
-        unit_cache   = dim_cache["units"]
-        station_cache = dim_cache["stations"]
-        type_cache   = dim_cache["task_types"]
+        t_dims = time.perf_counter() - t_dims_0
+        print(f"[ETL] dims: {t_dims:.2f}s", flush=True)
 
         import_record.progress_percent = 35
-        db.commit()
-
-        # Step 4: Record file size
         try:
             if os.path.exists(file_path):
                 import_record.file_size_bytes = os.path.getsize(file_path)
         except Exception:
             pass
-
-        # Step 5: Xoá sạch dữ liệu công việc cũ trong database trước khi nạp file mới
-        import_record.progress_percent = 40
         db.commit()
 
-        clear_task_tables(db)
-
-        # Step 6: Chuẩn bị dữ liệu bằng vectorized pandas (nhanh 5-10x so với Python loop)
+        # Prepare vectorized columns for the entire valid dataset
+        total_tasks = len(df_valid)
         now = datetime.utcnow()
-        tasks_to_insert = _build_tasks_vectorized(
-            df_valid,
-            emp_cache, group_cache, sys_cache, unit_cache, station_cache, type_cache,
-            import_id, now
-        )
 
-        # Bulk insert theo batch nhỏ hơn để tránh spike CPU trên VPS 2 core
-        # Batch 3000 rows + sleep 100ms giữa batch để nhường CPU cho web server
-        batch_size = 3000
-        total_tasks = len(tasks_to_insert)
+        ma_cv_l       = _vectorize_str_col(df_valid.get("Mã công việc"), total_tasks)
+        ma_cha_l      = _vectorize_str_col(df_valid.get("Mã công việc cha"), total_tasks)
+        loai_cv_l     = _vectorize_str_col(df_valid.get("Loại công việc"), total_tasks)
+        noi_dung_l    = _vectorize_str_col(df_valid.get("Nội dung công việc"), total_tasks)
+        ghi_chu_l     = _vectorize_str_col(df_valid.get("Ghi chú"), total_tasks)
+        trang_thai_l  = _vectorize_str_col(df_valid.get("Trạng thái"), total_tasks)
+        tt_ht_l       = _vectorize_str_col(df_valid.get("Trạng thái hoàn thành"), total_tasks)
+        loi_l         = _vectorize_str_col(df_valid.get("Lỗi"), total_tasks)
+        thue_bao_l    = _vectorize_str_col(df_valid.get("Thuê bao"), total_tasks)
+        worklog_l     = _vectorize_str_col(df_valid.get("Worklog"), total_tasks)
+        ft_comment_l  = _vectorize_str_col(df_valid.get("FT comment"), total_tasks)
+        ft_mobile_l   = _vectorize_str_col(df_valid.get("FT mobile"), total_tasks)
+
+        type_ids_l     = _vectorize_fk_col(df_valid.get("Loại công việc"), dim_cache["task_types"], total_tasks)
+        assigned_ids_l = _vectorize_fk_col(df_valid.get("Nhân viên thực hiện"), dim_cache["employees"], total_tasks)
+        created_ids_l  = _vectorize_fk_col(df_valid.get("Nhân viên khởi tạo"), dim_cache["employees"], total_tasks)
+        group_ids_l    = _vectorize_fk_col(df_valid.get("Nhóm điều phối"), dim_cache["groups"], total_tasks)
+        system_ids_l   = _vectorize_fk_col(df_valid.get("Hệ thống"), dim_cache["systems"], total_tasks)
+        unit_ids_l     = _vectorize_fk_col(df_valid.get("Đơn vị tạo"), dim_cache["units"], total_tasks)
+        station_ids_l  = _vectorize_fk_col(df_valid.get("Mã trạm"), dim_cache["stations"], total_tasks)
+
+        tgcl_l        = _vectorize_float_col(df_valid.get("Thời gian còn lại (H)"), total_tasks)
+
+        dt_tao_l      = _vectorize_dt_col(df_valid.get("Thời điểm tạo"), total_tasks)
+        dt_bat_dau_l  = _vectorize_dt_col(df_valid.get("Thời điểm bắt đầu thực hiện (dd/MM/yyyy HH:mm:ss)"), total_tasks)
+        dt_ket_thuc_l = _vectorize_dt_col(df_valid.get("Thời điểm yêu cầu kết thúc (dd/MM/yyyy HH:mm:ss)"), total_tasks)
+        dt_ft_ht_l    = _vectorize_dt_col(df_valid.get("Thời điểm FT hoàn thành"), total_tasks)
+        dt_cd_dong_l  = _vectorize_dt_col(df_valid.get("Thời điểm CD đóng"), total_tasks)
+        dt_ft_tn_l    = _vectorize_dt_col(df_valid.get("Thời điểm FT tiếp nhận"), total_tasks)
+
+        # Free df_valid to release memory
+        del df_valid
+
+        # =========================================================================
+        # MAIN ATOMIC TRANSACTION:
+        # PRAGMA optimizations -> Delete old -> Insert in slices -> Update ImportLog -> Commit ONCE
+        # =========================================================================
+        if is_sqlite:
+            db.execute(text("PRAGMA foreign_keys = OFF"))
+            db.execute(text("PRAGMA cache_size = -32000"))
+            db.execute(text("PRAGMA temp_store = MEMORY"))
+            db.execute(text("PRAGMA mmap_size = 268435456"))
+            db.execute(text("PRAGMA synchronous = NORMAL"))
+        else:
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+        # Step 4: Delete old task data
+        t_clear_0 = time.perf_counter()
+        db.query(TaskHistory).delete(synchronize_session=False)
+        db.query(Task).delete(synchronize_session=False)
+        t_clear = time.perf_counter() - t_clear_0
+        print(f"[ETL] clear: {t_clear:.2f}s", flush=True)
+
+        # Step 5: Build + insert in slices of 10,000 rows
+        batch_size = 10000
+        t_build_total = 0.0
+        t_insert_total = 0.0
+
         for i in range(0, total_tasks, batch_size):
-            batch = tasks_to_insert[i : i + batch_size]
-            db.bulk_insert_mappings(Task, batch)
-            db.commit()
+            end_i = min(i + batch_size, total_tasks)
 
-            pct = 45 + int(((i + len(batch)) / max(1, total_tasks)) * 50)
-            import_record.progress_percent = min(pct, 96)
-            import_record.inserted_count = i + len(batch)
-            db.commit()
+            t_b0 = time.perf_counter()
+            batch = []
+            for idx in range(i, end_i):
+                ma_cv = ma_cv_l[idx]
+                if not ma_cv:
+                    continue
+                batch.append({
+                    "ma_cong_viec":                ma_cv,
+                    "ma_cong_viec_cha":            ma_cha_l[idx],
+                    "task_type_id":                type_ids_l[idx],
+                    "loai_cong_viec":              loai_cv_l[idx],
+                    "noi_dung_cong_viec":          noi_dung_l[idx],
+                    "ghi_chu":                     ghi_chu_l[idx],
+                    "trang_thai":                  trang_thai_l[idx],
+                    "trang_thai_hoan_thanh":       tt_ht_l[idx],
+                    "system_id":                   system_ids_l[idx],
+                    "created_by_id":               created_ids_l[idx],
+                    "thoi_diem_tao":               dt_tao_l[idx],
+                    "group_id":                    group_ids_l[idx],
+                    "assigned_to_id":              assigned_ids_l[idx],
+                    "loi":                         loi_l[idx],
+                    "thoi_diem_bat_dau_thuc_hien": dt_bat_dau_l[idx],
+                    "thoi_diem_yeu_cau_ket_thuc":  dt_ket_thuc_l[idx],
+                    "thoi_gian_con_lai":           tgcl_l[idx],
+                    "thoi_diem_ft_hoan_thanh":     dt_ft_ht_l[idx],
+                    "thoi_diem_cd_dong":           dt_cd_dong_l[idx],
+                    "thoi_diem_ft_tiep_nhan":      dt_ft_tn_l[idx],
+                    "thue_bao":                    thue_bao_l[idx],
+                    "unit_id":                     unit_ids_l[idx],
+                    "worklog":                     worklog_l[idx],
+                    "station_id":                  station_ids_l[idx],
+                    "ft_comment":                  ft_comment_l[idx],
+                    "ft_mobile":                   ft_mobile_l[idx],
+                    "created_at":                  now,
+                    "updated_at":                  now,
+                    "last_import_id":              import_id,
+                })
+            t_build_total += (time.perf_counter() - t_b0)
 
-            # Nhường CPU cho uvicorn event loop giữa các batch (tránh treo web)
-            time.sleep(0.05)
+            if batch:
+                t_i0 = time.perf_counter()
+                try:
+                    db.execute(insert(Task.__table__), batch)
+                except Exception:
+                    db.bulk_insert_mappings(Task, batch)
+                t_insert_total += (time.perf_counter() - t_i0)
 
-        # Re-enable foreign keys (đã được enable trong clear_task_tables rồi, gọi lại cho chắc)
-        _enable_fk(db)
+            # Record progress to progress file (avoids SQLite writer contention)
+            pct = 40 + int((end_i / max(1, total_tasks)) * 55)
+            _write_progress_file(file_path, min(pct, 96), end_i, total_tasks)
 
-        # Step 7: Kích hoạt file này là file đang sử dụng trong DB (is_active = 1)
-        db.query(ImportLog).filter(ImportLog.id != import_id).update({"is_active": 0})
-        import_record.is_active = 1
-        import_record.status = "COMPLETED"
-        import_record.progress_percent = 100
-        import_record.inserted_count = total_tasks
-        import_record.updated_count = 0
-        import_record.unchanged_count = 0
-        import_record.error_message = None
+        print(f"[ETL] build: {t_build_total:.2f}s, insert: {t_insert_total:.2f}s (total build+insert: {t_build_total + t_insert_total:.2f}s)", flush=True)
+
+        # Step 6: Update ImportLog inside the same transaction
+        db.query(ImportLog).filter(
+            or_(ImportLog.domain == "main", ImportLog.domain.is_(None)),
+            ImportLog.id != import_id
+        ).update({"is_active": 0})
+
+        import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
+        if import_record:
+            import_record.is_active = 1
+            import_record.status = "COMPLETED"
+            import_record.progress_percent = 100
+            import_record.inserted_count = total_tasks
+            import_record.updated_count = 0
+            import_record.unchanged_count = 0
+            import_record.error_message = None
+
+        # Step 7: Commit ONCE at the end
+        t_commit_0 = time.perf_counter()
         db.commit()
+        t_commit = time.perf_counter() - t_commit_0
+        print(f"[ETL] commit: {t_commit:.2f}s", flush=True)
 
-        # Step 8: Pre-compute & warm up statistics immediately upon import
-        try:
-            from backend.services.stats_service import get_special_maintenance_stats, get_kpi_overview, MAINTENANCE_TASK_TYPE
-            get_special_maintenance_stats(db, MAINTENANCE_TASK_TYPE)
-            get_kpi_overview(db)
-        except Exception as ex:
-            print(f"Pre-computation warning: {ex}")
+        # Re-enable foreign keys
+        if is_sqlite:
+            try:
+                db.execute(text("PRAGMA foreign_keys = ON"))
+                db.commit()
+            except Exception:
+                pass
+        else:
+            try:
+                db.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+                db.commit()
+            except Exception:
+                pass
+
+
+        t_total = time.perf_counter() - t_start
+        print(f"[ETL] total: {t_total:.2f}s", flush=True)
 
     except Exception as e:
         db.rollback()
         err_msg = f"{str(e)}\n{traceback.format_exc()}"
-        print(f"Import Error: {err_msg}")
+        print(f"Import Error: {err_msg}", flush=True)
         try:
             _enable_fk(db)
         except Exception:
@@ -571,5 +677,18 @@ def process_excel_import(import_id: int, file_path: str, filter_spm: bool = True
         except Exception:
             pass
     finally:
+        _cleanup_progress_file(file_path)
         db.close()
 
+
+def run_import_job(import_id: int, file_path: str, filter_spm: bool = True):
+    """
+    Entrypoint executed inside a separate child process (ProcessPoolExecutor).
+    Disposes inherited connection pool and runs process_excel_import.
+    """
+    try:
+        from backend.database import engine
+        engine.dispose()
+    except Exception:
+        pass
+    return process_excel_import(import_id=import_id, file_path=file_path, filter_spm=filter_spm)

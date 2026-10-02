@@ -1,27 +1,35 @@
 import api from './client';
 
-// VPS 2 vCPU / SQLite: sequential upload để tránh WAL lock
-const CHUNK_SIZE = 16 * 1024 * 1024; // 16MB per chunk
+const DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024; // 8MB per chunk
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 1000;
-const CONCURRENT_CHUNKS = 1; // Sequential — tránh SQLite WAL deadlock
+const BASE_RETRY_DELAY_MS = 1000;
+const CONCURRENT_CHUNKS = 4; // 4 concurrent workers queue
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function withRetry(fn, retries = MAX_RETRIES, delay = RETRY_DELAY_MS) {
+function isRetryableError(err) {
+  if (!err.response) return true; // Network error or client timeout
+  const status = err.response.status;
+  if (status >= 500) return true;
+  if (status === 408 || status === 429) return true;
+  if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') return true;
+  return false;
+}
+
+/**
+ * Retry wrapper with linear backoff (1s, 2s, 3s)
+ */
+async function withLinearRetry(fn, retries = MAX_RETRIES, baseDelay = BASE_RETRY_DELAY_MS) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      if (attempt === retries) throw err;
-      const isRetryable =
-        !err.response ||
-        err.response.status >= 500 ||
-        err.code === 'ECONNABORTED' ||
-        err.code === 'ERR_NETWORK';
-      if (!isRetryable) throw err;
-      console.warn(`Attempt ${attempt + 1} failed, retrying...`, err.message);
-      await sleep(delay * (attempt + 1));
+      if (attempt === retries || !isRetryableError(err)) {
+        throw err;
+      }
+      const delay = baseDelay * (attempt + 1);
+      console.warn(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`, err.message);
+      await sleep(delay);
     }
   }
 }
@@ -68,13 +76,11 @@ export const codinhApi = {
     return res.data;
   },
 
-  // Nạp file gốc WO CĐBR riêng biệt (Hỗ trợ Chunked Upload tự động chia nhỏ file và retry)
+  // Nạp file gốc WO CĐBR riêng biệt (Hỗ trợ Chunked Upload 8MB, 4 workers queue, retry và phục hồi missing chunks)
   uploadWoFile: async (file, onProgress = null) => {
-    const shouldChunk = file.size > CHUNK_SIZE;
-
-    if (!shouldChunk) {
-      // Small file: single request
-      return withRetry(async () => {
+    // 1. Files <= 8MB: Single request
+    if (file.size <= DEFAULT_CHUNK_SIZE) {
+      return withLinearRetry(async () => {
         const formData = new FormData();
         formData.append('file', file);
         const res = await api.post('/codinh/wos/upload', formData, {
@@ -82,23 +88,23 @@ export const codinhApi = {
           timeout: 300000,
           onUploadProgress: (progressEvent) => {
             if (onProgress && progressEvent.total) {
-              const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              onProgress(percent);
+              const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              onProgress(Math.min(pct, 100));
             }
           },
         });
+        if (onProgress) onProgress(100);
         return res.data;
       });
     }
 
-    // Large file: chunked upload
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-    // 1. Init chunked session
+    // 2. Large files: Chunked upload
+    // Step 1: Initialize session
     const initForm = new FormData();
     initForm.append('file_name', file.name);
     initForm.append('file_size', file.size.toString());
-    const initRes = await withRetry(async () => {
+
+    const initRes = await withLinearRetry(async () => {
       const res = await api.post('/codinh/wos/chunked/init', initForm, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 30000,
@@ -107,49 +113,97 @@ export const codinhApi = {
     });
 
     const importId = initRes.import_id;
+    const chunkSize = initRes.chunk_size || DEFAULT_CHUNK_SIZE;
+    const totalChunks = initRes.total_chunks || Math.ceil(file.size / chunkSize);
 
-    // 2. Upload chunks với CONCURRENCY (3 chunks song song)
-    let completedChunks = 0;
-    for (let batchStart = 0; batchStart < totalChunks; batchStart += CONCURRENT_CHUNKS) {
-      const batchEnd = Math.min(batchStart + CONCURRENT_CHUNKS, totalChunks);
-      const batchPromises = [];
+    // Track bytes sent per chunk for smooth onProgress(0..100)
+    const sent = new Array(totalChunks).fill(0);
 
-      for (let i = batchStart; i < batchEnd; i++) {
-        const start = i * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const chunkBlob = file.slice(start, end);
+    const updateOverallProgress = () => {
+      if (!onProgress) return;
+      const totalSent = sent.reduce((acc, b) => acc + b, 0);
+      const pct = Math.min(Math.round((totalSent / file.size) * 100), 100);
+      onProgress(pct);
+    };
 
-        batchPromises.push(
-          withRetry(async () => {
-            const chunkForm = new FormData();
-            chunkForm.append('chunk_index', i.toString());
-            chunkForm.append('total_chunks', totalChunks.toString());
-            chunkForm.append('chunk_size', CHUNK_SIZE.toString());
-            chunkForm.append('chunk', chunkBlob, `chunk_${i}`);
-            await api.post(`/codinh/wos/chunked/${importId}`, chunkForm, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-              timeout: 120000,
-            });
-          })
-        );
-      }
+    // Helper to upload a single chunk with linear retry & raw octet-stream
+    const uploadSingleChunk = async (i) => {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const blob = file.slice(start, end);
+      const expectedSize = end - start;
 
-      await Promise.all(batchPromises);
-      completedChunks = batchEnd;
-
-      if (onProgress) {
-        onProgress(Math.round((completedChunks / totalChunks) * 100));
-      }
-    }
-
-    // 3. Finalize chunked session
-    const finalRes = await withRetry(async () => {
-      const res = await api.post(`/codinh/wos/chunked/${importId}/finalize`, null, {
-        timeout: 30000,
+      await withLinearRetry(async () => {
+        await api.put(`/codinh/wos/chunked/${importId}/${i}`, blob, {
+          headers: { 'Content-Type': 'application/octet-stream' },
+          timeout: 180000,
+          onUploadProgress: (progressEvent) => {
+            sent[i] = Math.min(progressEvent.loaded, expectedSize);
+            updateOverallProgress();
+          },
+        });
+        sent[i] = expectedSize;
+        updateOverallProgress();
       });
-      return res.data;
-    });
+    };
 
+    // Step 2: Upload chunks using 4 concurrent workers queue
+    const uploadChunkList = async (chunkIndices) => {
+      let nextIdx = 0;
+      let poolError = null;
+
+      const worker = async () => {
+        while (nextIdx < chunkIndices.length && !poolError) {
+          const currentChunk = chunkIndices[nextIdx++];
+          try {
+            await uploadSingleChunk(currentChunk);
+          } catch (err) {
+            poolError = err;
+            throw err;
+          }
+        }
+      };
+
+      const workers = [];
+      const workerCount = Math.min(CONCURRENT_CHUNKS, chunkIndices.length);
+      for (let w = 0; w < workerCount; w++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+    };
+
+    // Initial upload of all chunks
+    const allChunks = Array.from({ length: totalChunks }, (_, idx) => idx);
+    await uploadChunkList(allChunks);
+
+    // Step 3: Finalize with 409 missing_chunks retry
+    const finalize = async (canRetryMissing = true) => {
+      try {
+        const res = await api.post(`/codinh/wos/chunked/${importId}/finalize`, null, {
+          timeout: 30000,
+        });
+        return res.data;
+      } catch (err) {
+        if (
+          canRetryMissing &&
+          err.response &&
+          err.response.status === 409 &&
+          Array.isArray(err.response.data?.detail?.missing_chunks)
+        ) {
+          const missing = err.response.data.detail.missing_chunks;
+          console.warn(`Finalize returned 409, uploading ${missing.length} missing chunks:`, missing);
+          for (const mIdx of missing) {
+            sent[mIdx] = 0;
+          }
+          await uploadChunkList(missing);
+          return finalize(false);
+        }
+        throw err;
+      }
+    };
+
+    const finalRes = await finalize();
+    if (onProgress) onProgress(100);
     return finalRes;
   },
 

@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Float, ForeignKey, Index
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, foreign
 from backend.database import Base
 
 
@@ -49,7 +49,13 @@ class Task(Base):
     task_type = relationship("TaskType", foreign_keys=[task_type_id], lazy="joined")
 
     history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
-    notes = relationship("TaskNote", back_populates="task")
+    notes = relationship(
+        "TaskNote",
+        primaryjoin="Task.ma_cong_viec == foreign(TaskNote.ma_cong_viec)",
+        back_populates="task",
+        lazy="select",
+        viewonly=True,
+    )
 
 
 # Composite index for faster status & assignment queries

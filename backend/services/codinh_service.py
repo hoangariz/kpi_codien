@@ -1,14 +1,19 @@
 import os
 import json
 import re
+import time
+import threading
+import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Union
 from collections import defaultdict
+import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, asc, or_, and_, case, distinct
+from sqlalchemy import func, desc, asc, or_, and_, case, distinct, text, insert
 
+from backend.database import is_sqlite, SessionLocal
 from backend.models.task import Task
 from backend.models.task_codinh import TaskCodinh
 from backend.models.dimensions import Employee, Group, SystemModel, Station
@@ -57,7 +62,88 @@ def _parse_date_safe(val) -> Optional[datetime]:
     return None
 
 
-def _set_setting(db: Session, key: str, value: str):
+def _vectorize_str_col(series: Optional[pd.Series], n: int, default_val: Optional[str] = None) -> list:
+    """Vectorized string cleaning: strips whitespace, converts empty/'nan'/'none' to default_val or None."""
+    if series is None:
+        return [default_val] * n
+    s = series.astype("string").str.strip()
+    s_clean = s.mask(s.isna() | s.str.lower().isin(["", "nan", "nat", "none", "<na>"]), default_val)
+    return [str(x) if x is not None and not pd.isna(x) else default_val for x in s_clean]
+
+
+def _vectorize_float_col(series: Optional[pd.Series], n: int) -> list:
+    """Vectorized float cleaning: converts to numeric, inf to NaN, rounds to 4 decimals."""
+    if series is None:
+        return [None] * n
+    num = pd.to_numeric(series, errors="coerce")
+    num = num.mask(np.isinf(num), np.nan).round(4)
+    return [float(x) if pd.notna(x) else None for x in num]
+
+
+def _vectorize_dt_col(series: Optional[pd.Series], n: int) -> list:
+    """
+    Vectorized datetime parsing:
+    1. Parses '%d/%m/%Y %H:%M:%S' first
+    2. String fallbacks parsed with dayfirst=True, format='mixed'
+    3. Excel numeric serial dates (e.g. 45000) parsed with origin='1899-12-30' (never 1970)
+    4. Converted via pd.DatetimeIndex(...).to_pydatetime() ensuring no NaT/NaN
+    """
+    if series is None:
+        return [None] * n
+
+    # Step 1: Parse standard dd/MM/yyyy HH:mm:ss format
+    dt = pd.to_datetime(series, format="%d/%m/%Y %H:%M:%S", errors="coerce")
+
+    # Step 2: Fallback for remaining NaTs that are strings
+    mask_na = dt.isna()
+    if mask_na.any():
+        sub_series = series[mask_na]
+        dt_mixed = pd.to_datetime(sub_series, dayfirst=True, format="mixed", errors="coerce")
+        dt.update(dt_mixed)
+
+        # Step 3: Check remaining NaTs for Excel serial date numbers (e.g. 45000)
+        mask_still_na = dt.isna()
+        if mask_still_na.any():
+            nums = pd.to_numeric(series[mask_still_na], errors="coerce")
+            num_valid = nums.notna() & (nums > 10000) & (nums < 100000)
+            if num_valid.any():
+                dt_serial = pd.to_datetime(nums[num_valid], unit="D", origin="1899-12-30", errors="coerce")
+                dt.update(dt_serial)
+
+    # Step 4: Convert via DatetimeIndex to avoid deprecated Series.dt.to_pydatetime
+    arr = pd.DatetimeIndex(dt).to_pydatetime()
+    return [None if (val is None or pd.isna(val) or str(val) == "NaT") else (val.to_pydatetime() if hasattr(val, "to_pydatetime") else val) for val in arr]
+
+
+def _write_progress_file(file_path: str, progress_percent: int, inserted_count: int, total_rows: int):
+    """Write import progress atomically to <file_path>.progress using temporary file and os.replace."""
+    prog_file = f"{file_path}.progress"
+    tmp_file = f"{file_path}.progress.tmp"
+    data = {
+        "progress_percent": progress_percent,
+        "inserted_count": inserted_count,
+        "total_rows": total_rows,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    try:
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        os.replace(tmp_file, prog_file)
+    except Exception:
+        pass
+
+
+def _cleanup_progress_file(file_path: str):
+    """Remove progress files upon completion or failure."""
+    for p in (f"{file_path}.progress", f"{file_path}.progress.tmp"):
+        try:
+            if os.path.exists(p):
+                os.remove(p)
+        except Exception:
+            pass
+
+
+def _set_setting(db: Session, key: str, value: str, commit: bool = True):
     item = db.query(SystemSetting).filter(SystemSetting.key == key).first()
     if item:
         item.value = value
@@ -65,7 +151,8 @@ def _set_setting(db: Session, key: str, value: str):
     else:
         item = SystemSetting(key=key, value=value, updated_at=datetime.utcnow())
         db.add(item)
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def _get_setting(db: Session, key: str, default: Optional[str] = None) -> Optional[str]:
@@ -82,7 +169,7 @@ def import_codinh_wos_from_excel(
     """
     Parse separate base WO Excel file for Cố Định Băng Rộng (CĐBR) and save into codinh_tasks table.
     Completely isolated from the main dashboard (Cơ điện) tasks table.
-    Uses resilient parsing matching etl_service.py: calamine/openpyxl, 25-row header scan, BOM strip, column synonyms.
+    Uses resilient calamine/openpyxl engine, vectorized column cleaning, single transaction, and batch inserts.
     """
     path_obj = Path(file_path)
     if not path_obj.exists():
@@ -93,34 +180,42 @@ def import_codinh_wos_from_excel(
         import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
         if import_record:
             import_record.status = "PROCESSING"
-            import_record.progress_percent = 15
+            import_record.progress_percent = 10
             db.commit()
 
     file_path_str = str(path_obj)
     file_path_lower = file_path_str.lower()
+    t_start = time.perf_counter()
+
+    # Step 1: Read file
     if file_path_lower.endswith(".csv"):
         df = pd.read_csv(file_path_str, low_memory=False, encoding_errors="replace")
     elif file_path_lower.endswith(".xls"):
         try:
-            df = pd.read_excel(file_path_str, engine="xlrd")
-        except Exception:
-            try:
-                df = pd.read_excel(file_path_str)
-            except Exception as ex:
-                raise ValueError(f"Không thể đọc file .xls (Excel 97-2003): {ex}")
-    else:
-        try:
-            import calamine
             df = pd.read_excel(file_path_str, engine="calamine")
         except Exception:
             try:
-                df = pd.read_excel(file_path_str, engine="openpyxl", engine_kwargs={"read_only": True, "data_only": True})
+                df = pd.read_excel(file_path_str, engine="xlrd")
             except Exception:
+                try:
+                    df = pd.read_excel(file_path_str)
+                except Exception as ex:
+                    raise ValueError(f"Không thể đọc file .xls (Excel 97-2003): {ex}")
+    else:
+        try:
+            df = pd.read_excel(file_path_str, engine="calamine")
+        except Exception:
+            try:
                 df = pd.read_excel(file_path_str, engine="openpyxl")
+            except Exception as ex:
+                raise ValueError(f"Không thể đọc file Excel .xlsx: {ex}")
+
+    t_read = time.perf_counter()
+    print(f"[ETL CODINH] read: {t_read - t_start:.2f}s", flush=True)
 
     if import_record:
         import_record.total_rows = len(df)
-        import_record.progress_percent = 30
+        import_record.progress_percent = 25
         db.commit()
 
     # Normalize column headers (strip spaces, replace non-breaking spaces, remove BOM)
@@ -205,106 +300,141 @@ def import_codinh_wos_from_excel(
         avail = ", ".join(list(df.columns)[:8])
         raise ValueError(f"File thiếu cột bắt buộc 'Mã công việc'. Các cột tìm thấy: [{avail}]. Vui lòng kiểm tra lại file!")
 
-    # Clean DataFrame
+    t_filter_start = time.perf_counter()
     df_valid = df[df[col_map["ma_cong_viec"]].notna()].copy()
     df_valid["ma_cong_viec_clean"] = df_valid[col_map["ma_cong_viec"]].astype(str).str.strip()
     df_valid = df_valid[df_valid["ma_cong_viec_clean"] != ""]
     df_valid = df_valid.drop_duplicates(subset=["ma_cong_viec_clean"], keep="last")
+    total_valid = len(df_valid)
+    del df  # Free raw dataframe memory immediately
 
-    now = datetime.utcnow()
-    records_to_insert = []
-    closed_cnt = 0
-    pending_cnt = 0
+    # Vectorized column extractions
+    v_ma_cv = _vectorize_str_col(df_valid["ma_cong_viec_clean"], total_valid)
+    v_loai_cv = _vectorize_str_col(df_valid[col_map["loai_cong_viec"]] if "loai_cong_viec" in col_map else None, total_valid)
+    v_noi_dung = _vectorize_str_col(df_valid[col_map["noi_dung_cong_viec"]] if "noi_dung_cong_viec" in col_map else None, total_valid)
+    v_ghi_chu = _vectorize_str_col(df_valid[col_map["ghi_chu"]] if "ghi_chu" in col_map else None, total_valid)
+    v_trang_thai = _vectorize_str_col(df_valid[col_map["trang_thai"]] if "trang_thai" in col_map else None, total_valid, default_val="Chưa rõ")
+    v_he_thong = _vectorize_str_col(df_valid[col_map["he_thong"]] if "he_thong" in col_map else None, total_valid)
+    v_nhan_vien = _vectorize_str_col(df_valid[col_map["nhan_vien"]] if "nhan_vien" in col_map else None, total_valid, default_val="Chưa gán")
+    v_nhom = _vectorize_str_col(df_valid[col_map["nhom"]] if "nhom" in col_map else None, total_valid, default_val="Chưa phân nhóm")
+    v_ma_tram = _vectorize_str_col(df_valid[col_map["ma_tram"]] if "ma_tram" in col_map else None, total_valid)
+
+    v_thoi_gian_con_lai = _vectorize_float_col(df_valid[col_map["thoi_gian_con_lai"]] if "thoi_gian_con_lai" in col_map else None, total_valid)
+
+    v_thoi_diem_tao = _vectorize_dt_col(df_valid[col_map["thoi_diem_tao"]] if "thoi_diem_tao" in col_map else None, total_valid)
+    v_thoi_diem_bat_dau = _vectorize_dt_col(df_valid[col_map["thoi_diem_bat_dau_thuc_hien"]] if "thoi_diem_bat_dau_thuc_hien" in col_map else None, total_valid)
+    v_thoi_diem_ket_thuc = _vectorize_dt_col(df_valid[col_map["thoi_diem_yeu_cau_ket_thuc"]] if "thoi_diem_yeu_cau_ket_thuc" in col_map else None, total_valid)
+    v_thoi_diem_ft_ht = _vectorize_dt_col(df_valid[col_map["thoi_diem_ft_hoan_thanh"]] if "thoi_diem_ft_hoan_thanh" in col_map else None, total_valid)
+    v_thoi_diem_cd_dong = _vectorize_dt_col(df_valid[col_map["thoi_diem_cd_dong"]] if "thoi_diem_cd_dong" in col_map else None, total_valid)
+
+    # Counts
+    is_closed = pd.Series(v_trang_thai).isin(CLOSED_STATUSES)
+    closed_cnt = int(is_closed.sum())
+    pending_cnt = int((~is_closed).sum())
+
+    del df_valid  # Free valid dataframe
+    t_filter = time.perf_counter()
+    print(f"[ETL CODINH] filter: {t_filter - t_filter_start:.2f}s", flush=True)
 
     if import_record:
-        import_record.progress_percent = 50
+        import_record.progress_percent = 45
         db.commit()
 
-    for _, row in df_valid.iterrows():
-        ma_cv = row["ma_cong_viec_clean"]
-        loai_cv = str(row[col_map["loai_cong_viec"]]).strip() if "loai_cong_viec" in col_map and pd.notna(row[col_map["loai_cong_viec"]]) else None
-        noi_dung = str(row[col_map["noi_dung_cong_viec"]]).strip() if "noi_dung_cong_viec" in col_map and pd.notna(row[col_map["noi_dung_cong_viec"]]) else None
-        ghi_chu = str(row[col_map["ghi_chu"]]).strip() if "ghi_chu" in col_map and pd.notna(row[col_map["ghi_chu"]]) else None
-        trang_thai = str(row[col_map["trang_thai"]]).strip() if "trang_thai" in col_map and pd.notna(row[col_map["trang_thai"]]) else "Chưa rõ"
-        he_thong = str(row[col_map["he_thong"]]).strip() if "he_thong" in col_map and pd.notna(row[col_map["he_thong"]]) else None
-        nhan_vien = str(row[col_map["nhan_vien"]]).strip() if "nhan_vien" in col_map and pd.notna(row[col_map["nhan_vien"]]) else "Chưa gán"
-        nhom = str(row[col_map["nhom"]]).strip() if "nhom" in col_map and pd.notna(row[col_map["nhom"]]) else "Chưa phân nhóm"
-        ma_tram = str(row[col_map["ma_tram"]]).strip() if "ma_tram" in col_map and pd.notna(row[col_map["ma_tram"]]) else None
-
-        t_tao = _parse_date_safe(row.get(col_map.get("thoi_diem_tao"))) if "thoi_diem_tao" in col_map else None
-        t_bat_dau = _parse_date_safe(row.get(col_map.get("thoi_diem_bat_dau_thuc_hien"))) if "thoi_diem_bat_dau_thuc_hien" in col_map else None
-        t_ket_thuc = _parse_date_safe(row.get(col_map.get("thoi_diem_yeu_cau_ket_thuc"))) if "thoi_diem_yeu_cau_ket_thuc" in col_map else None
-        t_ft_ht = _parse_date_safe(row.get(col_map.get("thoi_diem_ft_hoan_thanh"))) if "thoi_diem_ft_hoan_thanh" in col_map else None
-        t_cd_dong = _parse_date_safe(row.get(col_map.get("thoi_diem_cd_dong"))) if "thoi_diem_cd_dong" in col_map else None
-
-        tg_con_lai = None
-        if "thoi_gian_con_lai" in col_map and pd.notna(row[col_map["thoi_gian_con_lai"]]):
+    try:
+        t_clear_start = time.perf_counter()
+        if is_sqlite:
             try:
-                tg_con_lai = float(row[col_map["thoi_gian_con_lai"]])
+                db.execute(text("PRAGMA foreign_keys = OFF"))
+                db.execute(text("PRAGMA cache_size = -32000"))
+                db.execute(text("PRAGMA temp_store = MEMORY"))
+                db.execute(text("PRAGMA mmap_size = 268435456"))
+                db.execute(text("PRAGMA synchronous = NORMAL"))
             except Exception:
                 pass
 
-        if trang_thai in CLOSED_STATUSES:
-            closed_cnt += 1
-        else:
-            pending_cnt += 1
+        # Clear old codinh_tasks within single transaction
+        db.execute(text("DELETE FROM codinh_tasks"))
+        t_clear = time.perf_counter()
+        print(f"[ETL CODINH] clear: {t_clear - t_clear_start:.2f}s", flush=True)
 
-        records_to_insert.append({
-            "ma_cong_viec": ma_cv,
-            "loai_cong_viec": loai_cv,
-            "noi_dung_cong_viec": noi_dung,
-            "ghi_chu": ghi_chu,
-            "trang_thai": trang_thai,
-            "he_thong": he_thong,
-            "nhan_vien": nhan_vien,
-            "nhom": nhom,
-            "ma_tram": ma_tram,
-            "thoi_diem_tao": t_tao,
-            "thoi_diem_bat_dau_thuc_hien": t_bat_dau,
-            "thoi_diem_yeu_cau_ket_thuc": t_ket_thuc,
-            "thoi_gian_con_lai": tg_con_lai,
-            "thoi_diem_ft_hoan_thanh": t_ft_ht,
-            "thoi_diem_cd_dong": t_cd_dong,
-            "import_filename": filename,
-            "created_at": now,
-            "updated_at": now,
-        })
+        t_build_total = 0.0
+        t_insert_total = 0.0
+        now = datetime.utcnow()
+        inserted_total = 0
 
-    if import_record:
-        import_record.progress_percent = 70
-        db.commit()
+        BATCH_SIZE = 10000
+        for i in range(0, total_valid, BATCH_SIZE):
+            t_b_start = time.perf_counter()
+            batch_end = min(i + BATCH_SIZE, total_valid)
+            batch = []
+            for j in range(i, batch_end):
+                batch.append({
+                    "ma_cong_viec": v_ma_cv[j],
+                    "loai_cong_viec": v_loai_cv[j],
+                    "noi_dung_cong_viec": v_noi_dung[j],
+                    "ghi_chu": v_ghi_chu[j],
+                    "trang_thai": v_trang_thai[j],
+                    "he_thong": v_he_thong[j],
+                    "nhan_vien": v_nhan_vien[j],
+                    "nhom": v_nhom[j],
+                    "ma_tram": v_ma_tram[j],
+                    "thoi_diem_tao": v_thoi_diem_tao[j],
+                    "thoi_diem_bat_dau_thuc_hien": v_thoi_diem_bat_dau[j],
+                    "thoi_diem_yeu_cau_ket_thuc": v_thoi_diem_ket_thuc[j],
+                    "thoi_gian_con_lai": v_thoi_gian_con_lai[j],
+                    "thoi_diem_ft_hoan_thanh": v_thoi_diem_ft_ht[j],
+                    "thoi_diem_cd_dong": v_thoi_diem_cd_dong[j],
+                    "import_filename": filename,
+                    "created_at": now,
+                    "updated_at": now,
+                })
+            t_build_total += (time.perf_counter() - t_b_start)
 
-    # Clear old codinh_tasks and insert new
-    db.query(TaskCodinh).delete(synchronize_session=False)
-    db.commit()
+            t_ins_start = time.perf_counter()
+            try:
+                db.execute(insert(TaskCodinh.__table__), batch)
+            except Exception:
+                db.bulk_insert_mappings(TaskCodinh, batch)
+            t_insert_total += (time.perf_counter() - t_ins_start)
 
-    BATCH_SIZE = 1000
-    for i in range(0, len(records_to_insert), BATCH_SIZE):
-        batch = records_to_insert[i:i + BATCH_SIZE]
-        db.bulk_insert_mappings(TaskCodinh, batch)
-        db.commit()
+            inserted_total += len(batch)
+            prog_pct = 50 + int((inserted_total / max(1, total_valid)) * 45)
+            _write_progress_file(file_path_str, prog_pct, inserted_total, total_valid)
 
-    # Update settings
-    vn_now = now + timedelta(hours=7)
-    vn_time_str = vn_now.strftime("%d/%m/%Y lúc %H:%M")
-    _set_setting(db, "codinh_last_import_wo_time", now.isoformat())
-    _set_setting(db, "codinh_last_import_wo_time_vn", vn_time_str)
-    _set_setting(db, "codinh_last_import_wo_filename", filename)
-    _set_setting(db, "codinh_last_import_wo_count", str(len(records_to_insert)))
+        print(f"[ETL CODINH] build: {t_build_total:.2f}s, insert: {t_insert_total:.2f}s", flush=True)
 
-    # Update ImportLog
-    if import_record:
-        # Deactivate previous active codinh imports
-        db.query(ImportLog).filter(ImportLog.domain == "codinh", ImportLog.id != import_record.id).update({"is_active": 0})
-        import_record.total_rows = len(df)
-        import_record.inserted_count = len(records_to_insert)
-        import_record.status = "COMPLETED"
-        import_record.progress_percent = 100
-        import_record.is_active = 1
-        db.commit()
-    else:
-        # Create an ImportLog record if none was provided
+        # Sync cabinets of closed WOs
         try:
+            closed_wos_subq = db.query(TaskCodinh.ma_cong_viec).filter(
+                TaskCodinh.trang_thai.in_(CLOSED_STATUSES)
+            ).scalar_subquery()
+            db.query(Cabinet).filter(
+                Cabinet.ma_wo.in_(closed_wos_subq),
+                or_(
+                    Cabinet.trang_thai_thc.like("%Đang%"),
+                    Cabinet.trang_thai_thc.like("%đang%")
+                )
+            ).update({"trang_thai_thc": "Đã hoàn thành bảo dưỡng"}, synchronize_session=False)
+        except Exception as e:
+            print(f"Notice: Failed to sync closed WO cabinet statuses: {e}")
+
+        # Update settings (within the same transaction)
+        vn_now = now + timedelta(hours=7)
+        vn_time_str = vn_now.strftime("%d/%m/%Y lúc %H:%M")
+        _set_setting(db, "codinh_last_import_wo_time", now.isoformat(), commit=False)
+        _set_setting(db, "codinh_last_import_wo_time_vn", vn_time_str, commit=False)
+        _set_setting(db, "codinh_last_import_wo_filename", filename, commit=False)
+        _set_setting(db, "codinh_last_import_wo_count", str(total_valid), commit=False)
+
+        # Update ImportLog
+        if import_record:
+            db.query(ImportLog).filter(ImportLog.domain == "codinh", ImportLog.id != import_record.id).update({"is_active": 0})
+            import_record.total_rows = total_valid
+            import_record.inserted_count = total_valid
+            import_record.status = "COMPLETED"
+            import_record.progress_percent = 100
+            import_record.is_active = 1
+        else:
             db.query(ImportLog).filter(ImportLog.domain == "codinh").update({"is_active": 0})
             file_size = path_obj.stat().st_size if path_obj.exists() else 0
             new_log = ImportLog(
@@ -313,24 +443,39 @@ def import_codinh_wos_from_excel(
                 file_size_bytes=file_size,
                 is_active=1,
                 imported_at=now,
-                total_rows=len(df),
-                inserted_count=len(records_to_insert),
+                total_rows=total_valid,
+                inserted_count=total_valid,
                 status="COMPLETED",
                 progress_percent=100,
                 domain="codinh",
             )
             db.add(new_log)
-            db.commit()
-        except Exception:
-            db.rollback()
 
-    return {
-        "filename": filename,
-        "total_wos": len(records_to_insert),
-        "closed_wos": closed_cnt,
-        "pending_wos": pending_cnt,
-        "imported_at_vn": vn_time_str,
-    }
+        t_com_start = time.perf_counter()
+        db.commit()
+        clear_codinh_stats_cache()
+        t_commit = time.perf_counter()
+        print(f"[ETL CODINH] commit: {t_commit - t_com_start:.2f}s", flush=True)
+        print(f"[ETL CODINH] total: {t_commit - t_start:.2f}s", flush=True)
+
+        return {
+            "filename": filename,
+            "total_wos": total_valid,
+            "closed_wos": closed_cnt,
+            "pending_wos": pending_cnt,
+            "imported_at_vn": vn_time_str,
+        }
+    except Exception as exc:
+        db.rollback()
+        raise exc
+    finally:
+        _cleanup_progress_file(file_path_str)
+        if is_sqlite:
+            try:
+                db.execute(text("PRAGMA foreign_keys = ON"))
+                db.commit()
+            except Exception:
+                pass
 
 
 def process_codinh_wos_import(import_id: int, file_path: str):
@@ -348,14 +493,31 @@ def process_codinh_wos_import(import_id: int, file_path: str):
             import_id=import_id
         )
     except Exception as ex:
-        db.rollback()
-        import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
-        if import_record:
-            import_record.status = "FAILED"
-            import_record.error_message = str(ex)
-            db.commit()
+        traceback.print_exc()
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        try:
+            import_record = db.query(ImportLog).filter(ImportLog.id == import_id).first()
+            if import_record:
+                import_record.status = "FAILED"
+                import_record.error_message = str(ex)
+                db.commit()
+        except Exception:
+            pass
     finally:
         db.close()
+
+
+def run_codinh_import_job(import_id: int, file_path: str):
+    """Entrypoint cho process con chạy import CĐBR: giải phóng pool cũ rồi chạy ETL."""
+    try:
+        from backend.database import engine
+        engine.dispose()
+    except Exception:
+        pass
+    process_codinh_wos_import(import_id, file_path)
 
 
 def import_cabinets_from_excel(
@@ -490,6 +652,19 @@ def import_cabinets_from_excel(
     pending_cabinets = 0
     unique_wos = set()
 
+    # Pre-fetch closed WOs from database to accurately compute completion upon upload
+    closed_wos_in_db = set(
+        r[0] for r in db.query(TaskCodinh.ma_cong_viec).filter(
+            TaskCodinh.trang_thai.in_(CLOSED_STATUSES)
+        ).all()
+    )
+    task_closed_wos = set(
+        r[0] for r in db.query(Task.ma_cong_viec).filter(
+            Task.trang_thai.in_(CLOSED_STATUSES)
+        ).all()
+    )
+    all_closed_wos = closed_wos_in_db | task_closed_wos
+
     df_records = df_valid.to_dict(orient="records")
     for row in df_records:
         wo_val = str(row["ma_wo_clean"]).strip()
@@ -502,7 +677,13 @@ def import_cabinets_from_excel(
         quoc_gia_val = str(row[col_quoc_gia]).strip() if col_quoc_gia and pd.notna(row.get(col_quoc_gia)) else None
 
         unique_wos.add(wo_val)
-        if "hoàn thành" in thc_status.lower() and "đang" not in thc_status.lower():
+        is_wo_closed = (
+            wo_val in all_closed_wos or
+            (wo_status is not None and wo_status.strip() in CLOSED_STATUSES)
+        )
+        is_thc_comp = "hoàn thành" in thc_status.lower() and "đang" not in thc_status.lower()
+
+        if is_wo_closed or is_thc_comp:
             completed_cabinets += 1
         else:
             pending_cabinets += 1
@@ -516,7 +697,7 @@ def import_cabinets_from_excel(
             "khu_vuc": khu_vuc_val,
             "tinh": tinh_val,
             "trang_thai_wo": wo_status,
-            "trang_thai_thc": thc_status,
+            "trang_thai_thc": "Đã hoàn thành bảo dưỡng" if is_wo_closed and not is_thc_comp else thc_status,
             "import_filename": filename,
             "created_at": now,
             "updated_at": now,
@@ -545,6 +726,7 @@ def import_cabinets_from_excel(
     _set_setting(db, "codinh_last_import_cabinet_filename", filename)
 
     rate = round((completed_cabinets / len(records_to_insert) * 100), 1) if records_to_insert else 0.0
+    clear_codinh_stats_cache()
 
     return {
         "filename": filename,
@@ -557,106 +739,172 @@ def import_cabinets_from_excel(
     }
 
 
+_codinh_seeded = False
+
+
 def seed_default_codinh_if_needed(db: Session):
     """Seed default Cố Định Băng Rộng category and demo cabinets if database is empty."""
-    cnt = db.query(ReportCategory).filter(ReportCategory.domain == "codinh").count()
-    default_cat = None
-    if cnt == 0:
-        default_cat = ReportCategory(
-            name="Bảo Dưỡng Tủ Hộp Cáp (THC)",
-            loai_cong_viec="ICMS_Bảo dưỡng THC",
-            description="Báo cáo tiến độ bảo dưỡng tủ hộp cáp CĐBR chi tiết theo WO và theo từng tủ cáp con",
-            icon="Cable",
-            sort_order=1,
-            is_default=True,
-            exclude_closed_prior_months=True,
-            filter_mode="by_loai",
-            filter_values=json.dumps(["ICMS_Bảo dưỡng THC"], ensure_ascii=False),
-            domain="codinh",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-        db.add(default_cat)
-        db.commit()
-        db.refresh(default_cat)
+    global _codinh_seeded
+    if _codinh_seeded:
+        return
+    try:
+        cnt = db.query(ReportCategory).filter(ReportCategory.domain == "codinh").count()
+        default_cat = None
+        if cnt == 0:
+            default_cat = ReportCategory(
+                name="Bảo Dưỡng Tủ Hộp Cáp (THC)",
+                loai_cong_viec="ICMS_Bảo dưỡng THC",
+                description="Báo cáo tiến độ bảo dưỡng tủ hộp cáp CĐBR chi tiết theo WO và theo từng tủ cáp con",
+                icon="Cable",
+                sort_order=1,
+                is_default=True,
+                exclude_closed_prior_months=True,
+                filter_mode="by_loai",
+                filter_values=json.dumps(["ICMS_Bảo dưỡng THC"], ensure_ascii=False),
+                domain="codinh",
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(default_cat)
+            db.commit()
+            db.refresh(default_cat)
 
-    # Also seed "ĐH Port Kém" category if not present
-    port_cat = db.query(ReportCategory).filter(
-        ReportCategory.domain == "codinh",
-        or_(
-            ReportCategory.name.ilike("%port kém%"),
-            ReportCategory.name.ilike("%port kem%"),
-            ReportCategory.loai_cong_viec == "Chủ động xử lý port kém"
-        )
-    ).first()
-    if not port_cat:
-        port_cat = ReportCategory(
-            name="ĐH Port Kém",
-            loai_cong_viec="Chủ động xử lý port kém",
-            description="Báo cáo theo dõi điều hành xử lý port kém GPON và Home wifi thu kém",
-            icon="Zap",
-            sort_order=2,
-            is_default=False,
-            exclude_closed_prior_months=False,
-            filter_mode="by_loai",
-            filter_values=json.dumps(["Chủ động xử lý port kém"], ensure_ascii=False),
-            domain="codinh",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-        db.add(port_cat)
-        db.commit()
+        # Also seed "ĐH Port Kém" category if not present
+        port_cat = db.query(ReportCategory).filter(
+            ReportCategory.domain == "codinh",
+            or_(
+                ReportCategory.name.ilike("%port kém%"),
+                ReportCategory.name.ilike("%port kem%"),
+                ReportCategory.loai_cong_viec == "Chủ động xử lý port kém"
+            )
+        ).first()
+        if not port_cat:
+            port_cat = ReportCategory(
+                name="ĐH Port Kém",
+                loai_cong_viec="Chủ động xử lý port kém",
+                description="Báo cáo theo dõi điều hành xử lý port kém GPON và Home wifi thu kém",
+                icon="Zap",
+                sort_order=2,
+                is_default=False,
+                exclude_closed_prior_months=False,
+                filter_mode="by_loai",
+                filter_values=json.dumps(["Chủ động xử lý port kém"], ensure_ascii=False),
+                domain="codinh",
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(port_cat)
+            db.commit()
 
-    # Check cabinets count
-    cab_cnt = db.query(Cabinet).count()
-    if cab_cnt == 0:
-        demo_file = Path(__file__).resolve().parent.parent.parent / "demo_tu_theo_ma_wo_demo.xlsx"
-        if demo_file.exists():
-            try:
-                import_cabinets_from_excel(
-                    db=db,
-                    file_path=demo_file,
-                    filename="demo_tu_theo_ma_wo_demo.xlsx",
-                    category_id=default_cat.id if default_cat else None
-                )
-            except Exception as e:
-                print(f"Notice: Failed to auto-seed demo cabinets: {e}")
-
-    # Auto-repair codinh_tasks user assignments if old import misidentified creator as assignee
-    if _get_setting(db, "codinh_fix_user_v2") != "1":
-        active_log = db.query(ImportLog).filter(ImportLog.domain == "codinh", ImportLog.status == "COMPLETED").order_by(desc(ImportLog.imported_at)).first()
-        if active_log and active_log.stored_filename:
-            file_path = UPLOAD_DIR / active_log.stored_filename
-            if file_path.exists():
+        # Check cabinets count
+        cab_cnt = db.query(Cabinet).count()
+        if cab_cnt == 0:
+            demo_file = Path(__file__).resolve().parent.parent.parent / "demo_tu_theo_ma_wo_demo.xlsx"
+            if demo_file.exists():
                 try:
-                    import_codinh_wos_from_excel(db, str(file_path), active_log.file_name, import_id=active_log.id)
+                    import_cabinets_from_excel(
+                        db=db,
+                        file_path=demo_file,
+                        filename="demo_tu_theo_ma_wo_demo.xlsx",
+                        category_id=default_cat.id if default_cat else None
+                    )
                 except Exception as e:
-                    print(f"Notice: re-import codinh failed: {e}")
-        _set_setting(db, "codinh_fix_user_v2", "1")
+                    print(f"Notice: Failed to auto-seed demo cabinets: {e}")
+
+        _codinh_seeded = True
+    except Exception:
+        pass
 
 
-def get_codinh_stats(
+_codinh_stats_cache: Dict[str, Dict[str, Any]] = {}
+_codinh_stats_cache_time: Dict[str, float] = {}
+_cache_key_locks: Dict[str, threading.Lock] = {}
+_cache_lock_guard = threading.Lock()
+CACHE_TTL_SECONDS = 600.0  # 10 minutes TTL
+
+
+def _get_cache_lock(cache_key: str) -> threading.Lock:
+    with _cache_lock_guard:
+        if cache_key not in _cache_key_locks:
+            _cache_key_locks[cache_key] = threading.Lock()
+        return _cache_key_locks[cache_key]
+
+
+def clear_codinh_stats_cache():
+    """Clear cached report statistics for CĐBR."""
+    global _codinh_stats_cache, _codinh_stats_cache_time, _cache_key_locks
+    with _cache_lock_guard:
+        _codinh_stats_cache.clear()
+        _codinh_stats_cache_time.clear()
+        _cache_key_locks.clear()
+
+
+def _apply_task_filters(
+    q,
+    model,
+    mode: str,
+    values: List[str],
+    target_month: Optional[str],
+    cat: Optional[ReportCategory],
     db: Session,
-    category_id: Optional[int] = None,
-    target_month: Optional[str] = None
+):
+    """
+    Common filter helper for CĐBR stats and drilldown.
+    Filters by task values/mode, month range, and exclusion of closed prior months.
+    """
+    if values:
+        if mode == "by_system":
+            if model is TaskCodinh:
+                q = q.filter(func.upper(TaskCodinh.he_thong).in_([v.upper().strip() for v in values]))
+            else:
+                upper_values = [v.upper().strip() for v in values]
+                sys_ids = db.query(SystemModel.id).filter(
+                    func.upper(func.trim(SystemModel.name)).in_(upper_values)
+                ).scalar_subquery()
+                q = q.filter(Task.system_id.in_(sys_ids))
+        else:
+            q = q.filter(model.loai_cong_viec.in_(values))
+
+    is_all = target_month and target_month.strip().lower() == "all"
+    if is_all:
+        return q
+
+    # Determine effective month (e.g. '2026-10')
+    active_m = (target_month.strip() if target_month and target_month.strip() else None) or get_current_month_setting(db)
+    if not active_m or active_m.strip().lower() == "all":
+        return q
+
+    try:
+        y_str, m_str = active_m.strip().split("-")
+        month_start = datetime(int(y_str), int(m_str), 1, 0, 0, 0)
+    except Exception:
+        return q
+
+    exclude_closed = cat.exclude_closed_prior_months if (cat and hasattr(cat, 'exclude_closed_prior_months') and cat.exclude_closed_prior_months is not None) else True
+
+    if exclude_closed:
+        start_date = func.coalesce(model.thoi_diem_bat_dau_thuc_hien, model.thoi_diem_tao, model.thoi_diem_yeu_cau_ket_thuc)
+        q = q.filter(
+            or_(
+                start_date == None,
+                start_date >= month_start,
+                ~model.trang_thai.in_(CLOSED_STATUSES)
+            )
+        )
+
+    return q
+
+
+def _compute_codinh_stats(
+    db: Session,
+    cat: Optional[ReportCategory],
+    category_id: Optional[int],
+    target_month: Optional[str],
+    cache_key: str,
+    cat_id_key: str,
+    m_key: str,
 ) -> Dict[str, Any]:
-    """
-    Get dual statistics (WO + Cabinets) for a specific Cố Định Băng Rộng category.
-    Prioritizes codinh_tasks if uploaded, otherwise falls back to tasks table.
-    Supports ĐH Port Kém specific metrics (Home kém, Port kém, Tồn <24h/72h, KPI 1d/3d).
-    """
-    seed_default_codinh_if_needed(db)
-
-    # 1. Fetch category
-    query_cat = db.query(ReportCategory).filter(ReportCategory.domain == "codinh")
-    if category_id:
-        cat = query_cat.filter(ReportCategory.id == category_id).first()
-    else:
-        cat = query_cat.order_by(ReportCategory.is_default.desc(), ReportCategory.sort_order.asc()).first()
-
-    if not cat:
-        cat = db.query(ReportCategory).first()
-
+    t_start_stats = time.perf_counter()
     now = datetime.utcnow()
     active_month = target_month or get_current_month_setting(db)
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
@@ -674,149 +922,147 @@ def get_codinh_stats(
         values = [cat.loai_cong_viec]
 
     raw_items = []
-    all_dates = []
+    has_dedicated_tasks = db.query(TaskCodinh.ma_cong_viec).first() is not None
+    model_cls = TaskCodinh if has_dedicated_tasks else Task
 
-    # Check if dedicated codinh_tasks table has matching records
-    has_dedicated_tasks = db.query(TaskCodinh).count() > 0
-    codinh_rows = []
-    if has_dedicated_tasks:
-        q = db.query(TaskCodinh)
-        if values:
-            if mode == "by_system":
-                q = q.filter(func.upper(TaskCodinh.he_thong).in_([v.upper().strip() for v in values]))
-            else:
-                q = q.filter(TaskCodinh.loai_cong_viec.in_(values))
-        codinh_rows = q.all()
-
-    if codinh_rows:
-        for t in codinh_rows:
-            eff_date = t.thoi_diem_bat_dau_thuc_hien or t.thoi_diem_tao
-            if eff_date:
-                all_dates.append(eff_date)
-            raw_items.append({
-                "ma_cong_viec": t.ma_cong_viec,
-                "station_code": t.ma_tram or "",
-                "loai_cong_viec": t.loai_cong_viec or "",
-                "noi_dung_cong_viec": t.noi_dung_cong_viec or "",
-                "ghi_chu": t.ghi_chu or "",
-                "trang_thai": t.trang_thai or "Chưa rõ",
-                "employee_name": t.nhan_vien or "Chưa gán",
-                "group_name": t.nhom or "Chưa phân nhóm",
-                "thoi_diem_tao": t.thoi_diem_tao,
-                "thoi_diem_bat_dau_thuc_hien": t.thoi_diem_bat_dau_thuc_hien,
-                "thoi_diem_yeu_cau_ket_thuc": t.thoi_diem_yeu_cau_ket_thuc,
-                "thoi_gian_con_lai": t.thoi_gian_con_lai,
-                "thoi_diem_ft_hoan_thanh": t.thoi_diem_ft_hoan_thanh,
-                "thoi_diem_cd_dong": t.thoi_diem_cd_dong,
-            })
+    # Available months list computed via distinct SQL query on thời gian bắt đầu (thoi_diem_bat_dau_thuc_hien)
+    start_expr = model_cls.thoi_diem_bat_dau_thuc_hien
+    if is_sqlite:
+        month_expr = func.strftime('%Y-%m', start_expr)
     else:
-        # Fallback to Task table
-        tasks_query = db.query(Task).outerjoin(Task.employee_assigned).outerjoin(Task.group)
-        if values:
-            if mode == "by_system":
+        month_expr = func.date_format(start_expr, '%Y-%m')
+
+    q_months = db.query(distinct(month_expr))\
+        .filter(start_expr.isnot(None))
+    if values:
+        if mode == "by_system":
+            if has_dedicated_tasks:
+                q_months = q_months.filter(func.upper(TaskCodinh.he_thong).in_([v.upper().strip() for v in values]))
+            else:
                 upper_values = [v.upper().strip() for v in values]
                 sys_ids = db.query(SystemModel.id).filter(
                     func.upper(func.trim(SystemModel.name)).in_(upper_values)
                 ).scalar_subquery()
-                tasks_query = tasks_query.filter(Task.system_id.in_(sys_ids))
-            else:
-                tasks_query = tasks_query.filter(Task.loai_cong_viec.in_(values))
+                q_months = q_months.filter(Task.system_id.in_(sys_ids))
+        else:
+            q_months = q_months.filter(model_cls.loai_cong_viec.in_(values))
 
-        task_rows = tasks_query.all()
-        for t in task_rows:
-            emp_name = t.employee_assigned.name if t.employee_assigned else "Chưa gán"
-            grp_name = t.group.name if t.group else "Chưa phân nhóm"
-            st_code = t.station.code if t.station else (t.station_code if hasattr(t, "station_code") else "")
-            eff_date = (t.thoi_diem_bat_dau_thuc_hien if hasattr(t, "thoi_diem_bat_dau_thuc_hien") else None) or t.thoi_diem_tao
-            if eff_date:
-                all_dates.append(eff_date)
+    available_months = [r[0] for r in q_months.order_by(desc(month_expr)).all() if r[0]]
+    if not available_months:
+        available_months = [now.strftime("%Y-%m")]
+
+    t_wo_start = time.perf_counter()
+    if has_dedicated_tasks:
+        q = db.query(
+            TaskCodinh.ma_cong_viec,
+            TaskCodinh.ma_tram,
+            TaskCodinh.loai_cong_viec,
+            TaskCodinh.noi_dung_cong_viec if is_port_kem else TaskCodinh.ma_cong_viec.label("noi_dung_dummy"),
+            TaskCodinh.trang_thai,
+            TaskCodinh.nhan_vien,
+            TaskCodinh.nhom,
+            TaskCodinh.thoi_diem_tao,
+            TaskCodinh.thoi_diem_bat_dau_thuc_hien,
+            TaskCodinh.thoi_diem_yeu_cau_ket_thuc,
+            TaskCodinh.thoi_gian_con_lai,
+            TaskCodinh.thoi_diem_ft_hoan_thanh,
+            TaskCodinh.thoi_diem_cd_dong,
+        )
+        q = _apply_task_filters(q, TaskCodinh, mode, values, target_month, cat, db)
+        codinh_tuples = q.all()
+        for t in codinh_tuples:
             raw_items.append({
-                "ma_cong_viec": t.ma_cong_viec,
-                "station_code": st_code,
-                "loai_cong_viec": t.loai_cong_viec or "",
-                "noi_dung_cong_viec": t.noi_dung_cong_viec or "",
-                "ghi_chu": t.ghi_chu or "",
-                "trang_thai": t.trang_thai or "Chưa rõ",
-                "employee_name": emp_name,
-                "group_name": grp_name,
-                "thoi_diem_tao": t.thoi_diem_tao,
-                "thoi_diem_bat_dau_thuc_hien": t.thoi_diem_bat_dau_thuc_hien if hasattr(t, "thoi_diem_bat_dau_thuc_hien") else None,
-                "thoi_diem_yeu_cau_ket_thuc": t.thoi_diem_yeu_cau_ket_thuc,
-                "thoi_gian_con_lai": t.thoi_gian_con_lai,
-                "thoi_diem_ft_hoan_thanh": t.thoi_diem_ft_hoan_thanh,
-                "thoi_diem_cd_dong": t.thoi_diem_cd_dong,
+                "ma_cong_viec": t[0],
+                "station_code": t[1] or "",
+                "loai_cong_viec": t[2] or "",
+                "noi_dung_cong_viec": t[3] if is_port_kem else "",
+                "trang_thai": t[4] or "Chưa rõ",
+                "employee_name": t[5] or "Chưa gán",
+                "group_name": t[6] or "Chưa phân nhóm",
+                "thoi_diem_tao": t[7],
+                "thoi_diem_bat_dau_thuc_hien": t[8],
+                "thoi_diem_yeu_cau_ket_thuc": t[9],
+                "thoi_gian_con_lai": t[10],
+                "thoi_diem_ft_hoan_thanh": t[11],
+                "thoi_diem_cd_dong": t[12],
             })
+    else:
+        # Fallback to Task table with fast tuple query (no full ORM instantiation)
+        tasks_query = db.query(
+            Task.ma_cong_viec,
+            Station.code.label("station_code"),
+            Task.loai_cong_viec,
+            Task.noi_dung_cong_viec if is_port_kem else Task.ma_cong_viec.label("noi_dung_dummy"),
+            Task.trang_thai,
+            Employee.name.label("employee_name"),
+            Group.name.label("group_name"),
+            Task.thoi_diem_tao,
+            Task.thoi_diem_bat_dau_thuc_hien,
+            Task.thoi_diem_yeu_cau_ket_thuc,
+            Task.thoi_gian_con_lai,
+            Task.thoi_diem_ft_hoan_thanh,
+            Task.thoi_diem_cd_dong,
+        ).outerjoin(Station, Task.station_id == Station.id)\
+         .outerjoin(Employee, Task.assigned_to_id == Employee.id)\
+         .outerjoin(Group, Task.group_id == Group.id)
 
-    # Available months list
-    distinct_months = set()
-    for dt in all_dates:
-        if isinstance(dt, datetime):
-            distinct_months.add(dt.strftime("%Y-%m"))
-    if not distinct_months:
-        distinct_months.add(now.strftime("%Y-%m"))
-    available_months = sorted(list(distinct_months), reverse=True)
-
-    # Month filter if specified and not 'all' (Strictly only WOs within target month based on start time)
-    if target_month and target_month != "all":
-        try:
-            import calendar
-            y, m = target_month.split("-")
-            m_start = datetime(int(y), int(m), 1, 0, 0, 0)
-            _, last_day = calendar.monthrange(int(y), int(m))
-            m_end = datetime(int(y), int(m), last_day, 23, 59, 59)
-            filtered_items = []
-            for item in raw_items:
-                eff_date = item.get("thoi_diem_bat_dau_thuc_hien") or item.get("thoi_diem_tao")
-                if eff_date and m_start <= eff_date <= m_end:
-                    filtered_items.append(item)
-            raw_items = filtered_items
-        except Exception:
-            pass
-    elif not is_port_kem and cat and cat.exclude_closed_prior_months:
-        # Default prior month exclusion for THC
-        try:
-            y, m = active_month.split("-")
-            m_start = datetime(int(y), int(m), 1, 0, 0, 0)
-            raw_items = [
-                item for item in raw_items
-                if (
-                    item["trang_thai"] not in CLOSED_STATUSES or
-                    ((item["thoi_diem_ft_hoan_thanh"] or item["thoi_diem_cd_dong"]) and (item["thoi_diem_ft_hoan_thanh"] or item["thoi_diem_cd_dong"]) >= m_start) or
-                    ((item.get("thoi_diem_bat_dau_thuc_hien") or item["thoi_diem_tao"]) and (item.get("thoi_diem_bat_dau_thuc_hien") or item["thoi_diem_tao"]) >= m_start)
-                )
-            ]
-        except Exception:
-            pass
+        tasks_query = _apply_task_filters(tasks_query, Task, mode, values, target_month, cat, db)
+        task_tuples = tasks_query.all()
+        for t in task_tuples:
+            raw_items.append({
+                "ma_cong_viec": t[0],
+                "station_code": t[1] or "",
+                "loai_cong_viec": t[2] or "",
+                "noi_dung_cong_viec": t[3] if is_port_kem else "",
+                "trang_thai": t[4] or "Chưa rõ",
+                "employee_name": t[5] or "Chưa gán",
+                "group_name": t[6] or "Chưa phân nhóm",
+                "thoi_diem_tao": t[7],
+                "thoi_diem_bat_dau_thuc_hien": t[8],
+                "thoi_diem_yeu_cau_ket_thuc": t[9],
+                "thoi_gian_con_lai": t[10],
+                "thoi_diem_ft_hoan_thanh": t[11],
+                "thoi_diem_cd_dong": t[12],
+            })
+    t_wo = time.perf_counter() - t_wo_start
 
     task_keys = [item["ma_cong_viec"] for item in raw_items]
+    task_keys_set = set(task_keys)
 
     # Cabinets only for non-Port Kém categories
-    wo_cabinets_map = defaultdict(list)
+    wo_cab_stats = {}  # ma_wo -> [total, raw_completed]
     has_cabinets = False
+    t_cab_start = time.perf_counter()
+    cab_query_rows = 0
     if not is_port_kem:
-        cab_query = db.query(Cabinet)
-        if cat:
-            cab_query = cab_query.filter(
-                or_(
-                    Cabinet.category_id == cat.id,
-                    Cabinet.ma_wo.in_(task_keys) if task_keys else False
-                )
-            )
-        cabinets_list = cab_query.all()
-        for c in cabinets_list:
-            is_completed = "hoàn thành" in (c.trang_thai_thc or "").lower() and "đang" not in (c.trang_thai_thc or "").lower()
-            wo_cabinets_map[c.ma_wo].append({
-                "id": c.id,
-                "ma_doi_tuong": c.ma_doi_tuong,
-                "ma_tram": c.ma_tram or "",
-                "trang_thai_thc": c.trang_thai_thc or "Đang thực hiện bảo dưỡng",
-                "is_completed": is_completed,
-                "tinh": c.tinh or "",
-                "khu_vuc": c.khu_vuc or ""
-            })
-        has_cabinets = len(cabinets_list) > 0
+        cab_query = db.query(
+            Cabinet.ma_wo,
+            Cabinet.trang_thai_thc,
+            func.count(Cabinet.id)
+        )
+        if cat and cat.id:
+            cab_rows = cab_query.filter(Cabinet.category_id == cat.id).group_by(Cabinet.ma_wo, Cabinet.trang_thai_thc).all()
+            if not cab_rows:
+                cab_rows = cab_query.group_by(Cabinet.ma_wo, Cabinet.trang_thai_thc).all()
+        else:
+            cab_rows = cab_query.group_by(Cabinet.ma_wo, Cabinet.trang_thai_thc).all()
+
+        cab_query_rows = len(cab_rows)
+        for c_wo, c_status, c_cnt in cab_rows:
+            if not c_wo or c_wo not in task_keys_set:
+                continue
+            if c_wo not in wo_cab_stats:
+                wo_cab_stats[c_wo] = [0, 0]
+            wo_cab_stats[c_wo][0] += c_cnt
+            st_low = (c_status or "").lower()
+            if "hoàn thành" in st_low and "đang" not in st_low:
+                wo_cab_stats[c_wo][1] += c_cnt
+
+        has_cabinets = len(wo_cab_stats) > 0
+    t_cab = time.perf_counter() - t_cab_start
 
     # 4. Compute metrics per employee and per group
+    t_loop_start = time.perf_counter()
     emp_map = defaultdict(lambda: {
         "key_name": "Chưa gán",
         "group_name": "Chưa phân nhóm",
@@ -884,9 +1130,13 @@ def get_codinh_stats(
             (item["thoi_diem_yeu_cau_ket_thuc"] and item["thoi_diem_yeu_cau_ket_thuc"] < now)
         )
 
-        nd = (item["noi_dung_cong_viec"] or "").lower()
-        is_port = ("port kém gpon" in nd or "port kem gpon" in nd or "port kém" in nd or "port kem" in nd or "gpon" in nd)
-        is_home = ("home wifi thu kém" in nd or "home wifi thu kem" in nd or "home wifi" in nd or "thu kém" in nd or "thu kem" in nd)
+        if is_port_kem:
+            nd = (item["noi_dung_cong_viec"] or "").lower()
+            is_port = ("port kém gpon" in nd or "port kem gpon" in nd or "port kém" in nd or "port kem" in nd or "gpon" in nd)
+            is_home = ("home wifi thu kém" in nd or "home wifi thu kem" in nd or "home wifi" in nd or "thu kém" in nd or "thu kem" in nd)
+        else:
+            is_port = False
+            is_home = False
 
         start_time = item.get("thoi_diem_bat_dau_thuc_hien") or item.get("thoi_diem_tao")
 
@@ -969,11 +1219,23 @@ def get_codinh_stats(
             grp_entry["closed_within_72h"] += 1
 
         if not is_port_kem:
-            cabs = wo_cabinets_map.get(item["ma_cong_viec"], [])
-            t_cabs = len(cabs)
-            comp_cabs = sum(1 for c in cabs if c["is_completed"])
-            pend_cabs = t_cabs - comp_cabs
-            overdue_cabs = pend_cabs if is_overdue else 0
+            cab_stat = wo_cab_stats.get(item["ma_cong_viec"])
+            if cab_stat:
+                t_cabs, raw_comp = cab_stat
+                if is_closed:
+                    comp_cabs = t_cabs
+                    pend_cabs = 0
+                    overdue_cabs = 0
+                else:
+                    comp_cabs = raw_comp
+                    pend_cabs = t_cabs - comp_cabs
+                    overdue_cabs = pend_cabs if is_overdue else 0
+            else:
+                t_cabs = 0
+                comp_cabs = 0
+                pend_cabs = 0
+                overdue_cabs = 0
+
             emp_entry["total_cabinets"] += t_cabs
             emp_entry["completed_cabinets"] += comp_cabs
             emp_entry["pending_cabinets"] += pend_cabs
@@ -982,6 +1244,9 @@ def get_codinh_stats(
             grp_entry["completed_cabinets"] += comp_cabs
             grp_entry["pending_cabinets"] += pend_cabs
             grp_entry["overdue_cabinets"] += overdue_cabs
+
+    t_loop = time.perf_counter() - t_loop_start
+    t_build_start = time.perf_counter()
 
     total_cabinets = sum(e["total_cabinets"] for e in emp_map.values()) if not is_port_kem else 0
     completed_cabinets = sum(e["completed_cabinets"] for e in emp_map.values()) if not is_port_kem else 0
@@ -1028,7 +1293,7 @@ def get_codinh_stats(
     if not last_update_vn:
         last_update_vn = _get_setting(db, "codinh_last_import_cabinet_time_vn")
     if not last_update_vn:
-        latest_log = db.query(ImportLog).order_by(ImportLog.imported_at.desc()).first()
+        latest_log = db.query(ImportLog).filter(ImportLog.domain == "codinh").order_by(ImportLog.imported_at.desc()).first()
         if latest_log and latest_log.imported_at:
             vn_dt = latest_log.imported_at + timedelta(hours=7)
             last_update_vn = vn_dt.strftime("%d/%m/%Y lúc %H:%M")
@@ -1036,7 +1301,9 @@ def get_codinh_stats(
             vn_dt = datetime.utcnow() + timedelta(hours=7)
             last_update_vn = vn_dt.strftime("%d/%m/%Y lúc %H:%M")
 
-    return {
+    t_build = time.perf_counter() - t_build_start
+
+    res = {
         "active_category": {
             "id": cat.id if cat else None,
             "name": cat.name if cat else "Báo Cáo Cố Định Băng Rộng",
@@ -1046,8 +1313,10 @@ def get_codinh_stats(
             "description": cat.description if cat else None,
             "has_cabinets": has_cabinets,
             "is_port_kem": is_port_kem,
+            "exclude_closed_prior_months": cat.exclude_closed_prior_months if cat else True,
         },
-        "target_month": target_month or "all",
+        "active_month": active_month,
+        "target_month": target_month or active_month,
         "available_months": available_months,
         "summary": {
             "total_wos": total_wos,
@@ -1077,8 +1346,71 @@ def get_codinh_stats(
         "by_employee": by_employee,
         "by_group": by_group,
         "last_data_update_vn": last_update_vn,
-        "has_dedicated_tasks": bool(codinh_rows),
+        "has_dedicated_tasks": bool(has_dedicated_tasks),
     }
+
+    t_total = time.perf_counter() - t_start_stats
+    print(f"[get_codinh_stats] cat={cat_id_key} month={m_key}: WO query={t_wo*1000:.2f}ms ({len(raw_items)} rows), Cab query={t_cab*1000:.2f}ms ({cab_query_rows} rows), Loop={t_loop*1000:.2f}ms, Build={t_build*1000:.2f}ms, Total={t_total*1000:.2f}ms", flush=True)
+
+    _codinh_stats_cache[cache_key] = res
+    _codinh_stats_cache_time[cache_key] = time.time()
+    return res
+
+
+def get_codinh_stats(
+    db: Session,
+    category_id: Optional[int] = None,
+    target_month: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get dual statistics (WO + Cabinets) for a specific Cố Định Băng Rộng category.
+    Thread-safe cached by category + month + data versions with 10-minute TTL.
+    """
+    seed_default_codinh_if_needed(db)
+
+    # 1. Fetch category
+    query_cat = db.query(ReportCategory).filter(ReportCategory.domain == "codinh")
+    if category_id:
+        cat = query_cat.filter(ReportCategory.id == category_id).first()
+    else:
+        cat = query_cat.order_by(ReportCategory.is_default.desc(), ReportCategory.sort_order.asc()).first()
+    if not cat:
+        cat = db.query(ReportCategory).first()
+
+    cat_id_key = str(cat.id if cat else (category_id or "default"))
+    m_key = (target_month or "default_month").strip()
+    cat_upd = cat.updated_at.isoformat() if (cat and hasattr(cat, "updated_at") and cat.updated_at) else ""
+
+    settings_rows = db.query(SystemSetting.key, SystemSetting.value).filter(
+        SystemSetting.key.in_(["codinh_last_import_wo_time", "codinh_last_import_cabinet_time"])
+    ).all()
+    s_map = dict(settings_rows)
+    wo_ver = s_map.get("codinh_last_import_wo_time") or ""
+    cab_ver = s_map.get("codinh_last_import_cabinet_time") or ""
+
+    cache_key = f"{cat_id_key}_{m_key}_{wo_ver}_{cab_ver}_{cat_upd}"
+
+    now_time = time.time()
+    if cache_key in _codinh_stats_cache:
+        if (now_time - _codinh_stats_cache_time.get(cache_key, 0)) < CACHE_TTL_SECONDS:
+            return _codinh_stats_cache[cache_key]
+
+    lock = _get_cache_lock(cache_key)
+    with lock:
+        now_time = time.time()
+        if cache_key in _codinh_stats_cache:
+            if (now_time - _codinh_stats_cache_time.get(cache_key, 0)) < CACHE_TTL_SECONDS:
+                return _codinh_stats_cache[cache_key]
+
+        return _compute_codinh_stats(
+            db=db,
+            cat=cat,
+            category_id=category_id,
+            target_month=target_month,
+            cache_key=cache_key,
+            cat_id_key=cat_id_key,
+            m_key=m_key,
+        )
 
 
 def get_codinh_meta_options(db: Session) -> Dict[str, List[str]]:
@@ -1112,6 +1444,14 @@ def get_codinh_meta_options(db: Session) -> Dict[str, List[str]]:
     return {"task_types": types, "systems": systems}
 
 
+def _sql_duration_hours(start_col, finish_col):
+    """Compute duration in hours between two datetime columns in SQL."""
+    if is_sqlite:
+        return (func.julianday(finish_col) - func.julianday(start_col)) * 24.0
+    else:
+        return func.timestampdiff(text("SECOND"), start_col, finish_col) / 3600.0
+
+
 def get_codinh_drilldown_tasks(
     db: Session,
     category_id: Optional[int] = None,
@@ -1123,7 +1463,7 @@ def get_codinh_drilldown_tasks(
     sort_by: Optional[str] = None,
     sort_order: str = "asc",
     page: int = 1,
-    page_size: int = 20000,
+    page_size: int = 50,
 ) -> Dict[str, Any]:
     """
     Get drilldown tasks for CĐBR matching the exact metric and row (employee or group) clicked.
@@ -1148,54 +1488,32 @@ def get_codinh_drilldown_tasks(
         values = [cat.loai_cong_viec]
 
     # Check if dedicated codinh_tasks table has data for this category
-    q_check = db.query(TaskCodinh)
+    q_check = db.query(TaskCodinh.ma_cong_viec)
     if values:
         if mode == "by_system":
             q_check = q_check.filter(func.upper(TaskCodinh.he_thong).in_([v.upper().strip() for v in values]))
         else:
             q_check = q_check.filter(TaskCodinh.loai_cong_viec.in_(values))
-    has_dedicated_tasks = q_check.count() > 0
+    has_dedicated_tasks = q_check.first() is not None
 
     if has_dedicated_tasks:
-        q = db.query(TaskCodinh)
-        if values:
-            if mode == "by_system":
-                q = q.filter(func.upper(TaskCodinh.he_thong).in_([v.upper().strip() for v in values]))
-            else:
-                q = q.filter(TaskCodinh.loai_cong_viec.in_(values))
-
-        effective_date = func.coalesce(TaskCodinh.thoi_diem_bat_dau_thuc_hien, TaskCodinh.thoi_diem_tao)
-
-        # Month filter (Strictly only WOs within target month based on start time)
-        if target_month and target_month.strip() and target_month.strip().lower() != "all":
-            try:
-                tm_y, tm_m = target_month.strip().split("-")
-                tm_year, tm_month = int(tm_y), int(tm_m)
-                m_start = datetime(tm_year, tm_month, 1, 0, 0, 0)
-                if tm_month == 12:
-                    m_end = datetime(tm_year + 1, 1, 1, 0, 0, 0)
-                else:
-                    m_end = datetime(tm_year, tm_month + 1, 1, 0, 0, 0)
-                q = q.filter(
-                    effective_date >= m_start,
-                    effective_date < m_end
-                )
-            except Exception:
-                pass
-        elif cat and cat.exclude_closed_prior_months:
-            active_month = get_current_month_setting(db)
-            try:
-                y, m = active_month.split("-")
-                m_start = datetime(int(y), int(m), 1, 0, 0, 0)
-                q = q.filter(
-                    or_(
-                        ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
-                        func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong) >= m_start,
-                        effective_date >= m_start
-                    )
-                )
-            except Exception:
-                pass
+        q = db.query(
+            TaskCodinh.ma_cong_viec,
+            TaskCodinh.loai_cong_viec,
+            TaskCodinh.noi_dung_cong_viec,
+            TaskCodinh.ghi_chu,
+            TaskCodinh.trang_thai,
+            TaskCodinh.nhan_vien,
+            TaskCodinh.nhom,
+            TaskCodinh.ma_tram,
+            TaskCodinh.thoi_diem_tao,
+            TaskCodinh.thoi_diem_bat_dau_thuc_hien,
+            TaskCodinh.thoi_diem_yeu_cau_ket_thuc,
+            TaskCodinh.thoi_gian_con_lai,
+            TaskCodinh.thoi_diem_ft_hoan_thanh,
+            TaskCodinh.thoi_diem_cd_dong,
+        )
+        q = _apply_task_filters(q, TaskCodinh, mode, values, target_month, cat, db)
 
         # Target filter (Employee or Group)
         if filter_type == "employee" and target_name:
@@ -1243,23 +1561,50 @@ def get_codinh_drilldown_tasks(
             q = q.filter(TaskCodinh.ma_cong_viec.in_(cab_wos))
         elif m_low in ("cabinet_completed", "completed_cabinets", "tu_xong"):
             comp_wos = db.query(Cabinet.ma_wo).filter(
-                Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
-                ~Cabinet.trang_thai_thc.ilike("%đang%")
+                or_(
+                    Cabinet.trang_thai_thc.like("%hoàn thành%"),
+                    Cabinet.trang_thai_thc.like("%Hoàn thành%"),
+                    Cabinet.trang_thai_thc.like("%Hoàn Thành%")
+                ),
+                ~Cabinet.trang_thai_thc.like("%Đang%"),
+                ~Cabinet.trang_thai_thc.like("%đang%")
             ).distinct().scalar_subquery()
-            q = q.filter(TaskCodinh.ma_cong_viec.in_(comp_wos))
+            all_cab_wos = db.query(Cabinet.ma_wo).distinct().scalar_subquery()
+            q = q.filter(
+                or_(
+                    TaskCodinh.ma_cong_viec.in_(comp_wos),
+                    and_(
+                        TaskCodinh.ma_cong_viec.in_(all_cab_wos),
+                        TaskCodinh.trang_thai.in_(CLOSED_STATUSES)
+                    )
+                )
+            )
         elif m_low in ("cabinet_pending", "pending_cabinets", "tu_ton"):
             pend_wos = db.query(Cabinet.ma_wo).filter(
                 or_(
-                    ~Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
-                    Cabinet.trang_thai_thc.ilike("%đang%")
+                    Cabinet.trang_thai_thc.like("%Đang%"),
+                    Cabinet.trang_thai_thc.like("%đang%"),
+                    and_(
+                        ~Cabinet.trang_thai_thc.like("%hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn Thành%")
+                    )
                 )
             ).distinct().scalar_subquery()
-            q = q.filter(TaskCodinh.ma_cong_viec.in_(pend_wos))
+            q = q.filter(
+                TaskCodinh.ma_cong_viec.in_(pend_wos),
+                ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES)
+            )
         elif m_low in ("cabinet_overdue", "overdue_cabinets", "tu_qua_han"):
             pend_cabs_wos = db.query(Cabinet.ma_wo).filter(
                 or_(
-                    ~Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
-                    Cabinet.trang_thai_thc.ilike("%đang%")
+                    Cabinet.trang_thai_thc.like("%Đang%"),
+                    Cabinet.trang_thai_thc.like("%đang%"),
+                    and_(
+                        ~Cabinet.trang_thai_thc.like("%hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn Thành%")
+                    )
                 )
             ).distinct().scalar_subquery()
             q = q.filter(
@@ -1302,18 +1647,36 @@ def get_codinh_drilldown_tasks(
             past_24h = now - timedelta(hours=24)
             q = q.filter(
                 ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
-                effective_date >= past_24h
+                func.coalesce(TaskCodinh.thoi_diem_bat_dau_thuc_hien, TaskCodinh.thoi_diem_tao) >= past_24h
             )
         elif m_low in ("pending_under_72h", "ton_duoi_72h"):
             past_72h = now - timedelta(hours=72)
             q = q.filter(
                 ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
-                effective_date >= past_72h
+                func.coalesce(TaskCodinh.thoi_diem_bat_dau_thuc_hien, TaskCodinh.thoi_diem_tao) >= past_72h
             )
         elif m_low in ("kpi_24h", "closed_24h", "closed_within_24h", "kpi_1_ngay"):
-            q = q.filter(TaskCodinh.trang_thai.in_(CLOSED_STATUSES))
+            finish_time = func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong)
+            start_time = func.coalesce(TaskCodinh.thoi_diem_bat_dau_thuc_hien, TaskCodinh.thoi_diem_tao)
+            dur = _sql_duration_hours(start_time, finish_time)
+            q = q.filter(
+                TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                finish_time.isnot(None),
+                start_time.isnot(None),
+                dur >= 0.0,
+                dur <= 24.0
+            )
         elif m_low in ("kpi_72h", "closed_72h", "closed_within_72h", "kpi_3_ngay"):
-            q = q.filter(TaskCodinh.trang_thai.in_(CLOSED_STATUSES))
+            finish_time = func.coalesce(TaskCodinh.thoi_diem_ft_hoan_thanh, TaskCodinh.thoi_diem_cd_dong)
+            start_time = func.coalesce(TaskCodinh.thoi_diem_bat_dau_thuc_hien, TaskCodinh.thoi_diem_tao)
+            dur = _sql_duration_hours(start_time, finish_time)
+            q = q.filter(
+                TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                finish_time.isnot(None),
+                start_time.isnot(None),
+                dur >= 0.0,
+                dur <= 72.0
+            )
 
         # Search filter
         if search and search.strip():
@@ -1339,65 +1702,51 @@ def get_codinh_drilldown_tasks(
         else:
             q = q.order_by(desc(TaskCodinh.thoi_diem_yeu_cau_ket_thuc))
 
-        # Handle KPI duration memory filtering if needed (Calculated from start time)
-        if m_low in ("kpi_24h", "closed_24h", "closed_within_24h", "kpi_1_ngay"):
-            all_closed = q.all()
-            filtered_kpi = []
-            for r in all_closed:
-                ft = r.thoi_diem_ft_hoan_thanh or r.thoi_diem_cd_dong
-                st = r.thoi_diem_bat_dau_thuc_hien or r.thoi_diem_tao
-                if ft and st:
-                    dur = (ft - st).total_seconds() / 3600.0
-                    if 0 <= dur <= 24.0:
-                        filtered_kpi.append(r)
-            total = len(filtered_kpi)
-            offset = (page - 1) * page_size
-            rows = filtered_kpi[offset:offset + page_size]
-        elif m_low in ("kpi_72h", "closed_72h", "closed_within_72h", "kpi_3_ngay"):
-            all_closed = q.all()
-            filtered_kpi = []
-            for r in all_closed:
-                ft = r.thoi_diem_ft_hoan_thanh or r.thoi_diem_cd_dong
-                st = r.thoi_diem_bat_dau_thuc_hien or r.thoi_diem_tao
-                if ft and st:
-                    dur = (ft - st).total_seconds() / 3600.0
-                    if 0 <= dur <= 72.0:
-                        filtered_kpi.append(r)
-            total = len(filtered_kpi)
-            offset = (page - 1) * page_size
-            rows = filtered_kpi[offset:offset + page_size]
-        else:
-            total = q.count()
-            offset = (page - 1) * page_size
-            rows = q.offset(offset).limit(page_size).all()
+        total = q.count()
+        offset = (page - 1) * page_size
+        rows = q.offset(offset).limit(page_size).all()
 
         wo_keys = [r.ma_cong_viec for r in rows]
 
         # Fetch child cabinets
         cabs_map = defaultdict(list)
         if wo_keys:
-            cabs = db.query(Cabinet).filter(Cabinet.ma_wo.in_(wo_keys)).all()
+            cabs = db.query(
+                Cabinet.id,
+                Cabinet.ma_wo,
+                Cabinet.ma_doi_tuong,
+                Cabinet.ma_tram,
+                Cabinet.trang_thai_thc,
+                Cabinet.trang_thai_wo
+            ).filter(Cabinet.ma_wo.in_(wo_keys)).all()
             for c in cabs:
-                is_comp = "hoàn thành" in (c.trang_thai_thc or "").lower() and "đang" not in (c.trang_thai_thc or "").lower()
-                cabs_map[c.ma_wo].append({
-                    "id": c.id,
-                    "ma_doi_tuong": c.ma_doi_tuong,
-                    "ma_tram": c.ma_tram or "",
-                    "trang_thai_thc": c.trang_thai_thc or "Đang thực hiện bảo dưỡng",
-                    "trang_thai_wo": c.trang_thai_wo or "",
+                is_comp = "hoàn thành" in (c[4] or "").lower() and "đang" not in (c[4] or "").lower()
+                cabs_map[c[1]].append({
+                    "id": c[0],
+                    "ma_doi_tuong": c[2],
+                    "ma_tram": c[3] or "",
+                    "trang_thai_thc": c[4] or "Đang thực hiện bảo dưỡng",
+                    "trang_thai_wo": c[5] or "",
                     "is_completed": is_comp,
                 })
 
-        # Fetch latest notes
+        # Fetch latest notes using subquery
         notes_map = {}
         if wo_keys:
-            all_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content)\
-                .filter(TaskNote.ma_cong_viec.in_(wo_keys))\
-                .order_by(TaskNote.created_at.desc())\
-                .all()
-            for k, c in all_notes:
-                if k not in notes_map:
-                    notes_map[k] = c
+            subq = db.query(
+                TaskNote.ma_cong_viec,
+                func.max(TaskNote.created_at).label("max_created_at")
+            ).filter(TaskNote.ma_cong_viec.in_(wo_keys)).group_by(TaskNote.ma_cong_viec).subquery()
+
+            latest_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content).join(
+                subq,
+                and_(
+                    TaskNote.ma_cong_viec == subq.c.ma_cong_viec,
+                    TaskNote.created_at == subq.c.max_created_at
+                )
+            ).all()
+            for k, c in latest_notes:
+                notes_map[k] = c
 
         items = []
         for r in rows:
@@ -1407,7 +1756,17 @@ def get_codinh_drilldown_tasks(
                 (r.thoi_diem_yeu_cau_ket_thuc and r.thoi_diem_yeu_cau_ket_thuc < now)
             )
             wo_cabs = cabs_map.get(r.ma_cong_viec, [])
-            comp_cabs = sum(1 for c in wo_cabs if c["is_completed"])
+            if is_closed:
+                comp_cabs = len(wo_cabs)
+                pend_cabs = 0
+                for c in wo_cabs:
+                    c["is_completed"] = True
+                    if "đang" in (c.get("trang_thai_thc") or "").lower():
+                        c["trang_thai_thc"] = "Đã hoàn thành bảo dưỡng"
+            else:
+                comp_cabs = sum(1 for c in wo_cabs if c["is_completed"])
+                pend_cabs = len(wo_cabs) - comp_cabs
+
             items.append({
                 "ma_cong_viec": r.ma_cong_viec,
                 "loai_cong_viec": r.loai_cong_viec or "",
@@ -1428,7 +1787,7 @@ def get_codinh_drilldown_tasks(
                 "is_overdue": is_overdue,
                 "total_cabinets": len(wo_cabs),
                 "completed_cabinets": comp_cabs,
-                "pending_cabinets": len(wo_cabs) - comp_cabs,
+                "pending_cabinets": pend_cabs,
                 "cabinets": wo_cabs,
             })
 
@@ -1442,49 +1801,25 @@ def get_codinh_drilldown_tasks(
 
     else:
         # Fallback to main Task table
-        q = db.query(Task).outerjoin(Task.employee_assigned).outerjoin(Task.group)
-        if values:
-            if mode == "by_system":
-                upper_values = [v.upper().strip() for v in values]
-                sys_ids = db.query(SystemModel.id).filter(
-                    func.upper(func.trim(SystemModel.name)).in_(upper_values)
-                ).scalar_subquery()
-                q = q.filter(Task.system_id.in_(sys_ids))
-            else:
-                q = q.filter(Task.loai_cong_viec.in_(values))
-
-        effective_date = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao)
-
-        # Month filter (Strictly only WOs within target month based on start time)
-        if target_month and target_month.strip() and target_month.strip().lower() != "all":
-            try:
-                tm_y, tm_m = target_month.strip().split("-")
-                tm_year, tm_month = int(tm_y), int(tm_m)
-                m_start = datetime(tm_year, tm_month, 1, 0, 0, 0)
-                if tm_month == 12:
-                    m_end = datetime(tm_year + 1, 1, 1, 0, 0, 0)
-                else:
-                    m_end = datetime(tm_year, tm_month + 1, 1, 0, 0, 0)
-                q = q.filter(
-                    effective_date >= m_start,
-                    effective_date < m_end
-                )
-            except Exception:
-                pass
-        elif cat and cat.exclude_closed_prior_months:
-            active_month = get_current_month_setting(db)
-            try:
-                y, m = active_month.split("-")
-                m_start = datetime(int(y), int(m), 1, 0, 0, 0)
-                q = q.filter(
-                    or_(
-                        ~Task.trang_thai.in_(CLOSED_STATUSES),
-                        func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) >= m_start,
-                        effective_date >= m_start
-                    )
-                )
-            except Exception:
-                pass
+        q = db.query(
+            Task.ma_cong_viec,
+            Task.loai_cong_viec,
+            Task.noi_dung_cong_viec,
+            Task.ghi_chu,
+            Task.trang_thai,
+            Employee.name.label("nhan_vien"),
+            Group.name.label("nhom"),
+            Station.code.label("ma_tram"),
+            Task.thoi_diem_tao,
+            Task.thoi_diem_bat_dau_thuc_hien,
+            Task.thoi_diem_yeu_cau_ket_thuc,
+            Task.thoi_gian_con_lai,
+            Task.thoi_diem_ft_hoan_thanh,
+            Task.thoi_diem_cd_dong,
+        ).outerjoin(Station, Task.station_id == Station.id)\
+         .outerjoin(Employee, Task.assigned_to_id == Employee.id)\
+         .outerjoin(Group, Task.group_id == Group.id)
+        q = _apply_task_filters(q, Task, mode, values, target_month, cat, db)
 
         # Target filter (Employee or Group)
         if filter_type == "employee" and target_name:
@@ -1528,23 +1863,50 @@ def get_codinh_drilldown_tasks(
             q = q.filter(Task.ma_cong_viec.in_(cab_wos))
         elif m_low in ("cabinet_completed", "completed_cabinets", "tu_xong"):
             comp_wos = db.query(Cabinet.ma_wo).filter(
-                Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
-                ~Cabinet.trang_thai_thc.ilike("%đang%")
+                or_(
+                    Cabinet.trang_thai_thc.like("%hoàn thành%"),
+                    Cabinet.trang_thai_thc.like("%Hoàn thành%"),
+                    Cabinet.trang_thai_thc.like("%Hoàn Thành%")
+                ),
+                ~Cabinet.trang_thai_thc.like("%Đang%"),
+                ~Cabinet.trang_thai_thc.like("%đang%")
             ).distinct().scalar_subquery()
-            q = q.filter(Task.ma_cong_viec.in_(comp_wos))
+            all_cab_wos = db.query(Cabinet.ma_wo).distinct().scalar_subquery()
+            q = q.filter(
+                or_(
+                    Task.ma_cong_viec.in_(comp_wos),
+                    and_(
+                        Task.ma_cong_viec.in_(all_cab_wos),
+                        Task.trang_thai.in_(CLOSED_STATUSES)
+                    )
+                )
+            )
         elif m_low in ("cabinet_pending", "pending_cabinets", "tu_ton"):
             pend_wos = db.query(Cabinet.ma_wo).filter(
                 or_(
-                    ~Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
-                    Cabinet.trang_thai_thc.ilike("%đang%")
+                    Cabinet.trang_thai_thc.like("%Đang%"),
+                    Cabinet.trang_thai_thc.like("%đang%"),
+                    and_(
+                        ~Cabinet.trang_thai_thc.like("%hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn Thành%")
+                    )
                 )
             ).distinct().scalar_subquery()
-            q = q.filter(Task.ma_cong_viec.in_(pend_wos))
+            q = q.filter(
+                Task.ma_cong_viec.in_(pend_wos),
+                ~Task.trang_thai.in_(CLOSED_STATUSES)
+            )
         elif m_low in ("cabinet_overdue", "overdue_cabinets", "tu_qua_han"):
             pend_cabs_wos = db.query(Cabinet.ma_wo).filter(
                 or_(
-                    ~Cabinet.trang_thai_thc.ilike("%hoàn thành%"),
-                    Cabinet.trang_thai_thc.ilike("%đang%")
+                    Cabinet.trang_thai_thc.like("%Đang%"),
+                    Cabinet.trang_thai_thc.like("%đang%"),
+                    and_(
+                        ~Cabinet.trang_thai_thc.like("%hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn thành%"),
+                        ~Cabinet.trang_thai_thc.like("%Hoàn Thành%")
+                    )
                 )
             ).distinct().scalar_subquery()
             q = q.filter(
@@ -1587,24 +1949,42 @@ def get_codinh_drilldown_tasks(
             past_24h = now - timedelta(hours=24)
             q = q.filter(
                 ~Task.trang_thai.in_(CLOSED_STATUSES),
-                effective_date >= past_24h
+                func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao) >= past_24h
             )
         elif m_low in ("pending_under_72h", "ton_duoi_72h"):
             past_72h = now - timedelta(hours=72)
             q = q.filter(
                 ~Task.trang_thai.in_(CLOSED_STATUSES),
-                effective_date >= past_72h
+                func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao) >= past_72h
             )
         elif m_low in ("kpi_24h", "closed_24h", "closed_within_24h", "kpi_1_ngay"):
-            q = q.filter(Task.trang_thai.in_(CLOSED_STATUSES))
+            finish_time = func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)
+            start_time = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao)
+            dur = _sql_duration_hours(start_time, finish_time)
+            q = q.filter(
+                Task.trang_thai.in_(CLOSED_STATUSES),
+                finish_time.isnot(None),
+                start_time.isnot(None),
+                dur >= 0.0,
+                dur <= 24.0
+            )
         elif m_low in ("kpi_72h", "closed_72h", "closed_within_72h", "kpi_3_ngay"):
-            q = q.filter(Task.trang_thai.in_(CLOSED_STATUSES))
+            finish_time = func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)
+            start_time = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao)
+            dur = _sql_duration_hours(start_time, finish_time)
+            q = q.filter(
+                Task.trang_thai.in_(CLOSED_STATUSES),
+                finish_time.isnot(None),
+                start_time.isnot(None),
+                dur >= 0.0,
+                dur <= 72.0
+            )
 
         # Search filter
         if search and search.strip():
             s_val = f"%{search.strip()}%"
             cab_search_wos = db.query(Cabinet.ma_wo).filter(Cabinet.ma_doi_tuong.ilike(s_val)).distinct().scalar_subquery()
-            q = q.outerjoin(Task.station).filter(
+            q = q.filter(
                 or_(
                     Task.ma_cong_viec.ilike(s_val),
                     Station.code.ilike(s_val),
@@ -1624,65 +2004,51 @@ def get_codinh_drilldown_tasks(
         else:
             q = q.order_by(desc(Task.thoi_diem_yeu_cau_ket_thuc))
 
-        # Handle KPI duration memory filtering if needed (Calculated from start time)
-        if m_low in ("kpi_24h", "closed_24h", "closed_within_24h", "kpi_1_ngay"):
-            all_closed = q.all()
-            filtered_kpi = []
-            for r in all_closed:
-                ft = r.thoi_diem_ft_hoan_thanh or r.thoi_diem_cd_dong
-                st = r.thoi_diem_bat_dau_thuc_hien or r.thoi_diem_tao
-                if ft and st:
-                    dur = (ft - st).total_seconds() / 3600.0
-                    if 0 <= dur <= 24.0:
-                        filtered_kpi.append(r)
-            total = len(filtered_kpi)
-            offset = (page - 1) * page_size
-            rows = filtered_kpi[offset:offset + page_size]
-        elif m_low in ("kpi_72h", "closed_72h", "closed_within_72h", "kpi_3_ngay"):
-            all_closed = q.all()
-            filtered_kpi = []
-            for r in all_closed:
-                ft = r.thoi_diem_ft_hoan_thanh or r.thoi_diem_cd_dong
-                st = r.thoi_diem_bat_dau_thuc_hien or r.thoi_diem_tao
-                if ft and st:
-                    dur = (ft - st).total_seconds() / 3600.0
-                    if 0 <= dur <= 72.0:
-                        filtered_kpi.append(r)
-            total = len(filtered_kpi)
-            offset = (page - 1) * page_size
-            rows = filtered_kpi[offset:offset + page_size]
-        else:
-            total = q.count()
-            offset = (page - 1) * page_size
-            rows = q.offset(offset).limit(page_size).all()
+        total = q.count()
+        offset = (page - 1) * page_size
+        rows = q.offset(offset).limit(page_size).all()
 
         wo_keys = [r.ma_cong_viec for r in rows]
 
         # Fetch child cabinets
         cabs_map = defaultdict(list)
         if wo_keys:
-            cabs = db.query(Cabinet).filter(Cabinet.ma_wo.in_(wo_keys)).all()
+            cabs = db.query(
+                Cabinet.id,
+                Cabinet.ma_wo,
+                Cabinet.ma_doi_tuong,
+                Cabinet.ma_tram,
+                Cabinet.trang_thai_thc,
+                Cabinet.trang_thai_wo
+            ).filter(Cabinet.ma_wo.in_(wo_keys)).all()
             for c in cabs:
-                is_comp = "hoàn thành" in (c.trang_thai_thc or "").lower() and "đang" not in (c.trang_thai_thc or "").lower()
-                cabs_map[c.ma_wo].append({
-                    "id": c.id,
-                    "ma_doi_tuong": c.ma_doi_tuong,
-                    "ma_tram": c.ma_tram or "",
-                    "trang_thai_thc": c.trang_thai_thc or "Đang thực hiện bảo dưỡng",
-                    "trang_thai_wo": c.trang_thai_wo or "",
+                is_comp = "hoàn thành" in (c[4] or "").lower() and "đang" not in (c[4] or "").lower()
+                cabs_map[c[1]].append({
+                    "id": c[0],
+                    "ma_doi_tuong": c[2],
+                    "ma_tram": c[3] or "",
+                    "trang_thai_thc": c[4] or "Đang thực hiện bảo dưỡng",
+                    "trang_thai_wo": c[5] or "",
                     "is_completed": is_comp,
                 })
 
-        # Fetch latest notes
+        # Fetch latest notes using subquery
         notes_map = {}
         if wo_keys:
-            all_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content)\
-                .filter(TaskNote.ma_cong_viec.in_(wo_keys))\
-                .order_by(TaskNote.created_at.desc())\
-                .all()
-            for k, c in all_notes:
-                if k not in notes_map:
-                    notes_map[k] = c
+            subq = db.query(
+                TaskNote.ma_cong_viec,
+                func.max(TaskNote.created_at).label("max_created_at")
+            ).filter(TaskNote.ma_cong_viec.in_(wo_keys)).group_by(TaskNote.ma_cong_viec).subquery()
+
+            latest_notes = db.query(TaskNote.ma_cong_viec, TaskNote.note_content).join(
+                subq,
+                and_(
+                    TaskNote.ma_cong_viec == subq.c.ma_cong_viec,
+                    TaskNote.created_at == subq.c.max_created_at
+                )
+            ).all()
+            for k, c in latest_notes:
+                notes_map[k] = c
 
         items = []
         for r in rows:
@@ -1692,10 +2058,20 @@ def get_codinh_drilldown_tasks(
                 (r.thoi_diem_yeu_cau_ket_thuc and r.thoi_diem_yeu_cau_ket_thuc < now)
             )
             wo_cabs = cabs_map.get(r.ma_cong_viec, [])
-            comp_cabs = sum(1 for c in wo_cabs if c["is_completed"])
-            emp_name = r.employee_assigned.name if r.employee_assigned else "Chưa gán"
-            grp_name = r.group.name if r.group else "Chưa phân nhóm"
-            st_code = r.station.code if r.station else ""
+            if is_closed:
+                comp_cabs = len(wo_cabs)
+                pend_cabs = 0
+                for c in wo_cabs:
+                    c["is_completed"] = True
+                    if "đang" in (c.get("trang_thai_thc") or "").lower():
+                        c["trang_thai_thc"] = "Đã hoàn thành bảo dưỡng"
+            else:
+                comp_cabs = sum(1 for c in wo_cabs if c["is_completed"])
+                pend_cabs = len(wo_cabs) - comp_cabs
+
+            emp_name = r.nhan_vien or "Chưa gán"
+            grp_name = r.nhom or "Chưa phân nhóm"
+            st_code = r.ma_tram or ""
             items.append({
                 "ma_cong_viec": r.ma_cong_viec,
                 "loai_cong_viec": r.loai_cong_viec or "",
@@ -1707,7 +2083,7 @@ def get_codinh_drilldown_tasks(
                 "group_name": grp_name,
                 "station_code": st_code,
                 "thoi_diem_tao": r.thoi_diem_tao.isoformat() if r.thoi_diem_tao else None,
-                "thoi_diem_bat_dau_thuc_hien": r.thoi_diem_bat_dau_thuc_hien.isoformat() if hasattr(r, "thoi_diem_bat_dau_thuc_hien") and r.thoi_diem_bat_dau_thuc_hien else None,
+                "thoi_diem_bat_dau_thuc_hien": r.thoi_diem_bat_dau_thuc_hien.isoformat() if r.thoi_diem_bat_dau_thuc_hien else None,
                 "thoi_diem_yeu_cau_ket_thuc": r.thoi_diem_yeu_cau_ket_thuc.isoformat() if r.thoi_diem_yeu_cau_ket_thuc else None,
                 "thoi_gian_con_lai": r.thoi_gian_con_lai,
                 "thoi_diem_ft_hoan_thanh": r.thoi_diem_ft_hoan_thanh.isoformat() if r.thoi_diem_ft_hoan_thanh else None,
@@ -1716,7 +2092,7 @@ def get_codinh_drilldown_tasks(
                 "is_overdue": is_overdue,
                 "total_cabinets": len(wo_cabs),
                 "completed_cabinets": comp_cabs,
-                "pending_cabinets": len(wo_cabs) - comp_cabs,
+                "pending_cabinets": pend_cabs,
                 "cabinets": wo_cabs,
             })
 
@@ -1743,6 +2119,7 @@ def activate_codinh_import(db: Session, import_id: int) -> ImportLog:
     file_path = UPLOAD_DIR / log.stored_filename
     if not file_path.exists():
         raise ValueError("File vật lý không còn tồn tại trên máy chủ")
+    clear_codinh_stats_cache()
     import_codinh_wos_from_excel(db, file_path, log.file_name, import_id=log.id)
     return log
 
@@ -1759,8 +2136,18 @@ def delete_codinh_import(db: Session, import_id: int) -> bool:
             file_path.unlink()
         except Exception:
             pass
+    # Clean up associated chunked parts and progress files
+    for ext in (".parts", ".progress", ".progress.tmp"):
+        aux_p = Path(f"{file_path}{ext}")
+        if aux_p.exists():
+            try:
+                aux_p.unlink()
+            except Exception:
+                pass
     if log.is_active == 1:
         db.query(TaskCodinh).delete()
     db.delete(log)
     db.commit()
+    clear_codinh_stats_cache()
     return True
+

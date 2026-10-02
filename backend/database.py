@@ -20,7 +20,7 @@ if is_sqlite:
         try:
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.execute("PRAGMA busy_timeout=90000")   # 90s - tránh lock khi upload
+            cursor.execute("PRAGMA busy_timeout=30000")   # 30s - tránh lock khi upload
             cursor.execute("PRAGMA cache_size=-32000")    # 32MB page cache
             cursor.execute("PRAGMA temp_store=MEMORY")    # temp tables vào RAM
             cursor.execute("PRAGMA mmap_size=268435456")  # 256MB memory-mapped I/O

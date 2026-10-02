@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   Clock,
   FileSpreadsheet,
-  Filter
+  Filter,
+  Calendar,
 } from 'lucide-react';
 
 import { codinhApi } from '../api/codinhApi';
@@ -46,6 +47,7 @@ export default function CodinhPage() {
   const { data: categories = [] } = useQuery({
     queryKey: ['codinh-categories'],
     queryFn: () => codinhApi.getCategories(null, true),
+    staleTime: 60 * 1000,
   });
 
   // Effective category id - Mặc định chưa xem bảng nào cho đến khi người dùng click chọn
@@ -66,6 +68,7 @@ export default function CodinhPage() {
     queryKey: ['codinh-stats', effectiveCatId, selectedMonth],
     queryFn: () => codinhApi.getStats(effectiveCatId, selectedMonth === 'all' ? null : selectedMonth),
     enabled: effectiveCatId !== null,
+    staleTime: 60 * 1000,
   });
 
   // 3. Fallback import log if backend doesn't provide codinh-specific timestamp
@@ -137,6 +140,7 @@ export default function CodinhPage() {
   };
 
   const hasCabinets = summary.has_cabinets;
+  const availableMonths = statsData?.available_months || [];
 
   // Unique clusters / groups for filtering employee table
   const uniqueGroups = useMemo(() => {
@@ -471,6 +475,12 @@ export default function CodinhPage() {
           <span className="badge badge-purple" style={{ fontSize: '0.8rem', fontWeight: 800, gap: '5px' }}>
             <Cable size={14} /> CỐ ĐỊNH BĂNG RỘNG (CĐBR)
           </span>
+
+          {statsData?.active_month && (
+            <span className="badge badge-success" style={{ gap: '4px', fontSize: '0.78rem', padding: '3px 10px', fontWeight: 700 }}>
+              <Calendar size={12} /> {statsData.active_month === 'all' ? 'Tất cả các tháng' : `Tháng ${statsData.active_month.split('-')[1]}/${statsData.active_month.split('-')[0]}`}
+            </span>
+          )}
 
           {lastDataUpdateStr && (
             <span
@@ -1067,6 +1077,39 @@ export default function CodinhPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Month Selector */}
+              {availableMonths.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <select
+                    value={selectedMonth || 'all'}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    style={{
+                      height: '32px',
+                      padding: '0 10px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="all">📅 Tất cả các tháng</option>
+                    {availableMonths.map((m) => {
+                      const parts = m.split('-');
+                      const label = parts.length === 2 ? `Tháng ${parts[1]}/${parts[0]}` : m;
+                      return (
+                        <option key={m} value={m}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
               <div className="search-input-box" style={{ width: '220px' }}>
                 <Search size={14} className="search-icon" />
                 <input
@@ -1737,6 +1780,16 @@ export default function CodinhPage() {
               </table>
             </div>
           )}
+
+          {/* Footnote matching Overview rule */}
+          <div style={{ padding: '10px 18px', background: 'var(--bg-tertiary)', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: '#8b5cf6', fontWeight: 800 }}>ℹ</span>
+            <span>
+              <strong>Quy tắc tháng:</strong> {activeCategory?.exclude_closed_prior_months !== false
+                ? `Bảng chỉ thống kê việc trong ${statsData?.active_month ? (statsData.active_month === 'all' ? 'tất cả các tháng' : `Tháng ${statsData.active_month.split('-')[1]}/${statsData.active_month.split('-')[0]}`) : 'tháng hiện tại'} và các việc tồn đọng từ tháng trước mang sang. Đã tự động loại bỏ các việc đã Đóng của tháng trước.`
+                : `Bảng đang hiển thị toàn bộ các việc (tùy chọn 'Loại bỏ công việc đã đóng của tháng trước' đang tắt).`}
+            </span>
+          </div>
         </div>
       )}
 

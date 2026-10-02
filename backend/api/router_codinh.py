@@ -1,12 +1,23 @@
+import os
+import sys
+import math
+import json
+import threading
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
+from uuid import uuid4
 import shutil
 import traceback
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks, Request, status
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request, status
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
+from backend.database import get_db, SessionLocal
 from backend.config import UPLOAD_DIR
 from backend.models.import_log import ImportLog
 from backend.schemas.import_schema import ImportLogResponse
@@ -22,6 +33,7 @@ from backend.services.report_category_service import (
     delete_report_category,
 )
 from backend.services.codinh_service import (
+    run_codinh_import_job,
     import_codinh_wos_from_excel,
     process_codinh_wos_import,
     import_cabinets_from_excel,
@@ -32,9 +44,123 @@ from backend.services.codinh_service import (
     get_codinh_import_logs,
     activate_codinh_import,
     delete_codinh_import,
+    clear_codinh_stats_cache,
 )
 
 router = APIRouter(prefix="/api/codinh", tags=["Cố Định Băng Rộng"])
+
+# 8MB chunk size as specified in requirements
+UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
+
+_executor: Optional[ProcessPoolExecutor] = None
+_executor_lock = threading.Lock()
+
+
+def get_executor() -> ProcessPoolExecutor:
+    """Lazy initialization of single-worker ProcessPoolExecutor with spawn context."""
+    global _executor
+    with _executor_lock:
+        if _executor is None:
+            ctx = multiprocessing.get_context("spawn")
+            kwargs = {"max_workers": 1, "mp_context": ctx}
+            if sys.version_info >= (3, 11):
+                kwargs["max_tasks_per_child"] = 1
+            _executor = ProcessPoolExecutor(**kwargs)
+        return _executor
+
+
+def submit_codinh_import_job(import_id: int, file_path: str):
+    """Submit CĐBR import job to ProcessPoolExecutor with recovery and status update callback."""
+    global _executor
+    for attempt in range(2):
+        try:
+            executor = get_executor()
+            future = executor.submit(run_codinh_import_job, import_id, file_path)
+
+            def on_done(fut):
+                try:
+                    fut.result()
+                    clear_codinh_stats_cache()
+                except Exception as exc:
+                    try:
+                        db = SessionLocal()
+                        try:
+                            log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
+                            if log and log.status in ("PENDING", "PROCESSING"):
+                                log.status = "FAILED"
+                                log.error_message = f"Lỗi tiến trình xử lý import CĐBR: {str(exc)}"
+                                db.commit()
+                        finally:
+                            db.close()
+                    except Exception:
+                        pass
+
+            future.add_done_callback(on_done)
+            return future
+        except BrokenProcessPool:
+            with _executor_lock:
+                if _executor:
+                    try:
+                        _executor.shutdown(wait=False, cancel_futures=True)
+                    except Exception:
+                        pass
+                _executor = None
+            if attempt == 1:
+                raise
+
+
+def _sanitize_and_validate_filename(original_name: str) -> tuple[str, str, str]:
+    """
+    Sanitize filename against path traversal, validate extension, and generate safe stored filename.
+    Returns: (clean_original_name, safe_stored_filename, ext)
+    """
+    clean_name = original_name.replace("\\", "/").split("/")[-1].strip()
+    if len(clean_name) > 200:
+        clean_name = clean_name[:200]
+
+    ext = Path(clean_name).suffix.lower()
+    if ext not in (".xlsx", ".xls", ".csv"):
+        raise HTTPException(
+            status_code=400,
+            detail="Định dạng file không hỗ trợ. Vui lòng tải lên file .xlsx, .xls hoặc .csv"
+        )
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    safe_stored = f"codinh_{timestamp}_{uuid4().hex[:10]}{ext}"
+    return clean_name, safe_stored, ext
+
+
+def _read_parts_file(parts_path: Path) -> set[int]:
+    """Read recorded chunk indices from .parts file."""
+    if not parts_path.exists():
+        return set()
+    try:
+        content = parts_path.read_text(encoding="utf-8").strip()
+        if not content:
+            return set()
+        return {int(line.strip()) for line in content.splitlines() if line.strip().isdigit()}
+    except Exception:
+        return set()
+
+
+def _pwrite_block(file_path: Path, offset: int, data: bytes):
+    """Write data to specific byte offset supporting both Linux (pwrite) and Windows (seek)."""
+    if hasattr(os, "pwrite"):
+        fd = os.open(str(file_path), os.O_WRONLY)
+        try:
+            total_written = 0
+            while total_written < len(data):
+                written = os.pwrite(fd, data[total_written:], offset + total_written)
+                if written == 0:
+                    break
+                total_written += written
+        finally:
+            os.close(fd)
+    else:
+        with open(file_path, "r+b") as f:
+            f.seek(offset)
+            f.write(data)
+
 
 
 
@@ -56,6 +182,7 @@ def create_codinh_category(payload: ReportCategoryCreate, db: Session = Depends(
         # Enforce domain = 'codinh'
         payload.domain = "codinh"
         cat = create_report_category(db, payload)
+        clear_codinh_stats_cache()
         return cat
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -69,6 +196,7 @@ def edit_codinh_category(cat_id: int, payload: ReportCategoryUpdate, db: Session
         cat = update_report_category(db, cat_id, payload)
         if not cat:
             raise HTTPException(status_code=404, detail="Không tìm thấy bảng báo cáo")
+        clear_codinh_stats_cache()
         return cat
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -81,6 +209,7 @@ def remove_codinh_category(cat_id: int, db: Session = Depends(get_db)):
         ok = delete_report_category(db, cat_id)
         if not ok:
             raise HTTPException(status_code=404, detail="Không tìm thấy hoặc không thể xóa")
+        clear_codinh_stats_cache()
         return {"status": "success", "message": "Đã xóa bảng báo cáo thành công"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -89,25 +218,21 @@ def remove_codinh_category(cat_id: int, db: Session = Depends(get_db)):
 @router.post("/wos/chunked/init")
 async def init_codinh_chunked_upload(
     file_name: str = Form(...),
-    file_size: int = Form(0),
+    file_size: int = Form(...),
     db: Session = Depends(get_db)
 ):
     """
     Khởi tạo phiên chunked upload cho file WO CĐBR (bỏ qua giới hạn Cloudflare / timeout).
     """
-    valid_exts = (".xlsx", ".xls", ".csv")
-    if not any(file_name.lower().endswith(ext) for ext in valid_exts):
-        raise HTTPException(
-            status_code=400,
-            detail="Định dạng file không hỗ trợ. Vui lòng tải lên file .xlsx, .xls hoặc .csv"
-        )
+    if file_size <= 0:
+        raise HTTPException(status_code=400, detail="Kích thước file không hợp lệ (file_size phải > 0)")
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    safe_filename = f"codinh_{timestamp}_{file_name}"
+    clean_name, safe_filename, ext = _sanitize_and_validate_filename(file_name)
     file_path = UPLOAD_DIR / safe_filename
+    parts_path = UPLOAD_DIR / f"{safe_filename}.parts"
 
     import_log = ImportLog(
-        file_name=file_name,
+        file_name=clean_name,
         stored_filename=safe_filename,
         file_size_bytes=file_size,
         is_active=0,
@@ -120,124 +245,170 @@ async def init_codinh_chunked_upload(
     db.commit()
     db.refresh(import_log)
 
-    # Pre-allocate file trước để hỗ trợ ghi song song tại đúng vị trí offset
-    if file_size > 0:
+    def _preallocate():
         with open(file_path, "wb") as f:
-            f.seek(file_size - 1)
-            f.write(b"\x00")
-    else:
-        with open(file_path, "wb") as f:
-            pass
+            f.truncate(file_size)
+        parts_path.write_text("", encoding="utf-8")
 
+    await run_in_threadpool(_preallocate)
+
+    total_chunks = math.ceil(file_size / UPLOAD_CHUNK_SIZE)
     return {
         "import_id": import_log.id,
         "stored_filename": safe_filename,
-        "status": "UPLOADING"
+        "status": "UPLOADING",
+        "chunk_size": UPLOAD_CHUNK_SIZE,
+        "total_chunks": total_chunks,
     }
 
 
-@router.post("/wos/chunked/{import_id}")
+@router.put("/wos/chunked/{import_id}/{chunk_index}")
 async def upload_codinh_chunk(
     import_id: int,
+    chunk_index: int,
     request: Request,
-    chunk_index: int = Form(0),
-    total_chunks: int = Form(1),
-    chunk_size: int = Form(16 * 1024 * 1024),  # Client phải gửi đúng CHUNK_SIZE (16MB)
-    chunk: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
     """
-    Tải lên từng chunk cho file CĐBR. Ghi vào đúng byte offset để hỗ trợ concurrent upload.
+    Tải lên từng chunk binary cho file CĐBR (raw octet-stream). Ghi vào đúng byte offset.
     """
     import_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
     if not import_log:
         raise HTTPException(status_code=404, detail="Upload session CĐBR không tồn tại")
 
-    if import_log.status not in ("UPLOADING",):
-        raise HTTPException(status_code=400, detail="Upload session đã kết thúc hoặc đang xử lý")
+    if import_log.status != "UPLOADING":
+        raise HTTPException(status_code=400, detail="Upload session CĐBR đã kết thúc hoặc không ở trạng thái UPLOADING")
 
+    file_size = import_log.file_size_bytes or 0
+    offset = chunk_index * UPLOAD_CHUNK_SIZE
+    if offset >= file_size or offset < 0:
+        raise HTTPException(status_code=400, detail=f"Chỉ số chunk {chunk_index} vượt quá giới hạn file")
+
+    expected_bytes = min(UPLOAD_CHUNK_SIZE, file_size - offset)
     file_path = UPLOAD_DIR / import_log.stored_filename
-    chunk_data = await chunk.read()
+    parts_path = UPLOAD_DIR / f"{import_log.stored_filename}.parts"
 
-    # Ghi vào đúng offset (hỗ trợ concurrent, không cần thứ tự tuần tự)
-    byte_offset = chunk_index * chunk_size
-    with open(file_path, "r+b" if file_path.exists() and file_path.stat().st_size > 0 else "wb") as f:
-        f.seek(byte_offset)
-        f.write(chunk_data)
+    # Nhả lock DB trước khi nhận stream mạng
+    db.rollback()
 
-    upload_progress = int(((chunk_index + 1) / total_chunks) * 100)
-    import_log.progress_percent = min(upload_progress, 100)
-    import_log.file_size_bytes = file_path.stat().st_size if file_path.exists() else 0
-    db.commit()
+    chunks_data = bytearray()
+    async for chunk in request.stream():
+        chunks_data.extend(chunk)
 
-    return {
-        "import_id": import_id,
-        "chunk_index": chunk_index,
-        "received": len(chunk_data),
-        "upload_progress": upload_progress
-    }
+    if len(chunks_data) != expected_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Kích thước chunk {chunk_index} không khớp: nhận {len(chunks_data)} bytes, mong đợi {expected_bytes} bytes"
+        )
+
+    # Ghi khối byte dùng pwrite / seek qua threadpool
+    await run_in_threadpool(_pwrite_block, file_path, offset, bytes(chunks_data))
+
+    # Ghi nhận chunk vào .parts
+    def _record_part():
+        with open(parts_path, "a", encoding="utf-8") as f:
+            f.write(f"{chunk_index}\n")
+
+    await run_in_threadpool(_record_part)
+
+    # Cập nhật tiến độ DB mỗi 8 chunks hoặc ở chunk cuối
+    total_chunks = math.ceil(file_size / UPLOAD_CHUNK_SIZE)
+    if chunk_index % 8 == 0 or chunk_index == total_chunks - 1:
+        try:
+            db_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
+            if db_log and db_log.status == "UPLOADING":
+                pct = int(((chunk_index + 1) / max(1, total_chunks)) * 100)
+                db_log.progress_percent = min(pct, 99)
+                db.commit()
+        except Exception:
+            db.rollback()
+
+    return {"import_id": import_id, "chunk_index": chunk_index, "status": "ok"}
 
 
 @router.post("/wos/chunked/{import_id}/finalize", response_model=ImportLogResponse)
 async def finalize_codinh_chunked_upload(
     import_id: int,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
-    Hoàn tất tải các chunk: chuyển trạng thái sang PENDING và chạy ETL ngầm.
+    Hoàn tất tải các chunk: kiểm tra tính toàn vẹn, chuyển trạng thái sang PENDING và nạp ngầm qua ProcessPoolExecutor.
     """
     import_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
     if not import_log:
         raise HTTPException(status_code=404, detail="Upload session CĐBR không tồn tại")
 
+    if import_log.status != "UPLOADING":
+        raise HTTPException(status_code=400, detail="Upload session CĐBR không ở trạng thái UPLOADING hoặc đã finalize")
+
     file_path = UPLOAD_DIR / import_log.stored_filename
-    if not file_path.exists() or file_path.stat().st_size == 0:
-        raise HTTPException(status_code=400, detail="File rỗng hoặc chưa được upload chunk nào")
+    parts_path = UPLOAD_DIR / f"{import_log.stored_filename}.parts"
+
+    if not file_path.exists():
+        raise HTTPException(status_code=400, detail="File vật lý không tồn tại trên máy chủ")
+
+    file_size = import_log.file_size_bytes or 0
+    total_chunks = math.ceil(file_size / UPLOAD_CHUNK_SIZE)
+
+    parts_uploaded = await run_in_threadpool(_read_parts_file, parts_path)
+    missing = [i for i in range(total_chunks) if i not in parts_uploaded]
+
+    if missing:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": f"Thiếu {len(missing)} phần tải lên",
+                "missing_chunks": missing
+            }
+        )
+
+    actual_size = file_path.stat().st_size
+    if actual_size != file_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Kích thước file thực tế ({actual_size} bytes) không khớp với khai báo ({file_size} bytes)"
+        )
+
+    # Clean up parts file
+    if parts_path.exists():
+        try:
+            parts_path.unlink()
+        except Exception:
+            pass
 
     import_log.status = "PENDING"
     import_log.progress_percent = 0
-    import_log.file_size_bytes = file_path.stat().st_size
     db.commit()
     db.refresh(import_log)
 
-    background_tasks.add_task(process_codinh_wos_import, import_log.id, str(file_path))
+    submit_codinh_import_job(import_log.id, str(file_path))
     return import_log
 
 
 @router.post("/wos/upload", response_model=ImportLogResponse)
 async def upload_codinh_wos_file(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
     """
     Tải lên file gốc công việc (WO) riêng biệt cho Cố Định Băng Rộng (CĐBR).
-    Chạy background ETL với theo dõi tiến độ và lưu lịch sử ImportLog.
+    Chạy ETL ngầm qua ProcessPoolExecutor với theo dõi tiến độ.
     """
-    valid_exts = (".xlsx", ".xls", ".csv")
-    if not any(file.filename.lower().endswith(ext) for ext in valid_exts):
-        raise HTTPException(
-            status_code=400,
-            detail="Định dạng file không hỗ trợ. Vui lòng tải lên file .xlsx, .xls hoặc .csv"
-        )
-
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    safe_name = f"codinh_{timestamp}_{file.filename}"
+    clean_name, safe_name, ext = _sanitize_and_validate_filename(file.filename or "upload.xlsx")
     temp_path = UPLOAD_DIR / safe_name
 
-    CHUNK_SIZE = 1024 * 1024
+    block_size = 1024 * 1024
     with open(temp_path, "wb") as buffer:
         while True:
-            chunk = await file.read(CHUNK_SIZE)
+            chunk = await file.read(block_size)
             if not chunk:
                 break
-            buffer.write(chunk)
+            await run_in_threadpool(buffer.write, chunk)
 
     file_size = temp_path.stat().st_size if temp_path.exists() else 0
 
     import_log = ImportLog(
-        file_name=file.filename,
+        file_name=clean_name,
         stored_filename=safe_name,
         file_size_bytes=file_size,
         is_active=0,
@@ -250,14 +421,27 @@ async def upload_codinh_wos_file(
     db.commit()
     db.refresh(import_log)
 
-    background_tasks.add_task(process_codinh_wos_import, import_log.id, str(temp_path))
+    submit_codinh_import_job(import_log.id, str(temp_path))
     return import_log
 
 
 @router.get("/import-logs", response_model=List[ImportLogResponse])
 def list_codinh_import_logs(limit: int = 50, db: Session = Depends(get_db)):
     """Lấy danh sách lịch sử nạp file Excel của riêng CĐBR."""
-    return get_codinh_import_logs(db, limit)
+    logs = get_codinh_import_logs(db, limit)
+    for log in logs:
+        if log.status == "PROCESSING":
+            prog_file = UPLOAD_DIR / f"{log.stored_filename}.progress"
+            if prog_file.exists():
+                try:
+                    data = json.loads(prog_file.read_text(encoding="utf-8"))
+                    db.expunge(log)
+                    log.progress_percent = max(log.progress_percent or 0, data.get("progress_percent", 0))
+                    if "inserted_count" in data:
+                        log.inserted_count = data["inserted_count"]
+                except Exception:
+                    pass
+    return logs
 
 
 @router.get("/import-logs/{import_id}", response_model=ImportLogResponse)
@@ -266,20 +450,29 @@ def get_codinh_import_status(import_id: int, db: Session = Depends(get_db)):
     log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
     if not log:
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch sử import CĐBR")
+    if log.status == "PROCESSING":
+        prog_file = UPLOAD_DIR / f"{log.stored_filename}.progress"
+        if prog_file.exists():
+            try:
+                data = json.loads(prog_file.read_text(encoding="utf-8"))
+                db.expunge(log)
+                log.progress_percent = max(log.progress_percent or 0, data.get("progress_percent", 0))
+                if "inserted_count" in data:
+                    log.inserted_count = data["inserted_count"]
+            except Exception:
+                pass
     return log
 
 
 @router.post("/import-logs/{import_id}/activate", response_model=ImportLogResponse)
 def activate_codinh_file(
     import_id: int,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Kích hoạt nạp lại file cũ của CĐBR và chạy background ETL."""
+    """Kích hoạt nạp lại file cũ của CĐBR và chạy background ETL qua ProcessPoolExecutor."""
     log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
     if not log:
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch sử import CĐBR")
-    from backend.config import UPLOAD_DIR
     file_path = UPLOAD_DIR / log.stored_filename
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail=f"File vật lý {log.stored_filename} không còn tồn tại trên máy chủ")
@@ -289,7 +482,7 @@ def activate_codinh_file(
     db.commit()
     db.refresh(log)
 
-    background_tasks.add_task(process_codinh_wos_import, log.id, str(file_path))
+    submit_codinh_import_job(log.id, str(file_path))
     return log
 
 

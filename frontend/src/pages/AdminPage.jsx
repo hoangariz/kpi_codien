@@ -956,8 +956,8 @@ export default function AdminPage({ onNavigateToDashboard }) {
           <p>
             Khi chọn <strong>{monthOptions.find(o => o.value === selectedMonth)?.label || selectedMonth}</strong>: 
             Tất cả các công việc có <em>Thời điểm yêu cầu kết thúc</em> thuộc các tháng trước đã có trạng thái <strong>Đóng</strong> sẽ 
-            <strong> tự động bị loại bỏ</strong> khỏi bảng Bảo Dưỡng Cơ Điện.
-            Hệ thống chỉ giữ lại các việc của tháng này và các công việc tồn đọng chưa hoàn thành từ các tháng trước mang sang.
+            <strong> tự động bị loại bỏ</strong> khỏi cả bảng <strong>Tổng Quan (Bảo Dưỡng Cơ Điện)</strong> và <strong>Cố Định Băng Rộng (/codinh)</strong>.
+            Hệ thống chỉ giữ lại các việc của tháng này và các công việc tồn đọng chưa hoàn thành từ các tháng trước mang sang (áp dụng mặc định trừ những báo cáo có <em>"Loại bỏ công việc đã đóng của tháng trước"</em> bị tắt).
           </p>
         </div>
       </div>
