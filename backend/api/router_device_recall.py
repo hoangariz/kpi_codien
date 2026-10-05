@@ -1,6 +1,7 @@
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
+from urllib.parse import quote
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -39,10 +40,36 @@ def get_items(
     db: Session = Depends(get_db)
 ):
     """
-    Lấy danh sách chi tiết thiết bị cần thu hồi.
-    Không trả về Trung tâm Cụm xã, Tên FT, MNV theo đúng yêu cầu giao diện.
+    Lấy danh sách chi tiết thiết bị cần thu hồi (đầy đủ mã nhân viên, họ và tên, cụm xã).
     """
     return device_recall_service.get_device_recall_items(db, cluster=cluster, ft_name=ft, search=search)
+
+
+@router.get("/export")
+def export_items(
+    cluster: str = Query(..., description="Tên Trung tâm Cụm xã"),
+    ft: Optional[str] = Query(None, description="Tên FT đã chọn"),
+    search: Optional[str] = Query(None, description="Từ khóa tìm kiếm thuê bao/địa chỉ"),
+    db: Session = Depends(get_db)
+):
+    """
+    Xuất danh sách thiết bị cần thu hồi ra file CSV (chuẩn UTF-8 BOM cho Excel).
+    Có đầy đủ cột Mã nhân viên, Họ và tên.
+    """
+    csv_content = device_recall_service.export_device_recall_csv(db, cluster=cluster, ft_name=ft, search=search)
+    clean_cluster = cluster.replace(" ", "_")
+    clean_ft = f"_{ft.replace(' ', '_')}" if ft else "_TatCa"
+    filename = f"ThuHoiThietBi_{clean_cluster}{clean_ft}.csv"
+    encoded_filename = quote(filename)
+
+    return Response(
+        content=csv_content.encode("utf-8-sig"),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 @router.post("/upload")

@@ -131,7 +131,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
     }, 1800);
   };
 
-  // Handle Export CSV
+  // Handle Export CSV (Chuẩn UTF-8 BOM cho Microsoft Excel)
   const handleExportCsv = () => {
     if (!items.length) {
       alert('Không có dữ liệu để xuất');
@@ -139,6 +139,9 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
     }
     const headers = [
       'STT',
+      'Mã nhân viên',
+      'Họ và tên',
+      'Cụm xã',
       'Số Thuê Bao',
       'Dịch Vụ',
       'Địa Chỉ Khách Hàng',
@@ -151,6 +154,9 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
     ];
     const rows = items.map((it, idx) => [
       idx + 1,
+      `"${it.ma_nv || selectedFtObj?.ma_nv || ''}"`,
+      `"${it.ten_ft || selectedFt || ''}"`,
+      `"${it.cum_xa || selectedCluster || ''}"`,
       `"${it.so_thue_bao || ''}"`,
       `"${it.dich_vu || ''}"`,
       `"${(it.dia_chi_khach_hang || '').replace(/"/g, '""')}"`,
@@ -737,6 +743,19 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                           >
                             {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
                           </button>
+                          {!selectedFt && item.ten_ft && (
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                color: 'var(--text-muted)',
+                                background: 'var(--bg-secondary)',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              {item.ten_ft} {item.ma_nv ? `(${item.ma_nv})` : ''}
+                            </span>
+                          )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -851,6 +870,8 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                 <thead>
                   <tr>
                     <th style={{ width: '45px', textAlign: 'center' }}>STT</th>
+                    {!selectedFt && <th style={{ minWidth: '95px', textAlign: 'center' }}>Mã NV</th>}
+                    {!selectedFt && <th style={{ minWidth: '140px' }}>Họ và tên</th>}
                     <th style={{ minWidth: '150px' }}>Số Thuê Bao</th>
                     <th style={{ minWidth: '130px' }}>Dịch Vụ</th>
                     <th style={{ minWidth: '240px' }}>Địa Chỉ Khách Hàng</th>
@@ -883,6 +904,16 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                         <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600 }}>
                           {idx + 1}
                         </td>
+                        {!selectedFt && (
+                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>
+                            {item.ma_nv || '-'}
+                          </td>
+                        )}
+                        {!selectedFt && (
+                          <td style={{ fontWeight: 600, fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                            {item.ten_ft || '-'}
+                          </td>
+                        )}
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span
@@ -989,8 +1020,10 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
             >
               <HelpCircle size={13} />
               <span>
-                Theo quy định hiển thị: Cụm ({selectedCluster}), Tên FT ({selectedFt || 'Tất cả'}), MNV không hiển thị
-                lại trong các cột của bảng.
+                {selectedFt
+                  ? `Đang xem thiết bị của: ${selectedFt} (Mã NV: ${selectedFtObj?.ma_nv || '--'}). `
+                  : `Đang xem toàn bộ nhân viên trong cụm ${selectedCluster}. `}
+                Khi xuất file Excel / CSV sẽ luôn bao gồm đầy đủ cột Mã nhân viên, Họ và tên và Cụm xã.
               </span>
             </div>
           </>

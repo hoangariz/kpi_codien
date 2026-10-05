@@ -338,7 +338,6 @@ def get_device_recall_items(
         else:
             regular_devices += tbi_val
 
-        # Không trả về Trung tâm Cụm xã, Tên FT, MNV
         items.append({
             "id": item.id,
             "so_thue_bao": item.so_thue_bao,
@@ -351,6 +350,9 @@ def get_device_recall_items(
             "loai_thiet_bi_raw": item.loai_thiet_bi or "-",
             "tuoi_tho_mesh": item.tuoi_tho_mesh or "-",
             "so_tbi_mesh_phai_thu": item.so_tbi_mesh_phai_thu or "-",
+            "ma_nv": item.ma_nv or "",
+            "ten_ft": item.ten_ft or "",
+            "cum_xa": item.cum_xa or "",
         })
 
     return {
@@ -364,6 +366,60 @@ def get_device_recall_items(
             "regular_devices": regular_devices,
         }
     }
+
+
+def export_device_recall_csv(
+    db: Session,
+    cluster: str,
+    ft_name: Optional[str] = None,
+    search: Optional[str] = None
+) -> str:
+    """
+    Xuất danh sách thiết bị cần thu hồi dưới dạng CSV (có UTF-8 BOM cho Excel).
+    Bao gồm cột Mã nhân viên, Họ và tên theo yêu cầu.
+    """
+    data = get_device_recall_items(db, cluster=cluster, ft_name=ft_name, search=search)
+    items = data.get("items", [])
+
+    output = io.StringIO()
+    # Ghi BOM UTF-8 để Microsoft Excel hiển thị tiếng Việt chuẩn
+    output.write('\ufeff')
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "STT",
+        "Mã nhân viên",
+        "Họ và tên",
+        "Cụm xã",
+        "Số Thuê Bao",
+        "Dịch Vụ",
+        "Địa Chỉ Khách Hàng",
+        "Mức Thuê Bao",
+        "Mức Thiết Bị",
+        "Tổng Tbi Phải Thu",
+        "Loại Thiết Bị",
+        "Tuổi Thọ Mesh",
+        "Số Tbi Mesh Phải Thu",
+    ])
+
+    for idx, it in enumerate(items, 1):
+        writer.writerow([
+            idx,
+            it.get("ma_nv", ""),
+            it.get("ten_ft", ""),
+            it.get("cum_xa", ""),
+            it.get("so_thue_bao", ""),
+            it.get("dich_vu", ""),
+            it.get("dia_chi_khach_hang", ""),
+            it.get("muc_thue_bao", ""),
+            it.get("muc_thiet_bi", ""),
+            it.get("tong_tbi_phai_thu", 0),
+            it.get("loai_thiet_bi", ""),
+            it.get("tuoi_tho_mesh", ""),
+            it.get("so_tbi_mesh_phai_thu", ""),
+        ])
+
+    return output.getvalue()
 
 
 def get_device_recall_meta(db: Session) -> dict:

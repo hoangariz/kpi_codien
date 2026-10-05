@@ -53,4 +53,12 @@ export const deviceRecallApi = {
     const res = await api.post('/reload-default');
     return res.data;
   },
+
+  // Link tải file xuất CSV/Excel trực tiếp từ server
+  getExportUrl: (cluster, ft = null, search = null) => {
+    const params = new URLSearchParams({ cluster });
+    if (ft) params.append('ft', ft);
+    if (search) params.append('search', search);
+    return `/api/device-recall/export?${params.toString()}`;
+  },
 };
