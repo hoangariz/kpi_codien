@@ -36,6 +36,7 @@ export default function MaintenanceSpreadsheetTable({
   exportFilename = 'Bao_cao_co_dien',
   defaultExpanded = true,
   themeColor = 'var(--brand-primary)',
+  excludeTuChoi = false,
 }) {
   const [localActiveTab, setLocalActiveTab] = useState(activeTab);
   const [searchQuery, setSearchQuery] = useState('');
@@ -450,22 +451,35 @@ export default function MaintenanceSpreadsheetTable({
         <div 
           className="cell-clickable"
           onClick={() => handleCellClick('tu_choi', 'FT / CĐ Từ Chối')}
-          title={`Nhấn để xem danh sách việc từ chối (Tổng: ${summary.tu_choi ?? 0}, trong đó Quá hạn: ${summary.overdue_tu_choi ?? 0}, FT từ chối: ${summary.ft_tu_choi ?? 0}, CĐ từ chối: ${summary.cd_tu_choi ?? 0})`}
-          style={{ background: 'rgba(244, 63, 94, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244, 63, 94, 0.2)' }}
+          title={excludeTuChoi 
+            ? 'Đang bật chế độ ẩn WO FT từ chối / CĐ từ chối' 
+            : `Nhấn để xem danh sách việc từ chối (Tổng: ${summary.tu_choi ?? 0}, trong đó Quá hạn: ${summary.overdue_tu_choi ?? 0}, FT từ chối: ${summary.ft_tu_choi ?? 0}, CĐ từ chối: ${summary.cd_tu_choi ?? 0})`
+          }
+          style={{ 
+            background: excludeTuChoi ? 'var(--bg-tertiary)' : 'rgba(244, 63, 94, 0.08)', 
+            padding: '6px 10px', 
+            borderRadius: 'var(--radius-sm)', 
+            border: excludeTuChoi ? '1px dashed var(--border-color)' : '1px solid rgba(244, 63, 94, 0.2)',
+            opacity: excludeTuChoi ? 0.6 : 1
+          }}
         >
-          <span style={{ fontSize: '0.68rem', color: '#e11d48', display: 'block', fontWeight: 700 }}>FT/CĐ Từ Chối</span>
-          <strong style={{ fontSize: '1.15rem', color: '#e11d48' }}>
-            {summary.tu_choi ?? 0}
-            <span 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCellClick('overdue_tu_choi', 'Từ Chối Quá Hạn');
-              }}
-              style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', marginLeft: '4px', background: 'rgba(239, 68, 68, 0.15)', padding: '1px 5px', borderRadius: '4px', cursor: 'pointer' }}
-              title="Nhấn để chỉ xem những việc Từ chối bị Quá hạn"
-            >
-              {summary.overdue_tu_choi ?? 0} QH
-            </span>
+          <span style={{ fontSize: '0.68rem', color: excludeTuChoi ? 'var(--text-muted)' : '#e11d48', display: 'block', fontWeight: 700 }}>
+            FT/CĐ Từ Chối {excludeTuChoi ? '(Đã Ẩn)' : ''}
+          </span>
+          <strong style={{ fontSize: '1.15rem', color: excludeTuChoi ? 'var(--text-muted)' : '#e11d48' }}>
+            {excludeTuChoi ? 0 : (summary.tu_choi ?? 0)}
+            {!excludeTuChoi && (
+              <span 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCellClick('overdue_tu_choi', 'Từ Chối Quá Hạn');
+                }}
+                style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', marginLeft: '4px', background: 'rgba(239, 68, 68, 0.15)', padding: '1px 5px', borderRadius: '4px', cursor: 'pointer' }}
+                title="Nhấn để chỉ xem những việc Từ chối bị Quá hạn"
+              >
+                {summary.overdue_tu_choi ?? 0} QH
+              </span>
+            )}
           </strong>
         </div>
 
@@ -525,6 +539,15 @@ export default function MaintenanceSpreadsheetTable({
             <Calendar size={14} />
             Theo Ngày (NSLĐ)
           </button>
+          {excludeTuChoi && (
+            <span 
+              className="badge badge-warning" 
+              style={{ fontSize: '0.72rem', padding: '3px 8px', gap: '4px', fontWeight: 700, borderRadius: '12px' }}
+              title="Bảng đang loại trừ các công việc FT từ chối / CĐ từ chối để tránh loãng số liệu"
+            >
+              🚫 Đang ẩn WO Từ Chối
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

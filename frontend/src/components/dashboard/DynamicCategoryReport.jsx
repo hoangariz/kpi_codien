@@ -23,7 +23,9 @@ export default function DynamicCategoryReport({
   setSelectedBoardId,
   selectedBoard = null,
   trackingBoards = [],
-  handleOpenDrilldown
+  handleOpenDrilldown,
+  excludeTuChoi = false,
+  setExcludeTuChoi
 }) {
   const formatMonthDisplay = (m) => {
     if (!m) return '';
@@ -95,11 +97,56 @@ export default function DynamicCategoryReport({
                 <span className="badge badge-success" style={{ gap: '4px', fontSize: '0.78rem', padding: '2px 9px', fontWeight: 700 }}>
                   <Calendar size={12} /> {formatMonthDisplay(maintSpecial?.active_month)}
                 </span>
-
               </div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                Bảng tính chi tiết và điều phối nhiệm vụ theo từng Nhân viên & Nhóm
-              </span>
+
+              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center' }}>
+                <label 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: excludeTuChoi ? 'var(--danger-dark, #e11d48)' : 'var(--text-secondary)',
+                    background: excludeTuChoi ? 'rgba(244, 63, 94, 0.08)' : 'var(--bg-tertiary)',
+                    border: excludeTuChoi ? '1px solid rgba(244, 63, 94, 0.35)' : '1px solid var(--border-color)',
+                    padding: '3px 10px',
+                    borderRadius: '16px',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Khi tích chọn: Không hiển thị và không tính toán các WO bị FT từ chối / CĐ từ chối trong bảng bên dưới để tránh làm loãng số liệu"
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(excludeTuChoi)}
+                    onChange={(e) => setExcludeTuChoi && setExcludeTuChoi(e.target.checked)}
+                    style={{
+                      cursor: 'pointer',
+                      width: '14px',
+                      height: '14px',
+                      accentColor: '#e11d48'
+                    }}
+                  />
+                  <span>Không hiển thị các WO FT từ chối / CĐ từ chối trong bảng</span>
+                  {excludeTuChoi && (
+                    <span 
+                      style={{
+                        fontSize: '0.66rem',
+                        background: '#e11d48',
+                        color: '#ffffff',
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        letterSpacing: '0.3px'
+                      }}
+                    >
+                      Đã ẩn
+                    </span>
+                  )}
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -221,6 +268,7 @@ export default function DynamicCategoryReport({
           activeTab={maintActiveTab}
           onTabChange={setMaintActiveTab}
           onDrilldown={handleOpenDrilldown}
+          excludeTuChoi={excludeTuChoi}
           exportFilename={`Bao_cao_${activeCategory?.id || 'thang'}_${maintSpecial?.active_month || '2026-09'}`}
         />
       )}
@@ -241,6 +289,7 @@ export default function DynamicCategoryReport({
             activeTab={maintActiveTab}
             onTabChange={setMaintActiveTab}
             onDrilldown={handleOpenDrilldown}
+            excludeTuChoi={excludeTuChoi}
             exportFilename={`Bao_cao_me_${maintSpecial?.active_month || '2026-09'}`}
           />
         </div>
@@ -268,7 +317,7 @@ export default function DynamicCategoryReport({
             <MaintenanceSpreadsheetTable
               key={`maint-sub-${selectedSub.id}-${maintActiveTab}`}
               title={`${icon}BẢNG CON: ${selectedSub.name}`}
-              badgeText={selectedSub.is_other ? 'BẢNG KHÁC' : `TỪ KHÓA: ${selectedSub.keyword}`}
+              badgeText={selectedSub.is_other ? (selectedSub.name ? selectedSub.name.toUpperCase() : 'BẢNG KHÁC') : `TỪ KHÓA: ${selectedSub.keyword}`}
               badgeType={selectedSub.is_other ? 'badge-neutral' : 'badge-primary'}
               isChild={true}
               keyword={selectedSub.keyword}
@@ -279,6 +328,7 @@ export default function DynamicCategoryReport({
               activeTab={maintActiveTab}
               onTabChange={setMaintActiveTab}
               onDrilldown={handleOpenDrilldown}
+              excludeTuChoi={excludeTuChoi}
               subCategoryContext={{
                 subCategoryId: selectedSub.id,
                 subKeyword: selectedSub.is_other ? null : selectedSub.keyword,

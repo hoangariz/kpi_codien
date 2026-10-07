@@ -148,6 +148,9 @@ export default function AdminPage({ onNavigateToDashboard }) {
   const [newSubKeyword, setNewSubKeyword] = useState('');
   const [newSubDesc, setNewSubDesc] = useState('');
   const [subKeywordError, setSubKeywordError] = useState('');
+  const [editingSubCategory, setEditingSubCategory] = useState(null); // { id, name, keyword, description }
+  const [editingOtherCatId, setEditingOtherCatId] = useState(null); // catId currently renaming 'Còn lại / Khác'
+  const [editingOtherName, setEditingOtherName] = useState('');
 
   // Fetch report categories
   const { data: reportCategories, isLoading: loadingCategories, refetch: refetchCategories } = useQuery({
@@ -192,6 +195,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
       setEditingCategory(null);
       refetchCategories();
       queryClient.invalidateQueries({ queryKey: ['report-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['stats-maintenance-special'] });
       alert(`Đã cập nhật bảng báo cáo "${res.name}" thành công!`);
     },
     onError: (err) => {
@@ -272,6 +276,65 @@ export default function AdminPage({ onNavigateToDashboard }) {
         name: cleanName,
         keyword: cleanKw,
         description: newSubDesc.trim() || undefined
+      }
+    });
+  };
+
+  // Update Sub-category Mutation
+  const updateSubCategoryMutation = useMutation({
+    mutationFn: ({ subId, data }) => reportCategoryApi.updateSubCategory(subId, data),
+    onSuccess: (res) => {
+      setEditingSubCategory(null);
+      refetchCategories();
+      queryClient.invalidateQueries({ queryKey: ['report-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['stats-maintenance-special'] });
+      alert(`Đã cập nhật đầu việc con "${res.name}" thành công!`);
+    },
+    onError: (err) => {
+      const detail = err.response?.data?.detail || err.message;
+      alert('Lỗi cập nhật đầu việc con: ' + detail);
+    }
+  });
+
+  // Handler for editing sub-category with duplicate check
+  const handleSaveSubEdit = (cat) => {
+    if (!editingSubCategory) return;
+    const cleanName = (editingSubCategory.name || '').trim();
+    const cleanKw = (editingSubCategory.keyword || '').trim();
+    if (!cleanName || !cleanKw) {
+      alert('Tên đầu việc con và từ khóa không được để trống!');
+      return;
+    }
+    const existingSubs = (cat.sub_categories || []).filter(s => s.id !== editingSubCategory.id);
+    const duplicate = existingSubs.find(s => (s.keyword || '').trim().toLowerCase() === cleanKw.toLowerCase());
+    if (duplicate) {
+      alert(`Lỗi: Từ khóa "${cleanKw}" đã tồn tại ở đầu việc con "${duplicate.name}"!`);
+      return;
+    }
+    updateSubCategoryMutation.mutate({
+      subId: editingSubCategory.id,
+      data: {
+        name: cleanName,
+        keyword: cleanKw,
+        description: editingSubCategory.description ? editingSubCategory.description.trim() : null
+      }
+    });
+  };
+
+  // Handler for renaming fallback 'Còn lại / Khác' sub-category table
+  const handleSaveOtherSubName = (catId) => {
+    const cleanName = editingOtherName.trim();
+    if (!cleanName) {
+      alert('Tên bảng không được để trống!');
+      return;
+    }
+    updateCategoryMutation.mutate({
+      id: catId,
+      data: { other_sub_category_name: cleanName }
+    }, {
+      onSuccess: () => {
+        setEditingOtherCatId(null);
+        setEditingOtherName('');
       }
     });
   };
@@ -1349,6 +1412,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
                                 exclude_closed_prior_months: c.exclude_closed_prior_months !== false,
                                 filter_mode: c.filter_mode || 'by_loai',
                                 filter_values: c.filter_values || [],
+                                other_sub_category_name: c.other_sub_category_name || 'Còn lại / Khác',
                               });
                               setEditCatFilterMode(c.filter_mode || 'by_loai');
                               setEditCatFilterValues(c.filter_values || []);
@@ -1390,14 +1454,18 @@ export default function AdminPage({ onNavigateToDashboard }) {
                                   <span style={{ color: 'var(--brand-primary)' }}>{c.name}</span>
                                 </h4>
                                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
-                                  Mỗi đầu việc con sẽ sinh thêm 1 bảng con để thống kê bên dưới bảng mẹ trên Dashboard. Tự động gom theo từ khóa trong cột <strong>"Nội dung công việc"</strong>. Các công việc không trùng từ khóa nào sẽ tự động vào bảng <strong>"Còn lại / Khác"</strong>.
+                                  Mỗi đầu việc con sẽ sinh thêm 1 bảng con để thống kê bên dưới bảng mẹ trên Dashboard. Tự động gom theo từ khóa trong cột <strong>"Nội dung công việc"</strong>. Các công việc không trùng từ khóa nào sẽ tự động vào bảng <strong>"{c.other_sub_category_name || 'Còn lại / Khác'}"</strong>.
                                 </p>
                               </div>
 
                               <button
                                 type="button"
                                 className="btn btn-outline"
-                                onClick={() => setSelectedCatForSub(null)}
+                                onClick={() => {
+                                  setSelectedCatForSub(null);
+                                  setEditingSubCategory(null);
+                                  setEditingOtherCatId(null);
+                                }}
                                 style={{ padding: '3px 8px', fontSize: '0.75rem' }}
                               >
                                 Đóng
@@ -1426,16 +1494,90 @@ export default function AdminPage({ onNavigateToDashboard }) {
 
                             {/* Danh sách đầu việc con hiện có */}
                             <div style={{ marginBottom: '16px' }}>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                                ĐẦU VIỆC CON ĐÃ CẤU HÌNH ({(c.sub_categories || []).length}):
-                              </span>
-                              {(c.sub_categories || []).length === 0 ? (
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
-                                  Chưa có đầu việc con nào. Mọi công việc hiện tại sẽ hiển thị ở bảng mẹ. Thêm đầu việc con bên dưới để tách bảng.
-                                </p>
-                              ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
-                                  {(c.sub_categories || []).map((sub) => (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                  ĐẦU VIỆC CON ĐÃ CẤU HÌNH ({(c.sub_categories || []).length} theo từ khóa + 1 bảng còn lại/mặc định):
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '10px' }}>
+                                {/* Danh sách các đầu việc con theo từ khóa */}
+                                {(c.sub_categories || []).map((sub) => {
+                                  const isEditing = editingSubCategory?.id === sub.id;
+                                  if (isEditing) {
+                                    return (
+                                      <div
+                                        key={sub.id}
+                                        style={{
+                                          padding: '12px 14px',
+                                          background: 'var(--bg-tertiary)',
+                                          border: '1.5px solid var(--brand-primary)',
+                                          borderRadius: 'var(--radius-sm)',
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: '8px',
+                                          boxShadow: '0 2px 8px rgba(2, 132, 199, 0.15)'
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                          <strong style={{ fontSize: '0.8rem', color: 'var(--brand-primary)' }}>
+                                            ✏️ SỬA ĐẦU VIỆC CON #{sub.id}
+                                          </strong>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                          <div style={{ flex: 1 }}>
+                                            <input
+                                              type="text"
+                                              className="select-filter"
+                                              value={editingSubCategory.name}
+                                              onChange={(e) => setEditingSubCategory({ ...editingSubCategory, name: e.target.value })}
+                                              placeholder="Tên đầu việc con..."
+                                              style={{ width: '100%', padding: '6px 8px', fontSize: '0.82rem' }}
+                                            />
+                                          </div>
+                                          <div style={{ width: '130px' }}>
+                                            <input
+                                              type="text"
+                                              className="select-filter"
+                                              value={editingSubCategory.keyword}
+                                              onChange={(e) => setEditingSubCategory({ ...editingSubCategory, keyword: e.target.value })}
+                                              placeholder="Từ khóa..."
+                                              style={{ width: '100%', padding: '6px 8px', fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}
+                                            />
+                                          </div>
+                                        </div>
+                                        <input
+                                          type="text"
+                                          className="select-filter"
+                                          value={editingSubCategory.description || ''}
+                                          onChange={(e) => setEditingSubCategory({ ...editingSubCategory, description: e.target.value })}
+                                          placeholder="Mô tả bổ sung (tùy chọn)..."
+                                          style={{ width: '100%', padding: '6px 8px', fontSize: '0.78rem' }}
+                                        />
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                                          <button
+                                            type="button"
+                                            className="btn btn-outline"
+                                            onClick={() => setEditingSubCategory(null)}
+                                            style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                                          >
+                                            <X size={12} /> Hủy
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => handleSaveSubEdit(c)}
+                                            disabled={updateSubCategoryMutation.isPending || !editingSubCategory.name?.trim() || !editingSubCategory.keyword?.trim()}
+                                            style={{ padding: '3px 12px', fontSize: '0.72rem', fontWeight: 700 }}
+                                          >
+                                            <Save size={12} /> {updateSubCategoryMutation.isPending ? 'Đang lưu...' : 'Lưu'}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
                                     <div 
                                       key={sub.id}
                                       style={{
@@ -1475,23 +1617,151 @@ export default function AdminPage({ onNavigateToDashboard }) {
                                         )}
                                       </div>
 
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <button
+                                          type="button"
+                                          className="btn btn-outline"
+                                          onClick={() => setEditingSubCategory({
+                                            id: sub.id,
+                                            name: sub.name,
+                                            keyword: sub.keyword,
+                                            description: sub.description || ''
+                                          })}
+                                          title="Sửa đầu việc con này"
+                                          style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--brand-primary)', borderColor: 'rgba(2, 132, 199, 0.3)' }}
+                                        >
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-outline"
+                                          onClick={() => {
+                                            if (window.confirm(`Xoá đầu việc con "${sub.name}" (từ khóa: ${sub.keyword})? Các công việc sẽ chuyển về bảng "${c.other_sub_category_name || 'Còn lại / Khác'}".`)) {
+                                              deleteSubCategoryMutation.mutate(sub.id);
+                                            }
+                                          }}
+                                          title="Xoá đầu việc con này"
+                                          style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--danger-dark)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                {/* Bảng mặc định Còn lại / Khác - Luôn hiển thị và có thể đổi tên */}
+                                {editingOtherCatId === c.id ? (
+                                  <div
+                                    style={{
+                                      padding: '12px 14px',
+                                      background: 'rgba(2, 132, 199, 0.06)',
+                                      border: '1.5px solid var(--brand-primary)',
+                                      borderRadius: 'var(--radius-sm)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '8px',
+                                      boxShadow: '0 2px 8px rgba(2, 132, 199, 0.15)'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--brand-primary)' }}>
+                                        📦 ĐỔI TÊN BẢNG GOM VIỆC CÒN LẠI:
+                                      </span>
+                                      <span className="badge badge-neutral" style={{ fontSize: '0.65rem' }}>Mặc Định</span>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      className="select-filter"
+                                      value={editingOtherName}
+                                      onChange={(e) => setEditingOtherName(e.target.value)}
+                                      placeholder="VD: Còn lại / Khác, Công việc khác..."
+                                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.82rem' }}
+                                      autoFocus
+                                    />
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        onClick={() => { setEditingOtherCatId(null); setEditingOtherName(''); }}
+                                        style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                                      >
+                                        <X size={12} /> Hủy
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() => handleSaveOtherSubName(c.id)}
+                                        disabled={updateCategoryMutation.isPending || !editingOtherName.trim()}
+                                        style={{ padding: '3px 12px', fontSize: '0.72rem', fontWeight: 700 }}
+                                      >
+                                        <Save size={12} /> {updateCategoryMutation.isPending ? 'Đang lưu...' : 'Lưu Tên Mới'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '10px 14px',
+                                      background: 'rgba(2, 132, 199, 0.04)',
+                                      border: '1.5px dashed rgba(2, 132, 199, 0.45)',
+                                      borderRadius: 'var(--radius-sm)'
+                                    }}
+                                  >
+                                    <div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '0.95rem' }}>📦</span>
+                                        <strong style={{ fontSize: '0.88rem', color: 'var(--brand-primary)' }}>
+                                          {c.other_sub_category_name || 'Còn lại / Khác'}
+                                        </strong>
+                                        <span 
+                                          className="badge badge-info" 
+                                          style={{ fontSize: '0.65rem', padding: '1px 6px', fontWeight: 700 }}
+                                        >
+                                          BẢNG MẶC ĐỊNH
+                                        </span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Phân loại:</span>
+                                        <span
+                                          style={{
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                            background: 'rgba(100, 116, 139, 0.15)',
+                                            color: 'var(--text-secondary)',
+                                            fontFamily: 'var(--font-mono)',
+                                            fontSize: '0.73rem',
+                                            fontWeight: 700
+                                          }}
+                                        >
+                                          KHÁC (Tự động gom việc không trùng từ khóa trên)
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
+                                        Tự động gom tất cả công việc không chứa từ khóa con nào phía trên
+                                      </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                       <button
                                         type="button"
                                         className="btn btn-outline"
                                         onClick={() => {
-                                          if (window.confirm(`Xoá đầu việc con "${sub.name}" (từ khóa: ${sub.keyword})? Các công việc sẽ chuyển về bảng "Còn lại / Khác".`)) {
-                                            deleteSubCategoryMutation.mutate(sub.id);
-                                          }
+                                          setEditingOtherCatId(c.id);
+                                          setEditingOtherName(c.other_sub_category_name || 'Còn lại / Khác');
                                         }}
-                                        title="Xoá đầu việc con này"
-                                        style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--danger-dark)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                        title="Đổi tên bảng còn lại này"
+                                        style={{ padding: '4px 9px', fontSize: '0.72rem', color: 'var(--brand-primary)', borderColor: 'rgba(2, 132, 199, 0.35)', fontWeight: 700, gap: '4px', whiteSpace: 'nowrap' }}
                                       >
-                                        <Trash2 size={13} />
+                                        <Pencil size={12} /> Đổi tên
                                       </button>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* Form thêm đầu việc con mới */}
@@ -3395,6 +3665,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
                     exclude_closed_prior_months: editingCategory.exclude_closed_prior_months !== false,
                     filter_mode: editCatFilterMode,
                     filter_values: editCatFilterValues,
+                    other_sub_category_name: editingCategory.other_sub_category_name?.trim() || 'Còn lại / Khác',
                   }
                 });
               }}
@@ -3511,6 +3782,24 @@ export default function AdminPage({ onNavigateToDashboard }) {
                   placeholder="Ghi chú mục đích báo cáo..."
                   style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', resize: 'vertical' }}
                 />
+              </div>
+
+              {/* Cấu hình tên bảng con gom việc còn lại */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  TÊN BẢNG GOM CÔNG VIỆC CÒN LẠI / KHÁC (MẶC ĐỊNH: Còn lại / Khác)
+                </label>
+                <input
+                  type="text"
+                  className="select-filter"
+                  value={editingCategory.other_sub_category_name || ''}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, other_sub_category_name: e.target.value })}
+                  placeholder="Còn lại / Khác"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
+                />
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                  Tên hiển thị của bảng con tự động gom các việc không khớp với từ khóa con nào.
+                </span>
               </div>
 
               {/* Checkbox cấu hình lọc đóng tháng trước */}

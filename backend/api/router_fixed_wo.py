@@ -144,6 +144,7 @@ def list_wo_codes(
 def get_stats(
     report_id: int,
     month: Optional[str] = None,
+    exclude_tu_choi: bool = Query(False),
     db: Session = Depends(get_db)
 ):
     """
@@ -151,7 +152,7 @@ def get_stats(
     Overall summary, breakdown by Employee, and breakdown by Group/Cluster.
     """
     try:
-        return get_fixed_wo_stats(db, report_id, target_month=month)
+        return get_fixed_wo_stats(db, report_id, target_month=month, exclude_tu_choi=exclude_tu_choi)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -173,6 +174,7 @@ def get_tasks(
     page_size: int = Query(10000, ge=1, le=50000),
     sort_by: str = Query("thoi_diem_yeu_cau_ket_thuc"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    exclude_tu_choi: bool = Query(False),
     db: Session = Depends(get_db)
 ):
     """
@@ -194,6 +196,7 @@ def get_tasks(
             page_size=page_size,
             sort_by=sort_by,
             sort_order=sort_order,
+            exclude_tu_choi=exclude_tu_choi,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi lấy danh sách công việc drilldown: {str(e)}")

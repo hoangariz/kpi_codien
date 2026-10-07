@@ -63,6 +63,7 @@ class ReportCategoryCreate(BaseModel):
     filter_mode: Optional[str] = "by_loai"   # "by_loai" | "by_system"
     filter_values: Optional[List[str]] = []   # list of selected values
     domain: Optional[str] = "codien"         # "codien" | "codinh"
+    other_sub_category_name: Optional[str] = "Còn lại / Khác"
 
 
 class ReportCategoryUpdate(BaseModel):
@@ -76,6 +77,7 @@ class ReportCategoryUpdate(BaseModel):
     filter_mode: Optional[str] = None
     filter_values: Optional[List[str]] = None
     domain: Optional[str] = None
+    other_sub_category_name: Optional[str] = None
 
 
 class ReportCategoryResponse(BaseModel):
@@ -91,10 +93,18 @@ class ReportCategoryResponse(BaseModel):
     filter_mode: str = "by_loai"
     filter_values: List[str] = []
     domain: str = "codien"
+    other_sub_category_name: Optional[str] = "Còn lại / Khác"
     summary: Optional[ReportCategorySummary] = None
     sub_categories: List[ReportSubCategoryResponse] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    @field_validator("other_sub_category_name", mode="before")
+    @classmethod
+    def default_other_name(cls, v):
+        if not v or not str(v).strip():
+            return "Còn lại / Khác"
+        return str(v).strip()
 
     @field_validator("filter_values", mode="before")
     @classmethod
@@ -113,4 +123,5 @@ class ReportCategoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 

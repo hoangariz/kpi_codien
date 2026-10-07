@@ -94,6 +94,7 @@ def get_report_categories(
             "filter_mode": cat.filter_mode or "by_loai",
             "filter_values": _parse_filter_values(cat.filter_values),
             "domain": getattr(cat, "domain", "codien") or "codien",
+            "other_sub_category_name": getattr(cat, "other_sub_category_name", None) or "Còn lại / Khác",
             "created_at": cat.created_at,
             "updated_at": cat.updated_at,
             "summary": None
@@ -261,6 +262,7 @@ def create_report_category(db: Session, payload: ReportCategoryCreate) -> Report
         filter_mode=mode,
         filter_values=json.dumps(values, ensure_ascii=False),
         domain=(payload.domain or "codien").strip(),
+        other_sub_category_name=(payload.other_sub_category_name or "Còn lại / Khác").strip() if payload.other_sub_category_name else "Còn lại / Khác",
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
@@ -322,6 +324,10 @@ def update_report_category(
 
     if payload.domain is not None:
         cat.domain = payload.domain.strip()
+
+    if payload.other_sub_category_name is not None:
+        clean_other = payload.other_sub_category_name.strip()
+        cat.other_sub_category_name = clean_other if clean_other else "Còn lại / Khác"
 
     cat.updated_at = datetime.utcnow()
     db.commit()

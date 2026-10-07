@@ -74,6 +74,7 @@ def stats_maintenance_special(
     task_type: Optional[str] = MAINTENANCE_TASK_TYPE,
     month: Optional[str] = None,
     board_id: Optional[int] = None,
+    exclude_tu_choi: bool = Query(False),
     db: Session = Depends(get_db)
 ):
     """
@@ -83,7 +84,13 @@ def stats_maintenance_special(
     Filters out previous month closed tasks according to active month setting.
     Can also filter by custom tracking board_id.
     """
-    return get_special_maintenance_stats(db, target_type=task_type, target_month=month, board_id=board_id)
+    return get_special_maintenance_stats(
+        db,
+        target_type=task_type,
+        target_month=month,
+        board_id=board_id,
+        exclude_tu_choi=exclude_tu_choi
+    )
 
 
 @router.get("/maintenance-special/tasks", response_model=PaginatedTasksResponse)
@@ -103,6 +110,7 @@ def stats_maintenance_tasks(
     page_size: int = Query(10000, ge=1, le=50000),
     sort_by: str = Query("thoi_diem_yeu_cau_ket_thuc"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    exclude_tu_choi: bool = Query(False),
     db: Session = Depends(get_db)
 ):
     """
@@ -125,7 +133,8 @@ def stats_maintenance_tasks(
         page=page,
         page_size=page_size,
         sort_by=sort_by,
-        sort_order=sort_order
+        sort_order=sort_order,
+        exclude_tu_choi=exclude_tu_choi
     )
 
 

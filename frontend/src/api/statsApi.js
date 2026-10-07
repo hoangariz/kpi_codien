@@ -11,8 +11,8 @@ export const isClosedStatus = (status) => {
   return s === 'đóng' || s === 'ft hoàn thành';
 };
 
-async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosedPriorMonths = true) {
-  const cacheKey = `${targetType}_${activeMonth}_${excludeClosedPriorMonths !== false}`;
+async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosedPriorMonths = true, excludeTuChoi = false) {
+  const cacheKey = `${targetType}_${activeMonth}_${excludeClosedPriorMonths !== false}_${Boolean(excludeTuChoi)}`;
   if (maintenanceTasksCache && maintenanceTasksCacheKey === cacheKey) {
     return maintenanceTasksCache;
   }
@@ -25,7 +25,7 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClos
       // 1. First try backend endpoint /stats/maintenance-special/tasks
       try {
         const res = await api.get('/stats/maintenance-special/tasks', {
-          params: { task_type: targetType, month: activeMonth, metric: 'total', page: 1, page_size: 5000 }
+          params: { task_type: targetType, month: activeMonth, metric: 'total', page: 1, page_size: 5000, exclude_tu_choi: excludeTuChoi }
         });
         if (res.data?.items) {
           let allItems = res.data.items;
@@ -90,6 +90,9 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClos
           const endDt = new Date(t.thoi_diem_yeu_cau_ket_thuc);
           if (endDt < monthStart) return false;
         }
+        if (excludeTuChoi && (t.trang_thai || '').toLowerCase().includes('từ chối')) {
+          return false;
+        }
         return true;
       });
 
@@ -145,10 +148,14 @@ export const statsApi = {
     const targetType = params.target_type || 'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS';
     const activeMonth = params.month || '2026-09';
     const excludeClosed = params.exclude_closed_prior_months !== false;
+    const excludeTuChoi = Boolean(params.exclude_tu_choi);
 
     // Load or slice from memory cache (< 1ms instant access)
-    const allValidTasks = await loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosed);
+    const allValidTasks = await loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosed, excludeTuChoi);
     let items = [...allValidTasks];
+    if (excludeTuChoi) {
+      items = items.filter(t => !(t.trang_thai || '').toLowerCase().includes('từ chối'));
+    }
 
     // 0. Tracking Board Filter
     if (params.board_codes && Array.isArray(params.board_codes)) {

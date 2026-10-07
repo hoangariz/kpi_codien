@@ -23,6 +23,7 @@ def auto_migrate_db():
             "ALTER TABLE tracking_boards ADD COLUMN loai_cong_viec VARCHAR(255)",
             "ALTER TABLE import_logs ADD COLUMN filter_spm INTEGER DEFAULT 1",
             "ALTER TABLE report_categories ADD COLUMN domain VARCHAR(50) DEFAULT 'codien'",
+            "ALTER TABLE report_categories ADD COLUMN other_sub_category_name VARCHAR(255) DEFAULT 'Còn lại / Khác'",
             "ALTER TABLE import_logs ADD COLUMN domain VARCHAR(50) DEFAULT 'main'",
             "ALTER TABLE codinh_tasks ADD COLUMN thoi_diem_bat_dau_thuc_hien DATETIME",
         ]:
@@ -40,6 +41,12 @@ def auto_migrate_db():
 
         try:
             conn.execute(text("UPDATE report_categories SET domain = 'codien' WHERE domain IS NULL"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("UPDATE report_categories SET other_sub_category_name = 'Còn lại / Khác' WHERE other_sub_category_name IS NULL OR other_sub_category_name = ''"))
             conn.commit()
         except Exception:
             pass

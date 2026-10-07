@@ -29,6 +29,7 @@ export default function DashboardPage() {
   const [maintActiveTab, setMaintActiveTab] = useState('employee'); // 'employee' | 'group'
   const [activeSubCategoryFilter, setActiveSubCategoryFilter] = useState('parent'); // 'parent' | sub_category_id
   const [timelineDays, setTimelineDays] = useState(14);
+  const [excludeTuChoi, setExcludeTuChoi] = useState(false);
 
   // Tracking Board Filter state (for lower category report)
   const [selectedBoardId, setSelectedBoardId] = useState('');
@@ -64,8 +65,8 @@ export default function DashboardPage() {
   });
 
   const { data: fixedWoStats, isLoading: loadingFixedWoStats } = useQuery({
-    queryKey: ['fixed-wo-stats', activeFixedWoId],
-    queryFn: () => fixedWoApi.getStats(activeFixedWoId),
+    queryKey: ['fixed-wo-stats', activeFixedWoId, excludeTuChoi],
+    queryFn: () => fixedWoApi.getStats(activeFixedWoId, { exclude_tu_choi: excludeTuChoi }),
     enabled: Boolean(activeFixedWoId && selectedReport === 'fixed_wo'),
   });
 
@@ -134,10 +135,11 @@ export default function DashboardPage() {
 
   // 3. Stats queries
   const { data: maintSpecial, isLoading: loadingMaint } = useQuery({
-    queryKey: ['stats-maintenance-special', activeTaskType, selectedBoardId],
+    queryKey: ['stats-maintenance-special', activeTaskType, selectedBoardId, excludeTuChoi],
     queryFn: () => statsApi.getMaintenanceSpecial({
       task_type: activeTaskType,
-      board_id: selectedBoardId ? Number(selectedBoardId) : undefined
+      board_id: selectedBoardId ? Number(selectedBoardId) : undefined,
+      exclude_tu_choi: excludeTuChoi,
     }),
   });
 
@@ -159,9 +161,9 @@ export default function DashboardPage() {
   // Preload maintenance tasks into client-side cache for instant drilldown
   useEffect(() => {
     if (maintSpecial?.active_month) {
-      statsApi.preloadMaintenanceTasks(maintSpecial.active_month, maintSpecial.target_task_type);
+      statsApi.preloadMaintenanceTasks(maintSpecial.active_month, maintSpecial.target_task_type, true, excludeTuChoi);
     }
-  }, [maintSpecial?.active_month, maintSpecial?.target_task_type]);
+  }, [maintSpecial?.active_month, maintSpecial?.target_task_type, excludeTuChoi]);
 
   // Modals handlers
   const handleOpenDrilldown = (metric, metricLabel, row = null, subContext = null, extraParams = {}) => {
@@ -177,6 +179,7 @@ export default function DashboardPage() {
         isOther: isOtherRow,
         targetName: row ? row.key_name : (fixedWoStats?.name || 'Báo Cáo Cố Định'),
         activeMonth: fixedWoStats?.active_month,
+        exclude_tu_choi: excludeTuChoi,
         ...extraParams,
       });
       return;
@@ -192,6 +195,7 @@ export default function DashboardPage() {
       activeMonth: maintSpecial?.active_month,
       targetType: activeTaskType,
       excludeClosedPriorMonths: activeCategory?.exclude_closed_prior_months !== false,
+      exclude_tu_choi: excludeTuChoi,
       boardId: selectedBoardId ? Number(selectedBoardId) : undefined,
       boardCodes: selectedBoardCodes || undefined,
       boardName: selectedBoard ? selectedBoard.name : undefined,
@@ -334,6 +338,8 @@ export default function DashboardPage() {
             selectedBoard={selectedBoard}
             trackingBoards={trackingBoards}
             handleOpenDrilldown={handleOpenDrilldown}
+            excludeTuChoi={excludeTuChoi}
+            setExcludeTuChoi={setExcludeTuChoi}
           />
         )}
 
@@ -361,6 +367,8 @@ export default function DashboardPage() {
           selectedBoard={null}
           trackingBoards={[]}
           handleOpenDrilldown={handleOpenDrilldown}
+          excludeTuChoi={excludeTuChoi}
+          setExcludeTuChoi={setExcludeTuChoi}
         />
       )}
 

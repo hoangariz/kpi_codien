@@ -192,7 +192,7 @@ export default function MaintenancePage({ onNavigateToTasks }) {
                 key={sub.id}
                 title={`${icon}BẢNG CON: ${sub.name}`}
                 subtitle={sub.description || (sub.is_other ? 'Bao gồm các công việc không chứa bất kỳ từ khóa con nào phía trên' : `Phân loại tự động theo từ khóa: "${sub.keyword}" trong cột Nội dung công việc`)}
-                badgeText={sub.is_other ? 'BẢNG KHÁC' : `TỪ KHÓA: ${sub.keyword}`}
+                badgeText={sub.is_other ? (sub.name ? sub.name.toUpperCase() : 'BẢNG KHÁC') : `TỪ KHÓA: ${sub.keyword}`}
                 badgeType={sub.is_other ? 'badge-neutral' : 'badge-primary'}
                 isChild={true}
                 keyword={sub.keyword}
@@ -260,7 +260,7 @@ export default function MaintenancePage({ onNavigateToTasks }) {
               key={selectedSub.id}
               title={`${icon}BẢNG CON: ${selectedSub.name}`}
               subtitle={selectedSub.description || (selectedSub.is_other ? 'Bao gồm các công việc không chứa bất kỳ từ khóa con nào phía trên' : `Phân loại tự động theo từ khóa: "${selectedSub.keyword}" trong cột Nội dung công việc`)}
-              badgeText={selectedSub.is_other ? 'BẢNG KHÁC' : `TỪ KHÓA: ${selectedSub.keyword}`}
+              badgeText={selectedSub.is_other ? (selectedSub.name ? selectedSub.name.toUpperCase() : 'BẢNG KHÁC') : `TỪ KHÓA: ${selectedSub.keyword}`}
               badgeType={selectedSub.is_other ? 'badge-neutral' : 'badge-primary'}
               isChild={true}
               keyword={selectedSub.keyword}

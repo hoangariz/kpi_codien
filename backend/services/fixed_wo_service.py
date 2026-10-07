@@ -200,7 +200,8 @@ def get_fixed_wo_reports(db: Session) -> List[Dict[str, Any]]:
 def get_fixed_wo_stats(
     db: Session,
     report_id: int,
-    target_month: Optional[str] = None
+    target_month: Optional[str] = None,
+    exclude_tu_choi: bool = False
 ) -> Dict[str, Any]:
     """
     Compute detailed breakdown by Employee and Group for tasks in this Fixed WO Report.
@@ -245,6 +246,23 @@ def get_fixed_wo_stats(
 
     # Condition: task is in this report's WOs
     condition = Task.ma_cong_viec.in_(wo_subquery)
+    if exclude_tu_choi:
+        rejected_wos_sub = db.query(Task.ma_cong_viec).filter(
+            Task.ma_cong_viec.in_(wo_subquery),
+            or_(
+                Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                Task.trang_thai.ilike("%từ chối%")
+            )
+        )
+        total_wos = db.query(func.count(FixedWoItem.id)).filter(
+            FixedWoItem.report_id == report_id,
+            ~FixedWoItem.ma_cong_viec.in_(rejected_wos_sub)
+        ).scalar() or 0
+        condition = and_(
+            condition,
+            ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+            ~Task.trang_thai.ilike("%từ chối%")
+        )
 
     # Query closed tasks for daily breakdown
     closed_tasks_records = db.query(
@@ -866,7 +884,8 @@ def get_fixed_wo_tasks(
     page: int = 1,
     page_size: int = 10000,
     sort_by: str = "thoi_diem_yeu_cau_ket_thuc",
-    sort_order: str = "desc"
+    sort_order: str = "desc",
+    exclude_tu_choi: bool = False
 ) -> Dict[str, Any]:
     """
     Get detailed tasks for drilldown popup when user clicks a metric cell on Fixed WO Report.
@@ -895,6 +914,11 @@ def get_fixed_wo_tasks(
     # 2. Xây dựng query cho các tasks có trong DB
     wo_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id)
     query = db.query(Task).filter(Task.ma_cong_viec.in_(wo_subquery))
+    if exclude_tu_choi:
+        query = query.filter(
+            ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+            ~Task.trang_thai.ilike("%từ chối%")
+        )
 
     # Metric filter
     if metric == "closed":

@@ -21,6 +21,8 @@ class ReportCategory(Base):
     filter_values = Column(Text, nullable=True)
     # Phân hệ / domain: 'codien' (Cơ điện di động) | 'codinh' (Cố định băng rộng)
     domain = Column(String(50), default="codien", nullable=False, index=True)
+    # Tên bảng con dự phòng tự động gom các công việc không khớp từ khóa con (mặc định: 'Còn lại / Khác')
+    other_sub_category_name = Column(String(255), default="Còn lại / Khác", nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

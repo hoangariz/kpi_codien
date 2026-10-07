@@ -288,7 +288,8 @@ def get_special_maintenance_stats(
     db: Session,
     target_type: str = MAINTENANCE_TASK_TYPE,
     target_month: Optional[str] = None,
-    board_id: Optional[int] = None
+    board_id: Optional[int] = None,
+    exclude_tu_choi: bool = False
 ) -> Dict[str, Any]:
     """
     Dedicated statistics for user request:
@@ -397,6 +398,13 @@ def get_special_maintenance_stats(
         from backend.models.tracking import TrackingBoardTask
         base_conditions.append(
             Task.ma_cong_viec.in_(db.query(TrackingBoardTask.ma_cong_viec).filter(TrackingBoardTask.board_id == board_id))
+        )
+    if exclude_tu_choi:
+        base_conditions.append(
+            and_(
+                ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                ~Task.trang_thai.ilike("%từ chối%")
+            )
         )
     valid_condition = and_(*base_conditions)
 
@@ -950,11 +958,13 @@ def get_special_maintenance_stats(
             other_cond = and_(valid_condition, *not_matched_conditions)
             other_sum, other_emp, other_grp = compute_breakdown_for_condition(other_cond)
 
+            other_name = (getattr(cat_obj, 'other_sub_category_name', None) or "").strip() or "Còn lại / Khác"
+
             sub_categories_stats.append({
                 "id": 0,
-                "name": "Còn lại / Khác",
+                "name": other_name,
                 "keyword": "KHÁC",
-                "description": None,
+                "description": "Bao gồm các công việc không chứa từ khóa con nào",
                 "is_other": True,
                 "summary": other_sum,
                 "by_employee": other_emp,
@@ -993,7 +1003,8 @@ def get_special_maintenance_tasks(
     page: int = 1,
     page_size: int = 50,
     sort_by: str = "thoi_diem_yeu_cau_ket_thuc",
-    sort_order: str = "desc"
+    sort_order: str = "desc",
+    exclude_tu_choi: bool = False
 ) -> Dict[str, Any]:
     """
     Get paginated drilldown tasks matching the exact filter & rules of the special maintenance report.
@@ -1061,6 +1072,14 @@ def get_special_maintenance_tasks(
         from backend.models.tracking import TrackingBoardTask
         filters.append(
             Task.ma_cong_viec.in_(db.query(TrackingBoardTask.ma_cong_viec).filter(TrackingBoardTask.board_id == board_id))
+        )
+
+    if exclude_tu_choi:
+        filters.append(
+            and_(
+                ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                ~Task.trang_thai.ilike("%từ chối%")
+            )
         )
 
     # Filter by sub_category_id (Keyword match in 'noi_dung_cong_viec')
