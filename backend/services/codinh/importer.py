@@ -20,7 +20,7 @@ from typing import Optional, List, Dict, Any, Union
 import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, text, insert
 
 from backend.database import SessionLocal, is_sqlite
 from backend.models.task_codinh import TaskCodinh
@@ -33,6 +33,9 @@ from backend.services.codinh.normalize import (
     is_hot_priority,
     is_tam_dung_status,
     is_open_status,
+    normalize_key,
+    SU_CO_TASK_TYPE_NORM,
+    SU_CO_KEYWORD_NORM,
 )
 
 CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
@@ -83,24 +86,30 @@ def _vectorize_float_col(series: Optional[pd.Series], n: int) -> list:
 
 
 def _vectorize_dt_col(series: Optional[pd.Series], n: int) -> list:
-    """Vectorized datetime parsing."""
+    """Vectorized datetime parsing (optimized for 2GB VPS)."""
     if series is None:
         return [None] * n
 
+    # Step 1: parse standard dd/MM/yyyy HH:mm:ss
     dt = pd.to_datetime(series, format="%d/%m/%Y %H:%M:%S", errors="coerce")
-    mask_na = dt.isna()
+    
+    # Step 2: Only fallback for non-empty string cells (skip all NaN/blank cells to avoid mixed format slowdown)
+    mask_na = dt.isna() & series.notna()
     if mask_na.any():
-        sub_series = series[mask_na]
-        dt_mixed = pd.to_datetime(sub_series, dayfirst=True, format="mixed", errors="coerce")
-        dt.update(dt_mixed)
+        sub_series = series[mask_na].astype(str).str.strip()
+        sub_valid = sub_series.isin(["", "nan", "none", "nat", "<na>"]) == False
+        if sub_valid.any():
+            real_sub = sub_series[sub_valid]
+            dt_mixed = pd.to_datetime(real_sub, dayfirst=True, format="mixed", errors="coerce")
+            dt.update(dt_mixed)
 
-        mask_still_na = dt.isna()
-        if mask_still_na.any():
-            nums = pd.to_numeric(series[mask_still_na], errors="coerce")
-            num_valid = nums.notna() & (nums > 10000) & (nums < 100000)
-            if num_valid.any():
-                dt_serial = pd.to_datetime(nums[num_valid], unit="D", origin="1899-12-30", errors="coerce")
-                dt.update(dt_serial)
+            mask_still_na = dt.isna() & mask_na
+            if mask_still_na.any():
+                nums = pd.to_numeric(series[mask_still_na], errors="coerce")
+                num_valid = nums.notna() & (nums > 10000) & (nums < 100000)
+                if num_valid.any():
+                    dt_serial = pd.to_datetime(nums[num_valid], unit="D", origin="1899-12-30", errors="coerce")
+                    dt.update(dt_serial)
 
     arr = pd.DatetimeIndex(dt).to_pydatetime()
     return [None if (val is None or pd.isna(val) or str(val) == "NaT") else (val.to_pydatetime() if hasattr(val, "to_pydatetime") else val) for val in arr]
@@ -298,27 +307,56 @@ def import_codinh_wos_from_excel(
     c_fthoanthanh = _vectorize_dt_col(df.get(col_map.get("thoi_diem_ft_hoan_thanh")), n)
     c_cddong = _vectorize_dt_col(df.get(col_map.get("thoi_diem_cd_dong")), n)
 
-    c_is_su_co = [is_su_co_task(c_loai[k], c_noidung[k]) for k in range(n)]
-    c_is_hot = [is_hot_priority(c_uutien[k]) for k in range(n)]
-    c_is_tam_dung = [is_tam_dung_status(c_trangthai[k]) for k in range(n)]
-    c_is_open = [is_open_status(c_trangthai[k]) for k in range(n)]
+    # Free original df immediately to conserve RAM on 2GB VPS
+    del df
+
+    # Fast memoized computation of derived flags
+    unique_uutien = set(c_uutien)
+    hot_map = {u: is_hot_priority(u) for u in unique_uutien}
+    c_is_hot = [hot_map.get(u, 0) for u in c_uutien]
+
+    unique_trangthai = set(c_trangthai)
+    tam_dung_map = {t: is_tam_dung_status(t) for t in unique_trangthai}
+    open_map = {t: is_open_status(t) for t in unique_trangthai}
+    c_is_tam_dung = [tam_dung_map.get(t, 0) for t in c_trangthai]
+    c_is_open = [open_map.get(t, 1) for t in c_trangthai]
+
+    # Pre-filter candidate types for su_co to avoid regex/unicode normalization on non-su_co rows
+    su_co_loai_candidates = {l for l in set(c_loai) if normalize_key(l) == SU_CO_TASK_TYPE_NORM}
+    c_is_su_co = []
+    for k in range(n):
+        l_val = c_loai[k]
+        if l_val not in su_co_loai_candidates:
+            c_is_su_co.append(0)
+        else:
+            nd_norm = normalize_key(c_noidung[k])
+            c_is_su_co.append(1 if SU_CO_KEYWORD_NORM in nd_norm else 0)
+
     c_closed_time = [c_fthoanthanh[k] or c_cddong[k] for k in range(n)]
 
     if import_record:
-        import_record.progress_percent = 50
+        import_record.progress_percent = 40
         db.commit()
 
-    # Clear old data and bulk insert
+    # SQLite PRAGMA speedups (matching /admin etl_service.py)
+    if is_sqlite:
+        db.execute(text("PRAGMA foreign_keys = OFF"))
+        db.execute(text("PRAGMA cache_size = -32000"))
+        db.execute(text("PRAGMA temp_store = MEMORY"))
+        db.execute(text("PRAGMA mmap_size = 268435456"))
+        db.execute(text("PRAGMA synchronous = NORMAL"))
+    else:
+        db.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+    # Clear old data and bulk insert in a single atomic transaction
     t_db_start = time.perf_counter()
     db.query(TaskCodinh).delete(synchronize_session=False)
-    db.commit()
 
-    BATCH_SIZE = 5000
+    BATCH_SIZE = 10000
     rows_inserted = 0
     now_utc = datetime.utcnow()
 
     for i in range(0, n, BATCH_SIZE):
-        chunk_slice = slice(i, min(i + BATCH_SIZE, n))
         chunk_len = min(i + BATCH_SIZE, n) - i
 
         mappings = []
@@ -354,15 +392,15 @@ def import_codinh_wos_from_excel(
                 "updated_at": now_utc,
             })
 
-        db.bulk_insert_mappings(TaskCodinh, mappings)
-        db.commit()
+        if mappings:
+            try:
+                db.execute(insert(TaskCodinh.__table__), mappings)
+            except Exception:
+                db.bulk_insert_mappings(TaskCodinh, mappings)
+
         rows_inserted += chunk_len
 
-        pct = 50 + int((rows_inserted / max(1, n)) * 48)
-        if import_record:
-            import_record.progress_percent = min(pct, 98)
-            import_record.inserted_count = rows_inserted
-            db.commit()
+        pct = 40 + int((rows_inserted / max(1, n)) * 55)
         _write_progress_file(file_path_str, min(pct, 98), rows_inserted, n)
 
     t_db = time.perf_counter() - t_db_start
@@ -370,9 +408,9 @@ def import_codinh_wos_from_excel(
 
     vn_now = now_utc + timedelta(hours=7)
     vn_time_str = vn_now.strftime("%d/%m/%Y lúc %H:%M")
-    _set_setting(db, "codinh_last_import_wo_time", now_utc.isoformat())
-    _set_setting(db, "codinh_last_import_wo_time_vn", vn_time_str)
-    _set_setting(db, "codinh_last_import_wo_filename", filename)
+    _set_setting(db, "codinh_last_import_wo_time", now_utc.isoformat(), commit=False)
+    _set_setting(db, "codinh_last_import_wo_time_vn", vn_time_str, commit=False)
+    _set_setting(db, "codinh_last_import_wo_filename", filename, commit=False)
 
     if import_record:
         import_record.status = "COMPLETED"
@@ -384,7 +422,16 @@ def import_codinh_wos_from_excel(
             ImportLog.id != import_record.id,
             ImportLog.domain == "codinh"
         ).update({"is_active": 0}, synchronize_session=False)
-        db.commit()
+
+    # Commit once at the end (bypasses multiple fsync disk stalls)
+    db.commit()
+
+    if is_sqlite:
+        try:
+            db.execute(text("PRAGMA foreign_keys = ON"))
+            db.commit()
+        except Exception:
+            pass
 
     _cleanup_progress_file(file_path_str)
     bump_wo_version()
