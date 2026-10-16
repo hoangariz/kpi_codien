@@ -1,0 +1,1172 @@
+{
+  "total_wos": 47792,
+  "matched_nhom_wos": 47184,
+  "unmatched_nhom_wos": 608,
+  "unregistered_users": {
+    "chưa gán": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        7
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        18
+      ],
+      [
+        "Phòng KT Hạ tầng_Viettel_HTH Hà Tĩnh",
+        77
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        8
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        8
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        71
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        9
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        111
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        10
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        50
+      ]
+    ],
+    "hoangnpv": [
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        157
+      ]
+    ],
+    "huunt5": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        34
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        3
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        76
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        427
+      ]
+    ],
+    "maipd2": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        472
+      ]
+    ],
+    "namnt331": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        32
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        57
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        230
+      ]
+    ],
+    "quangln5": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        26
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        165
+      ]
+    ],
+    "vind4": [
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        12
+      ]
+    ],
+    "act_216370": [
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        1
+      ]
+    ],
+    "aind35": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        8
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        5
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        1
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        554
+      ]
+    ],
+    "anhctt1": [
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        488
+      ]
+    ],
+    "anhnq30": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        376
+      ]
+    ],
+    "baodq15": [
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        413
+      ]
+    ],
+    "cuongdh1": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        7
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        502
+      ]
+    ],
+    "d00167170": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "d00170598": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        1
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        273
+      ]
+    ],
+    "d00202612": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        4
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        3
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        4
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        514
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        2
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        1
+      ]
+    ],
+    "duandt": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        6
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        438
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        3
+      ]
+    ],
+    "ducnk3": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        2
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        393
+      ]
+    ],
+    "haihh2": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "haint150": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        3
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        615
+      ]
+    ],
+    "hapm2": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        6
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        236
+      ]
+    ],
+    "hiennv33": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        2
+      ]
+    ],
+    "hiennv41": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        3
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        3
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        5
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        1
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        484
+      ]
+    ],
+    "hiepnv26": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        330
+      ]
+    ],
+    "hoainm": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        4
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        414
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        2
+      ]
+    ],
+    "hoangdt9": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        5
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        2
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        17
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        196
+      ]
+    ],
+    "hoangtn9": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "hoangvh5": [
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        1
+      ]
+    ],
+    "hongta1": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        1
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        7
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        255
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        1
+      ]
+    ],
+    "huannh11": [
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        14
+      ]
+    ],
+    "huyhq24": [
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        120
+      ]
+    ],
+    "huyhsq": [
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        3
+      ]
+    ],
+    "khaipv4": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        4
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        336
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        4
+      ]
+    ],
+    "khiemnb": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        3
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        303
+      ]
+    ],
+    "khuyenls": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        4
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        5
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        9
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        414
+      ]
+    ],
+    "kimpx": [
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        410
+      ]
+    ],
+    "lamnt16": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        4
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        202
+      ]
+    ],
+    "loivt": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        3
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        4
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        298
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        3
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        3
+      ]
+    ],
+    "maiph": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        1
+      ]
+    ],
+    "manhdv": [
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        1
+      ]
+    ],
+    "namnbn": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "ngannh": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        1
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        5
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        8
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        495
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        1
+      ]
+    ],
+    "nghialt1": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        1
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        4
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        2
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        355
+      ]
+    ],
+    "nhanph6": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        2
+      ],
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        40
+      ]
+    ],
+    "nhodv1": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        9
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        1
+      ]
+    ],
+    "phonght4": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "phunghm1": [
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        24
+      ]
+    ],
+    "phunv20": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        3
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        17
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ],
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        700
+      ]
+    ],
+    "quyennn": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        2
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        447
+      ]
+    ],
+    "quyetna": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        4
+      ],
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        370
+      ]
+    ],
+    "quyetnx": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        16
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        237
+      ]
+    ],
+    "quynhtm3": [
+      [
+        "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+        366
+      ]
+    ],
+    "sangna": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        35
+      ]
+    ],
+    "sonlx2": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        579
+      ]
+    ],
+    "sonnh62": [
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        1
+      ]
+    ],
+    "thanglv6": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        12
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        175
+      ]
+    ],
+    "thangnn3": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        1
+      ]
+    ],
+    "thangnv48": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        2
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        7
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        371
+      ]
+    ],
+    "thanhnx5": [
+      [
+        "Phòng KT Hạ tầng_Viettel_HTH Hà Tĩnh",
+        23
+      ]
+    ],
+    "thiettq": [
+      [
+        "CD_CNKT_HTH Hà Tĩnh",
+        2
+      ],
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        4
+      ],
+      [
+        "Phòng VHKT - CNCT Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+        3
+      ],
+      [
+        "Trung tâm Sơn Giang (VCC_HTH_007_SGG)",
+        339
+      ]
+    ],
+    "thuylq2": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        11
+      ]
+    ],
+    "toandv25": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "toanlh6": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "toanns3": [
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        3
+      ]
+    ],
+    "trunghh": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        1
+      ],
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        199
+      ]
+    ],
+    "tuanpb3": [
+      [
+        "NOC_Chi nhánh Hà Tĩnh",
+        2
+      ],
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        189
+      ]
+    ],
+    "vanda": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        1
+      ]
+    ],
+    "vccos_815399": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        3
+      ]
+    ],
+    "vccos_817889": [
+      [
+        "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+        233
+      ]
+    ],
+    "vccos_821939": [
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        188
+      ]
+    ],
+    "vccos_832423": [
+      [
+        "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+        13
+      ]
+    ],
+    "vccos_835159": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        16
+      ]
+    ],
+    "vccos_838214": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        5
+      ]
+    ],
+    "vietba": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        176
+      ]
+    ],
+    "viethq9": [
+      [
+        "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+        1
+      ]
+    ],
+    "vuongnm15": [
+      [
+        "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+        63
+      ]
+    ]
+  },
+  "mismatched_emps": [
+    {
+      "username": "Sonvx",
+      "ho_ten": "Vũ Xuân Sơn",
+      "ten_doi": "Hà Tĩnh",
+      "org_cluster": "003_THA (Trung tâm Thạch Hà (VCC_HTH_003_THA))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          40
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          450
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          40
+        ]
+      ]
+    },
+    {
+      "username": "binhnv55",
+      "ho_ten": "Nguyễn Văn Bình",
+      "ten_doi": "Hà Tĩnh",
+      "org_cluster": "003_THA (Trung tâm Thạch Hà (VCC_HTH_003_THA))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          3
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          386
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          3
+        ]
+      ]
+    },
+    {
+      "username": "d00170583",
+      "ho_ten": "Nguyễn Đình Nam",
+      "ten_doi": "Lộc Hà",
+      "org_cluster": "002_CLC (Trung tâm Can Lộc (VCC_HTH_002_CLC))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          538
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          1
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "d00170591",
+      "ho_ten": "Trần Huy Thắng",
+      "ten_doi": "Hồng Lĩnh",
+      "org_cluster": "001_BHL (Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          318
+        ],
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          12
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          12
+        ]
+      ]
+    },
+    {
+      "username": "d00191063",
+      "ho_ten": "Trần Danh Nhật",
+      "ten_doi": "Lộc Hà",
+      "org_cluster": "002_CLC (Trung tâm Can Lộc (VCC_HTH_002_CLC))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          563
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          1
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "d00195348",
+      "ho_ten": "Trương Hữu Ninh",
+      "ten_doi": "Hà Tĩnh",
+      "org_cluster": "003_THA (Trung tâm Thạch Hà (VCC_HTH_003_THA))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+          1
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          494
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Hương Khê (VCC_HTH_006_HKE)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "hoanv24",
+      "ho_ten": "Nguyễn Văn Hòa",
+      "ten_doi": "Hà Tĩnh",
+      "org_cluster": "003_THA (Trung tâm Thạch Hà (VCC_HTH_003_THA))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          1
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          496
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "NGUYENTVH",
+      "ho_ten": "Trần Văn Hồng Nguyên",
+      "ten_doi": "Tx Kỳ Anh",
+      "org_cluster": "005_STI (Trung tâm Sông Trí (VCC_HTH_005_STI))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          230
+        ],
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          306
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          230
+        ]
+      ]
+    },
+    {
+      "username": "phungnh",
+      "ho_ten": "Nguyễn Hữu Phùng",
+      "ten_doi": "Thiên Cầm",
+      "org_cluster": "004_CXN (Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          1
+        ],
+        [
+          "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+          593
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "thanglv22",
+      "ho_ten": "Lê Văn Thăng",
+      "ten_doi": "Can Lộc",
+      "org_cluster": "002_CLC (Trung tâm Can Lộc (VCC_HTH_002_CLC))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          171
+        ],
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          261
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          261
+        ]
+      ]
+    },
+    {
+      "username": "thiennv16",
+      "ho_ten": "Nguyễn Viết Thiện",
+      "ten_doi": "Nghi Xuân",
+      "org_cluster": "001_BHL (Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          359
+        ],
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          1
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "tuannt39",
+      "ho_ten": "Nguyễn Thanh Tuấn",
+      "ten_doi": "Đức Thọ",
+      "org_cluster": "001_BHL (Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          447
+        ],
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          2
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Sông Trí (VCC_HTH_005_STI)",
+          2
+        ]
+      ]
+    },
+    {
+      "username": "vccos_432649",
+      "ho_ten": "Dương Mạnh Vũ",
+      "ten_doi": "Thạch Hà 1",
+      "org_cluster": "003_THA (Trung tâm Thạch Hà (VCC_HTH_003_THA))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+          1
+        ],
+        [
+          "Trung tâm Thạch Hà (VCC_HTH_003_THA)",
+          436
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Cẩm Xuyên (VCC_HTH_004_CXN)",
+          1
+        ]
+      ]
+    },
+    {
+      "username": "vccos_810463",
+      "ho_ten": "Nguyễn Văn Tình",
+      "ten_doi": "Can Lộc",
+      "org_cluster": "002_CLC (Trung tâm Can Lộc (VCC_HTH_002_CLC))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          3
+        ],
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          162
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          3
+        ]
+      ]
+    },
+    {
+      "username": "vccos_845929",
+      "ho_ten": "PHAN VĂN ĐỊNH",
+      "ten_doi": "Lộc Hà",
+      "org_cluster": "002_CLC (Trung tâm Can Lộc (VCC_HTH_002_CLC))",
+      "wo_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          1
+        ],
+        [
+          "Trung tâm Can Lộc (VCC_HTH_002_CLC)",
+          414
+        ]
+      ],
+      "mismatch_nhoms": [
+        [
+          "Trung tâm Bắc Hồng Lĩnh (VCC_HTH_001_BHL)",
+          1
+        ]
+      ]
+    }
+  ],
+  "consistent_emps_count": 65
+}

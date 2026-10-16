@@ -270,6 +270,47 @@ table.excel-table tr.excel-row:hover {
   background: rgba(2, 132, 199, 0.08) !important;
 }
 
+/* Compact table sizing & text wrap for Tổng Hợp TK (QLCTKT) */
+table.excel-table.qlctkt-table {
+  font-size: 0.72rem !important;
+  line-height: 1.15 !important;
+}
+
+table.excel-table.qlctkt-table th {
+  font-size: 0.68rem !important;
+  padding: 3px 2px !important;
+  white-space: normal !important;
+  line-height: 1.15 !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+table.excel-table.qlctkt-table td {
+  font-size: 0.72rem !important;
+  padding: 2px 3px !important;
+  line-height: 1.15 !important;
+}
+
+table.excel-table.qlctkt-table td.cell-num {
+  font-size: 0.73rem !important;
+  padding: 2px 3px !important;
+}
+
+table.excel-table.qlctkt-table .col-stt {
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  font-size: 0.69rem !important;
+}
+
+table.excel-table.qlctkt-table .col-name {
+  left: 32px !important;
+  font-size: 0.74rem !important;
+  padding: 2.5px 6px !important;
+}
+
 /* Sticky Left Columns for all Excel Tables (STT & Họ và tên / Nhóm cụm) */
 table.excel-table th.col-stt,
 table.excel-table td.col-stt {

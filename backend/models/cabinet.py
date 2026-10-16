@@ -8,6 +8,7 @@ class Cabinet(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("report_categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    report_key = Column(String(50), default="thc", nullable=True, index=True)
     ma_wo = Column(String(100), nullable=False, index=True)
     ma_doi_tuong = Column(String(150), nullable=False, index=True)  # Mã tủ hộp cáp (THC)
     ma_tram = Column(String(100), nullable=True, index=True)        # Mã trạm của THC

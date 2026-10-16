@@ -1,4 +1,18 @@
 import os
+import sys
+
+# Ensure UTF-8 output on Windows console/logs
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,12 +40,28 @@ def auto_migrate_db():
             "ALTER TABLE report_categories ADD COLUMN other_sub_category_name VARCHAR(255) DEFAULT 'Còn lại / Khác'",
             "ALTER TABLE import_logs ADD COLUMN domain VARCHAR(50) DEFAULT 'main'",
             "ALTER TABLE codinh_tasks ADD COLUMN thoi_diem_bat_dau_thuc_hien DATETIME",
+            "ALTER TABLE cabinets ADD COLUMN report_key VARCHAR(50) DEFAULT 'thc'",
+            "ALTER TABLE codinh_employees ADD COLUMN ho_ten_key VARCHAR(255)",
+            "ALTER TABLE qlctkt_tasks ADD COLUMN cmtasktypename VARCHAR(255)",
+            "ALTER TABLE qlctkt_tasks ADD COLUMN is_cskh_2022 INTEGER DEFAULT 0",
+            "ALTER TABLE qlctkt_tasks ADD COLUMN ly_do_tich_huy TEXT",
+            "ALTER TABLE codinh_tasks ADD COLUMN muc_do_uu_tien VARCHAR(100)",
+            "ALTER TABLE codinh_tasks ADD COLUMN is_su_co INTEGER DEFAULT 0",
+            "ALTER TABLE codinh_tasks ADD COLUMN is_hot INTEGER DEFAULT 0",
+            "ALTER TABLE codinh_tasks ADD COLUMN is_tam_dung INTEGER DEFAULT 0",
+            "ALTER TABLE codinh_tasks ADD COLUMN is_open INTEGER DEFAULT 1",
+            "ALTER TABLE codinh_tasks ADD COLUMN closed_time DATETIME",
+            "ALTER TABLE codinh_tasks ADD COLUMN thoi_gian_con_lai_num FLOAT",
+            "ALTER TABLE qlctkt_tasks ADD COLUMN ngay_tich_huy VARCHAR(100)",
         ]:
             try:
                 conn.execute(text(col_def))
                 conn.commit()
             except Exception:
                 pass
+
+
+
 
         try:
             conn.execute(text("UPDATE import_logs SET domain = 'main' WHERE domain IS NULL"))
@@ -169,6 +199,12 @@ def auto_migrate_db():
             "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_tao ON codinh_tasks (thoi_diem_tao)",
             "CREATE INDEX IF NOT EXISTS ix_cabinets_ma_wo ON cabinets (ma_wo)",
             "CREATE INDEX IF NOT EXISTS ix_cabinets_category_id ON cabinets (category_id)",
+            "CREATE INDEX IF NOT EXISTS ix_cabinets_report_key ON cabinets (report_key)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_su_co ON codinh_tasks (is_su_co)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_hot ON codinh_tasks (is_hot)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_tam_dung ON codinh_tasks (is_tam_dung)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_open ON codinh_tasks (is_open)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_closed_time ON codinh_tasks (closed_time)",
         ]
         for idx_sql in cdbr_indexes:
             try:
@@ -177,9 +213,70 @@ def auto_migrate_db():
             except Exception:
                 pass
 
+        try:
+            conn.execute(text("UPDATE codinh_tasks SET is_open = CASE WHEN trang_thai = 'Đóng' THEN 0 ELSE 1 END WHERE is_open IS NULL"))
+            conn.execute(text("UPDATE codinh_tasks SET is_tam_dung = CASE WHEN LOWER(TRIM(trang_thai)) = 'tạm dừng' THEN 1 ELSE 0 END WHERE is_tam_dung IS NULL"))
+            conn.execute(text("UPDATE codinh_tasks SET closed_time = COALESCE(thoi_diem_ft_hoan_thanh, thoi_diem_cd_dong) WHERE closed_time IS NULL"))
+            conn.execute(text("UPDATE codinh_tasks SET thoi_gian_con_lai_num = thoi_gian_con_lai WHERE thoi_gian_con_lai_num IS NULL"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("UPDATE cabinets SET report_key = 'thc' WHERE report_key IS NULL OR report_key = ''"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Auto-heal qlctkt data if all tasks were erroneously flagged as is_huy=1 by old bug
+        try:
+            total_tasks = conn.execute(text("SELECT count(*) FROM qlctkt_tasks")).scalar() or 0
+            total_huy = conn.execute(text("SELECT count(*) FROM qlctkt_tasks WHERE is_huy = 1")).scalar() or 0
+            if total_tasks > 0 and total_tasks == total_huy:
+                from backend.database import SessionLocal
+                from backend.services.codinh.importer_qlctkt import import_qlctkt_from_excel, bump_qlctkt_version
+                from backend.services.codinh.reports.qlctkt_trien_khai import clear_qlctkt_stats_cache
+                from backend.models.import_log import ImportLog
+
+                db_repair = SessionLocal()
+                try:
+                    log = db_repair.query(ImportLog).filter(ImportLog.domain == 'qlctkt', ImportLog.status == 'COMPLETED').order_by(ImportLog.id.desc()).first()
+                    target_file = None
+                    log_fname = None
+                    log_id = None
+                    if log and log.file_path and Path(log.file_path).exists():
+                        target_file = log.file_path
+                        log_fname = log.filename
+                        log_id = log.id
+                    else:
+                        files = sorted(Path('uploads').glob('codinh_*.xlsx'), key=lambda p: p.stat().st_mtime, reverse=True)
+                        if files:
+                            target_file = str(files[0])
+                            log_fname = files[0].name
+
+                    if target_file:
+                        import_qlctkt_from_excel(db_repair, target_file, log_fname, import_id=log_id)
+                        bump_qlctkt_version()
+                        clear_qlctkt_stats_cache()
+                finally:
+                    db_repair.close()
+        except Exception:
+            pass
 
 
 auto_migrate_db()
+
+# Ensure CĐBR default org is seeded if empty
+try:
+    from backend.services.codinh import seed_default_codinh_if_needed
+    from backend.database import SessionLocal
+    _seed_db = SessionLocal()
+    try:
+        seed_default_codinh_if_needed(_seed_db)
+    finally:
+        _seed_db.close()
+except Exception as _ex:
+    print(f"CĐBR org seed notice: {_ex}")
 
 from backend.api.router_tasks import router as tasks_router
 from backend.api.router_stats import router as stats_router

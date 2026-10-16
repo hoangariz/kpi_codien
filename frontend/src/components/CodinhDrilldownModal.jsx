@@ -55,8 +55,7 @@ function getMetricLabel(metric) {
     case 'ton_viec':
       return 'WO Đang Tồn';
     case 'overdue':
-    case 'qua_han':
-      return 'WO Quá Hạn';
+      return 'Việc Tồn Quá Hạn';
     case 'closed_today':
     case 'dong_hom_nay':
       return 'WO Đóng Hôm Nay';
@@ -106,6 +105,70 @@ function getMetricLabel(metric) {
     case 'overdue_cabinets':
     case 'tu_qua_han':
       return 'Tủ THC Quá Hạn';
+    // QLCTKT Metrics
+    case 'cap_nhat_ho_so':
+      return 'Cập Nhật Hồ Sơ';
+    case 'nghiem_thu_n':
+      return 'Nghiệm Thu Trong Ngày';
+    case 'dd_nghiem_thu_n':
+      return 'Số Lượng ĐD Nghiệm Thu';
+    case 'dau_noi_n':
+      return 'Đấu Nối Trong Ngày';
+    case 'nsld':
+      return 'Năng Suất Lao Động';
+    case 'ton_duong_day':
+      return 'Tồn Đường Dây';
+    case 'ton_duong_day_th':
+      return 'Tích Hẹn Đường Dây (OK)';
+    case 'ton_ldtb':
+      return 'Tồn LĐTB';
+    case 'ton_ldtb_th':
+      return 'Tích Hẹn LĐTB (OK)';
+    case 'ton_lt1':
+      return 'Tồn < 1 Ngày';
+    case 'ton_lt2':
+      return 'Tồn < 2 Ngày';
+    case 'ton_lt3':
+      return 'Tồn < 3 Ngày';
+    case 'ton_gt3':
+      return 'Tồn > 3 Ngày';
+    case 'tong_ton':
+      return 'Tổng Tồn Triển Khai';
+    case 'huy':
+      return 'Việc HỦY';
+    // Tổng Hợp Sự Cố Metrics
+    case 'ton_truoc':
+      return 'Tồn Trước Ngày n';
+    case 'phat_sinh':
+      return 'Phát Sinh Trong Ngày';
+    case 'xu_ly':
+      return 'Xử Lý Trong Ngày';
+    case 'ton_su_co':
+      return 'Tồn Sự Cố (GNOC)';
+    case 'ton_tk':
+      return 'Tồn TK (Phát Triển Mới)';
+    case 'ton_su_co_tk':
+      return 'Tồn Sự Cố + Triển Khai';
+    case 'tac_vu_dong_n':
+      return 'Tác Vụ Đã Đóng Trong Ngày';
+    case 'lte_3h':
+      return 'Sự Cố Tồn ≤ 3h';
+    case 'h3_24':
+      return 'Sự Cố Tồn 3h - 24h';
+    case 'h24_48':
+      return 'Sự Cố Tồn 24h - 48h';
+    case 'h48_72':
+      return 'Sự Cố Tồn 48h - 72h';
+    case 'gt_72h':
+      return 'Sự Cố Tồn > 72h';
+    case 'tam_dung':
+      return 'Sự Cố Tạm Dừng';
+    case 'tong':
+      return 'Tổng Tồn Sự Cố';
+    case 'hot':
+      return 'Sự Cố HOT';
+    case 'qua_han':
+      return 'Sự Cố Quá Hạn';
     default:
       return 'Tất Cả Công Việc (Tổng WO)';
   }
@@ -118,6 +181,11 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
   const [expandedWos, setExpandedWos] = useState({});
   const [selectedCabinetWo, setSelectedCabinetWo] = useState(null);
   const [copiedCabId, setCopiedCabId] = useState(null);
+  const [dualTab, setDualTab] = useState('gnoc');
+
+  React.useEffect(() => {
+    setDualTab('gnoc');
+  }, [filterInfo?.metric, filterInfo?.targetName, filterInfo?.filterId]);
 
   const handleCopyCabinet = (text) => {
     if (!text) return;
@@ -153,15 +221,24 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
     );
   };
 
+  const isDualMetric = filterInfo?.metric === 'ton_su_co_tk';
+  const effectiveMetric = isDualMetric
+    ? (dualTab === 'qlctkt' ? 'ton_tk' : 'ton_su_co')
+    : (filterInfo?.metric || 'total');
+
   // Query drilldown tasks
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['codinh-drilldown-tasks', filterInfo, searchTerm, sortKey, sortOrder],
+    queryKey: ['codinh-drilldown-tasks', filterInfo, effectiveMetric, searchTerm, sortKey, sortOrder],
     queryFn: () => {
       return codinhApi.getDrilldownTasks({
+        report: filterInfo.report || undefined,
         category_id: filterInfo.categoryId || undefined,
         month: filterInfo.month || undefined,
-        metric: filterInfo.metric || 'total',
+        date: filterInfo.date || undefined,
+        metric: effectiveMetric,
+        sub_metric: isDualMetric ? (dualTab === 'qlctkt' ? 'ton_tk' : 'ton_su_co') : undefined,
         filter_type: filterInfo.filterType || undefined,
+        filter_id: filterInfo.filterId || undefined,
         target_name: filterInfo.targetName || undefined,
         search: searchTerm.trim() || undefined,
         sort_by: sortKey,
@@ -174,15 +251,76 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
     keepPreviousData: true,
   });
 
+  const isQlctkt = Boolean(
+    data?.source === 'qlctkt' ||
+    filterInfo?.report === 'qlctkt_trien_khai' ||
+    effectiveMetric === 'ton_tk' ||
+    effectiveMetric === 'nghiem_thu_n'
+  );
+
   if (!isOpen || !filterInfo) return null;
 
-  const total = data?.total || 0;
+  const total = data?.total_items || data?.total || 0;
   const items = data?.items || [];
   const totalCabinets = items.reduce((acc, t) => acc + (t.total_cabinets || 0), 0);
 
   // Export CSV
   const handleExportCSV = () => {
     if (!items.length) return;
+    if (isQlctkt) {
+      const headers = [
+        'STT',
+        'Task ID',
+        'Dịch vụ',
+        'Loại yêu cầu',
+        'Account',
+        'Tên khách hàng',
+        'Địa chỉ lắp đặt',
+        'Tổ Đội (file)',
+        'Nhân viên thực hiện',
+        'Trạm',
+        'Tiến độ',
+        'Ngày tạo',
+        'Ngày kết thúc thực tế',
+        'Số giờ tồn',
+        'Trạng thái GPON',
+        'Tích hẹn',
+        'Ghi chú đầu mối',
+        'Lý do tích hủy',
+        'CMTASKTYPENAME',
+      ];
+      const rows = items.map((t, idx) => [
+        idx + 1,
+        `"${t.task_id || ''}"`,
+        `"${(t.dich_vu || '').replace(/"/g, '""')}"`,
+        `"${(t.loai_yeu_cau || '').replace(/"/g, '""')}"`,
+        `"${(t.account || '').replace(/"/g, '""')}"`,
+        `"${(t.ten_khach_hang || '').replace(/"/g, '""')}"`,
+        `"${(t.dia_chi_lap_dat || '').replace(/"/g, '""')}"`,
+        `"${(t.to_doi_raw || '').replace(/"/g, '""')}"`,
+        `"${(t.nv_thuc_hien || '').replace(/"/g, '""')}"`,
+        `"${t.tram || ''}"`,
+        `"${t.tien_do || ''}"`,
+        `"${t.ngay_tao || ''}"`,
+        `"${t.ngay_ket_thuc_thuc_te || ''}"`,
+        t.so_gio_ton ?? '',
+        `"${t.trang_thai_gpon || ''}"`,
+        `"${t.tich_hen || ''}"`,
+        `"${(t.ghi_chu_dau_moi || '').replace(/"/g, '""')}"`,
+        `"${(t.ly_do_tich_huy || '').replace(/"/g, '""')}"`,
+        `"${(t.cmtasktypename || '').replace(/"/g, '""')}"`,
+      ]);
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const fileBase = `ChiTiet_QLCTKT_${filterInfo.targetName || 'ToanMang'}_${filterInfo.metric || 'All'}`;
+      link.download = `${fileBase.replace(/[\s/\\:]/g, '_')}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
     const headers = [
       'STT',
       'Mã công việc',
@@ -213,7 +351,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
         `"${(t.ghi_chu || '').replace(/"/g, '""')}"`,
         `"${t.trang_thai || ''}"`,
         `"${formatGroupName(t.group_name)}"`,
-        `"${getUserFullName(t.employee_assigned_name) || ''}"`,
+        `"${t.employee_assigned_name || ''}"`,
         `"${formatDateTime(t.thoi_diem_yeu_cau_ket_thuc)}"`,
         t.thoi_gian_con_lai ?? '',
         t.total_cabinets || 0,
@@ -313,7 +451,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                 <Cable size={12} /> CHI TIẾT CỐ ĐỊNH BĂNG RỘNG
               </span>
               <span className="badge badge-neutral" style={{ fontSize: '0.74rem', fontWeight: 700 }}>
-                {filterInfo.categoryName || 'Báo Cáo CĐBR'}
+                {filterInfo.reportTitle || filterInfo.categoryName || 'Báo Cáo CĐBR'}
               </span>
             </div>
 
@@ -343,7 +481,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
           {/* Close & Stats badges */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="badge" style={{ fontSize: '0.82rem', padding: '6px 12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
-              WO: <strong style={{ marginLeft: '4px', color: '#8b5cf6' }}>{total.toLocaleString()}</strong>
+              {isQlctkt ? 'Task' : 'WO'}: <strong style={{ marginLeft: '4px', color: '#8b5cf6' }}>{total.toLocaleString()}</strong>
             </span>
             {totalCabinets > 0 && (
               <span className="badge badge-purple" style={{ fontSize: '0.82rem', padding: '6px 12px' }}>
@@ -368,6 +506,60 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
             </button>
           </div>
         </div>
+
+        {/* DUAL TABS CHO TON_SU_CO_TK */}
+        {isDualMetric && (
+          <div
+            style={{
+              padding: '8px 20px',
+              borderBottom: '1px solid var(--border-color)',
+              background: 'var(--bg-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+              Xem theo nguồn:
+            </span>
+            <button
+              type="button"
+              className={`btn ${dualTab === 'gnoc' ? 'btn-primary' : 'btn-outline'}`}
+              style={{
+                padding: '4px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                height: '28px',
+                background: dualTab === 'gnoc' ? '#8b5cf6' : undefined,
+                borderColor: dualTab === 'gnoc' ? '#8b5cf6' : undefined,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              onClick={() => setDualTab('gnoc')}
+            >
+              <span>⚡ Tồn Sự Cố (GNOC)</span>
+            </button>
+            <button
+              type="button"
+              className={`btn ${dualTab === 'qlctkt' ? 'btn-primary' : 'btn-outline'}`}
+              style={{
+                padding: '4px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                height: '28px',
+                background: dualTab === 'qlctkt' ? '#8b5cf6' : undefined,
+                borderColor: dualTab === 'qlctkt' ? '#8b5cf6' : undefined,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              onClick={() => setDualTab('qlctkt')}
+            >
+              <span>🛠️ Tồn TK (QLCTKT)</span>
+            </button>
+          </div>
+        )}
 
         {/* TOOLBAR: SEARCH & EXCEL */}
         <div
@@ -470,97 +662,183 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
           ) : (
             <table className="excel-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-tertiary)' }}>
-                <tr>
-                  <th style={{ width: '38px', minWidth: '38px', whiteSpace: 'nowrap' }}>STT</th>
-                  
-                  <th
-                    onClick={() => handleSort('ma_cong_viec')}
-                    style={{ width: '135px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Mã công việc"
-                  >
-                    Mã công việc {renderSortIndicator('ma_cong_viec')}
-                  </th>
+                {isQlctkt ? (
+                  <tr>
+                    <th style={{ width: '38px', minWidth: '38px', whiteSpace: 'nowrap' }}>STT</th>
+                    <th onClick={() => handleSort('task_id')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                      Task ID {renderSortIndicator('task_id')}
+                    </th>
+                    <th onClick={() => handleSort('dich_vu')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                      Dịch vụ {renderSortIndicator('dich_vu')}
+                    </th>
+                    <th onClick={() => handleSort('loai_yeu_cau')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                      Loại yêu cầu {renderSortIndicator('loai_yeu_cau')}
+                    </th>
+                    <th onClick={() => handleSort('account')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                      Account {renderSortIndicator('account')}
+                    </th>
+                    <th onClick={() => handleSort('ten_khach_hang')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                      Tên khách hàng {renderSortIndicator('ten_khach_hang')}
+                    </th>
+                    <th style={{ whiteSpace: 'nowrap', textAlign: 'left', minWidth: '180px' }}>Địa chỉ lắp đặt</th>
+                    <th onClick={() => handleSort('nv_thuc_hien')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                      Nhân viên thực hiện {renderSortIndicator('nv_thuc_hien')}
+                    </th>
+                    <th onClick={() => handleSort('tien_do')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                      Tiến độ {renderSortIndicator('tien_do')}
+                    </th>
+                    <th onClick={() => handleSort('ngay_tao')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                      Ngày tạo {renderSortIndicator('ngay_tao')}
+                    </th>
+                    <th onClick={() => handleSort('ngay_ket_thuc_thuc_te')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                      Ngày KT thực tế {renderSortIndicator('ngay_ket_thuc_thuc_te')}
+                    </th>
+                    <th onClick={() => handleSort('so_gio_ton')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      Số giờ tồn {renderSortIndicator('so_gio_ton')}
+                    </th>
+                    <th style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>Trạng thái GPON</th>
+                    <th style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>Tích hẹn</th>
+                    <th style={{ whiteSpace: 'nowrap', textAlign: 'left', minWidth: '160px' }}>Ghi chú đầu mối</th>
+                    <th style={{ whiteSpace: 'nowrap', textAlign: 'left', minWidth: '150px' }}>Lý do tích hủy</th>
+                  </tr>
+                ) : (
+                  <tr>
+                    <th style={{ width: '38px', minWidth: '38px', whiteSpace: 'nowrap' }}>STT</th>
+                    
+                    <th
+                      onClick={() => handleSort('ma_cong_viec')}
+                      style={{ width: '135px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Mã công việc"
+                    >
+                      Mã công việc {renderSortIndicator('ma_cong_viec')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('station_code')}
-                    style={{ width: '85px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Mã trạm"
-                  >
-                    Mã trạm {renderSortIndicator('station_code')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('station_code')}
+                      style={{ width: '85px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Mã trạm"
+                    >
+                      Mã trạm {renderSortIndicator('station_code')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('loai_cong_viec')}
-                    style={{ minWidth: '160px', maxWidth: '220px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Loại công việc"
-                  >
-                    Loại công việc {renderSortIndicator('loai_cong_viec')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('loai_cong_viec')}
+                      style={{ minWidth: '160px', maxWidth: '220px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Loại công việc"
+                    >
+                      Loại công việc {renderSortIndicator('loai_cong_viec')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('noi_dung_cong_viec')}
-                    style={{ minWidth: '220px', maxWidth: '320px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Nội dung"
-                  >
-                    Nội dung công việc {renderSortIndicator('noi_dung_cong_viec')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('noi_dung_cong_viec')}
+                      style={{ minWidth: '220px', maxWidth: '320px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Nội dung"
+                    >
+                      Nội dung công việc {renderSortIndicator('noi_dung_cong_viec')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('trang_thai')}
-                    style={{ width: '105px', minWidth: '95px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Trạng thái"
-                  >
-                    Trạng thái {renderSortIndicator('trang_thai')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('trang_thai')}
+                      style={{ width: '105px', minWidth: '95px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Trạng thái"
+                    >
+                      Trạng thái {renderSortIndicator('trang_thai')}
+                    </th>
 
-                  <th
-                    style={{ width: '130px', minWidth: '115px', whiteSpace: 'nowrap', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}
-                    title="Tủ cáp (THC) con đối chiếu theo WO"
-                  >
-                    Tủ Cáp (THC)
-                  </th>
+                    <th
+                      style={{ width: '130px', minWidth: '115px', whiteSpace: 'nowrap', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}
+                      title="Tủ cáp (THC) con đối chiếu theo WO"
+                    >
+                      Tủ Cáp (THC)
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('employee_assigned_name')}
-                    style={{ width: '150px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Nhân viên"
-                  >
-                    Họ và tên {renderSortIndicator('employee_assigned_name')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('employee_assigned_name')}
+                      style={{ width: '150px', minWidth: '130px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Nhân viên"
+                    >
+                      Họ và tên {renderSortIndicator('employee_assigned_name')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('group_name')}
-                    style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center', padding: '6px 8px', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Nhóm"
-                  >
-                    Cụm / Nhóm {renderSortIndicator('group_name')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('group_name')}
+                      style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center', padding: '6px 8px', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Nhóm"
+                    >
+                      Cụm / Nhóm {renderSortIndicator('group_name')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('thoi_diem_yeu_cau_ket_thuc')}
-                    style={{ width: '140px', minWidth: '135px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Yêu cầu kết thúc"
-                  >
-                    Yêu cầu kết thúc {renderSortIndicator('thoi_diem_yeu_cau_ket_thuc')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('thoi_diem_yeu_cau_ket_thuc')}
+                      style={{ width: '140px', minWidth: '135px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Yêu cầu kết thúc"
+                    >
+                      Yêu cầu kết thúc {renderSortIndicator('thoi_diem_yeu_cau_ket_thuc')}
+                    </th>
 
-                  <th
-                    onClick={() => handleSort('thoi_gian_con_lai')}
-                    style={{ width: '90px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Thời gian còn lại"
-                  >
-                    Còn lại (H) {renderSortIndicator('thoi_gian_con_lai')}
-                  </th>
+                    <th
+                      onClick={() => handleSort('thoi_gian_con_lai')}
+                      style={{ width: '90px', minWidth: '85px', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                      title="Nhấn để sắp xếp theo Thời gian còn lại"
+                    >
+                      Còn lại (H) {renderSortIndicator('thoi_gian_con_lai')}
+                    </th>
 
-                  <th style={{ width: '85px', minWidth: '80px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                    Thao tác
-                  </th>
-                </tr>
+                    <th style={{ width: '85px', minWidth: '80px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      Thao tác
+                    </th>
+                  </tr>
+                )}
               </thead>
               <tbody>
-                {items.map((t, idx) => {
-                  const isOverdue = t.is_overdue;
-                  const isExpanded = expandedWos[t.ma_cong_viec];
+                {isQlctkt ? (
+                  items.map((t, idx) => (
+                    <tr
+                      key={t.task_id || idx}
+                      className="excel-row"
+                      style={{ background: idx % 2 === 0 ? 'var(--bg-secondary)' : 'var(--bg-tertiary)' }}
+                    >
+                      <td className="cell-num" style={{ width: '38px', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#8b5cf6', whiteSpace: 'nowrap' }}>{t.task_id}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{t.dich_vu || '--'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{t.loai_yeu_cau || '--'}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{t.account || '--'}</td>
+                      <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.ten_khach_hang || '--'}</td>
+                      <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.dia_chi_lap_dat}>{t.dia_chi_lap_dat || '--'}</td>
+                      <td style={{ whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--brand-primary)' }}>{t.nv_thuc_hien || '--'}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <span className={`badge ${t.tien_do === 'Kết thúc' ? 'badge-success' : t.tien_do === 'Cập nhật hồ sơ' ? 'badge-neutral' : 'badge-warning'}`} style={{ fontSize: '0.74rem' }}>
+                          {t.tien_do}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{t.ngay_tao || '--'}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{t.ngay_ket_thuc_thuc_te || '--'}</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, color: (t.so_gio_ton || 0) > 0 ? '#ef4444' : 'var(--text-primary)' }}>
+                        {t.so_gio_ton !== null && t.so_gio_ton !== undefined ? Number(t.so_gio_ton).toFixed(1) : '--'}
+                      </td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <span className={`badge ${t.is_duong_day_moi ? 'badge-purple' : 'badge-neutral'}`} style={{ fontSize: '0.72rem' }}>
+                          {t.trang_thai_gpon || '--'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <span className={`badge ${t.is_tich_hen_ok ? 'badge-success' : 'badge-neutral'}`} style={{ fontSize: '0.72rem' }}>
+                          {t.tich_hen || '--'}
+                        </span>
+                      </td>
+                      <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: t.is_huy ? '#ef4444' : 'inherit' }} title={t.ghi_chu_dau_moi}>
+                        {t.is_huy && <span style={{ fontWeight: 800, color: '#ef4444', marginRight: '4px' }}>[HỦY]</span>}
+                        {t.ghi_chu_dau_moi || '--'}
+                      </td>
+                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: t.ly_do_tich_huy ? '#ef4444' : 'inherit' }} title={t.ly_do_tich_huy}>
+                        {t.ly_do_tich_huy || '--'}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  items.map((t, idx) => {
+                    const isOverdue = t.is_overdue;
+                    const isExpanded = expandedWos[t.ma_cong_viec];
                   const hasCabs = (t.cabinets && t.cabinets.length > 0);
                   const isAllCabsDone = hasCabs && t.completed_cabinets === t.total_cabinets;
 
@@ -690,7 +968,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                           }}
                           title={t.employee_username ? `User: ${t.employee_username}` : ''}
                         >
-                          {getUserFullName(t.employee_assigned_name)}
+                          {t.employee_assigned_name}
                         </td>
 
                         {/* Nhóm / Cụm */}
@@ -818,7 +1096,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
                       )}
                     </React.Fragment>
                   );
-                })}
+                }) )}
               </tbody>
             </table>
           )}

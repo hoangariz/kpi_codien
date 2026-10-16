@@ -10,6 +10,8 @@ from backend.models.fixed_wo_report import FixedWoReport, FixedWoItem
 from backend.models.cabinet import Cabinet
 from backend.models.task_codinh import TaskCodinh
 from backend.models.device_recall import DeviceRecall
+from backend.models.codinh_org import CodinhCluster, CodinhTeam, CodinhEmployee
+from backend.models.task_qlctkt import TaskQlctkt
 
 __all__ = [
     "Employee",
@@ -32,6 +34,10 @@ __all__ = [
     "Cabinet",
     "TaskCodinh",
     "DeviceRecall",
+    "CodinhCluster",
+    "CodinhTeam",
+    "CodinhEmployee",
+    "TaskQlctkt",
 ]
 
 

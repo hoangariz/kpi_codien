@@ -19,7 +19,11 @@ import { tasksApi } from '../api/tasksApi';
 import { trackingApi } from '../api/trackingApi';
 import { statsApi } from '../api/statsApi';
 
-export default function TaskDetailModal({ task, onClose, onNoteAdded }) {
+export default function TaskDetailModal({ task, isOpen, onClose, onNoteAdded }) {
+  if (!task || (isOpen !== undefined && !isOpen)) {
+    return null;
+  }
+
   const [noteContent, setNoteContent] = useState('');
   const [author, setAuthor] = useState('Điều hành');
   const [submittingNote, setSubmittingNote] = useState(false);

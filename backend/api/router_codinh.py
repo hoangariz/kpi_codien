@@ -6,7 +6,7 @@ import threading
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List
 from uuid import uuid4
@@ -16,6 +16,7 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request, status
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from backend.database import get_db, SessionLocal
 from backend.config import UPLOAD_DIR
@@ -45,7 +46,50 @@ from backend.services.codinh_service import (
     activate_codinh_import,
     delete_codinh_import,
     clear_codinh_stats_cache,
+    list_reports,
+    get_reports_summary_cards,
+    get_org_tree,
+    seed_org_from_excel,
+    get_unmatched_usernames,
+    set_team_leader,
+    bump_org_version,
+    import_qlctkt_from_excel,
+    get_unmatched_qlctkt_names,
+    ensure_org_columns_and_backfill,
+    normalize_key,
 )
+from backend.models.codinh_org import CodinhCluster, CodinhTeam, CodinhEmployee
+from backend.models.task_qlctkt import TaskQlctkt
+from pydantic import BaseModel
+
+
+class ClusterCreateUpdate(BaseModel):
+    ma_cum: str
+    ten_cum: str
+    sort_order: Optional[int] = 0
+    is_active: Optional[bool] = True
+
+
+class TeamCreateUpdate(BaseModel):
+    cluster_id: int
+    ma_doi: str
+    ten_doi: str
+    sort_order: Optional[int] = 0
+    is_active: Optional[bool] = True
+
+
+class EmployeeCreateUpdate(BaseModel):
+    team_id: int
+    username: str
+    ho_ten: str
+    la_doi_truong: Optional[bool] = False
+    sort_order: Optional[int] = 0
+    is_active: Optional[bool] = True
+
+
+class SetLeaderRequest(BaseModel):
+    employee_id: int
+
 
 router = APIRouter(prefix="/api/codinh", tags=["Cố Định Băng Rộng"])
 
@@ -496,9 +540,21 @@ def delete_codinh_file(import_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/reports")
+def get_reports(
+    month: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Lấy danh sách các bảng báo cáo CĐBR cố định và thẻ tóm tắt KPI.
+    """
+    return get_reports_summary_cards(db, target_month=month)
+
+
 @router.post("/cabinets/upload")
 async def upload_cabinets_file(
     file: UploadFile = File(...),
+    report: Optional[str] = Form("thc"),
     category_id: Optional[int] = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -515,16 +571,17 @@ async def upload_cabinets_file(
 
     temp_path = None
     try:
-        # Save temp file
         safe_name = f"cabinet_{int(datetime.utcnow().timestamp())}_{file.filename}"
         temp_path = UPLOAD_DIR / safe_name
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        report_key = report or "thc"
         result = import_cabinets_from_excel(
             db=db,
             file_path=temp_path,
             filename=file.filename,
+            report_key=report_key,
             category_id=category_id
         )
         return {
@@ -547,16 +604,19 @@ async def upload_cabinets_file(
 
 @router.get("/stats")
 def get_stats(
+    report: Optional[str] = Query(None),
     category_id: Optional[int] = Query(None),
     month: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
-    Lấy số liệu thống kê chi tiết cho bảng báo cáo Cố Định Băng Rộng (theo WO và Tủ con).
+    Lấy số liệu thống kê chi tiết cho bảng báo cáo Cố Định Băng Rộng (3 cấp: Cụm, Đội, Nhân viên).
     """
     try:
-        return get_codinh_stats(db, category_id=category_id, target_month=month)
+        return get_codinh_stats(db, report=report, category_id=category_id, target_month=month, target_date=date)
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi tính toán số liệu CĐBR: {str(e)}")
 
 
@@ -568,10 +628,14 @@ def get_meta_options(db: Session = Depends(get_db)):
 
 @router.get("/drilldown")
 def get_drilldown_tasks(
+    report: Optional[str] = Query(None),
     category_id: Optional[int] = Query(None),
     month: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
     metric: str = Query("total"),
+    sub_metric: Optional[str] = Query(None),
     filter_type: Optional[str] = Query(None),
+    filter_id: Optional[str] = Query(None),
     target_name: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
@@ -586,16 +650,443 @@ def get_drilldown_tasks(
     try:
         return get_codinh_drilldown_tasks(
             db=db,
+            report=report,
             category_id=category_id,
             target_month=month,
+            target_date=date,
             metric=metric,
             filter_type=filter_type,
+            filter_id=filter_id,
             target_name=target_name,
             search=search,
             sort_by=sort_by,
             sort_order=sort_order,
             page=page,
             page_size=page_size,
+            sub_metric=sub_metric,
         )
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi lấy danh sách chi tiết: {str(e)}")
+
+
+# ==========================================
+# CĐBR ORGANIZATION DIRECTORY ENDPOINTS
+# ==========================================
+
+@router.get("/org")
+def get_org(db: Session = Depends(get_db)):
+    """Lấy cây danh mục 3 cấp Cụm -> Đội -> Nhân viên của CĐBR."""
+    return get_org_tree(db)
+
+
+@router.post("/org/import")
+async def import_org(
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    """Nạp danh mục nhân sự CĐBR từ Excel (hoặc nạp lại từ file gốc nếu không gửi kèm file)."""
+    temp_path = None
+    try:
+        if file:
+            safe_name = f"org_{int(datetime.utcnow().timestamp())}_{file.filename}"
+            temp_path = UPLOAD_DIR / safe_name
+            with open(temp_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            result = seed_org_from_excel(db, excel_path=temp_path, force=True)
+        else:
+            result = seed_org_from_excel(db, force=True)
+
+        if result.get("status") == "error":
+            raise HTTPException(status_code=400, detail=result.get("message"))
+        return result
+    finally:
+        if temp_path and temp_path.exists():
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
+
+
+@router.get("/org/unmatched")
+def get_unmatched(db: Session = Depends(get_db)):
+    """
+    Lấy danh sách username có WO trong DB nhưng chưa có trong danh mục.
+    Chỉ dùng để tham khảo, sắp theo số WO giảm dần.
+    """
+    return get_unmatched_usernames(db)
+
+
+@router.post("/org/teams/{team_id}/set-leader")
+def set_leader(
+    team_id: int,
+    req: SetLeaderRequest,
+    db: Session = Depends(get_db)
+):
+    """Chỉ định 1 nhân viên làm Đội trưởng cho Đội (mỗi đội chỉ có 1 đội trưởng)."""
+    success = set_team_leader(db, team_id, req.employee_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đội hoặc nhân viên")
+    return {"status": "success", "message": "Đã cập nhật đội trưởng thành công"}
+
+
+@router.post("/org/clusters")
+def create_cluster(data: ClusterCreateUpdate, db: Session = Depends(get_db)):
+    existing = db.query(CodinhCluster).filter(CodinhCluster.ma_cum == data.ma_cum.strip()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Mã cụm đã tồn tại")
+    c = CodinhCluster(
+        ma_cum=data.ma_cum.strip(),
+        ten_cum=data.ten_cum.strip(),
+        sort_order=data.sort_order or 0,
+        is_active=data.is_active if data.is_active is not None else True
+    )
+    db.add(c)
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success", "id": c.id}
+
+
+@router.put("/org/clusters/{cluster_id}")
+def update_cluster(cluster_id: int, data: ClusterCreateUpdate, db: Session = Depends(get_db)):
+    c = db.query(CodinhCluster).filter(CodinhCluster.id == cluster_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Không tìm thấy cụm")
+    c.ma_cum = data.ma_cum.strip()
+    c.ten_cum = data.ten_cum.strip()
+    c.sort_order = data.sort_order or 0
+    c.is_active = data.is_active if data.is_active is not None else True
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success"}
+
+
+@router.delete("/org/clusters/{cluster_id}")
+def delete_cluster(cluster_id: int, db: Session = Depends(get_db)):
+    c = db.query(CodinhCluster).filter(CodinhCluster.id == cluster_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Không tìm thấy cụm")
+    db.delete(c)
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success"}
+
+
+@router.post("/org/teams")
+def create_team(data: TeamCreateUpdate, db: Session = Depends(get_db)):
+    cluster = db.query(CodinhCluster).filter(CodinhCluster.id == data.cluster_id).first()
+    if not cluster:
+        raise HTTPException(status_code=404, detail="Không tìm thấy cụm trực thuộc")
+    t = CodinhTeam(
+        cluster_id=data.cluster_id,
+        ma_doi=data.ma_doi.strip(),
+        ten_doi=data.ten_doi.strip(),
+        sort_order=data.sort_order or 0,
+        is_active=data.is_active if data.is_active is not None else True
+    )
+    db.add(t)
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success", "id": t.id}
+
+
+@router.put("/org/teams/{team_id}")
+def update_team(team_id: int, data: TeamCreateUpdate, db: Session = Depends(get_db)):
+    t = db.query(CodinhTeam).filter(CodinhTeam.id == team_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đội")
+    t.cluster_id = data.cluster_id
+    t.ma_doi = data.ma_doi.strip()
+    t.ten_doi = data.ten_doi.strip()
+    t.sort_order = data.sort_order or 0
+    t.is_active = data.is_active if data.is_active is not None else True
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success"}
+
+
+@router.delete("/org/teams/{team_id}")
+def delete_team(team_id: int, db: Session = Depends(get_db)):
+    t = db.query(CodinhTeam).filter(CodinhTeam.id == team_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đội")
+    db.delete(t)
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success"}
+
+
+@router.post("/org/employees")
+def create_employee(data: EmployeeCreateUpdate, db: Session = Depends(get_db)):
+    team = db.query(CodinhTeam).filter(CodinhTeam.id == data.team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đội trực thuộc")
+    u_key = data.username.strip().lower()
+    existing = db.query(CodinhEmployee).filter(CodinhEmployee.username_key == u_key).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username đã tồn tại trong danh mục")
+
+    ht_key = normalize_key(data.ho_ten)
+    dup_ht = db.query(CodinhEmployee).filter(
+        CodinhEmployee.ho_ten_key == ht_key,
+        CodinhEmployee.is_active == True
+    ).first()
+    if dup_ht:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Họ và tên đã trùng với nhân viên '{dup_ht.ho_ten}' (Username: {dup_ht.username}) đang hoạt động trong danh mục"
+        )
+
+    emp = CodinhEmployee(
+        team_id=data.team_id,
+        username=data.username.strip(),
+        username_key=u_key,
+        ho_ten=data.ho_ten.strip(),
+        ho_ten_key=ht_key,
+        la_doi_truong=bool(data.la_doi_truong),
+        sort_order=data.sort_order or 0,
+        is_active=data.is_active if data.is_active is not None else True
+    )
+    db.add(emp)
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success", "id": emp.id}
+
+
+@router.put("/org/employees/{employee_id}")
+def update_employee(employee_id: int, data: EmployeeCreateUpdate, db: Session = Depends(get_db)):
+    emp = db.query(CodinhEmployee).filter(CodinhEmployee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Không tìm thấy nhân viên")
+    u_key = data.username.strip().lower()
+    if u_key != emp.username_key:
+        dup = db.query(CodinhEmployee).filter(CodinhEmployee.username_key == u_key, CodinhEmployee.id != employee_id).first()
+        if dup:
+            raise HTTPException(status_code=400, detail="Username đã tồn tại")
+
+    ht_key = normalize_key(data.ho_ten)
+    is_active = data.is_active if data.is_active is not None else emp.is_active
+    if is_active:
+        dup_ht = db.query(CodinhEmployee).filter(
+            CodinhEmployee.ho_ten_key == ht_key,
+            CodinhEmployee.id != employee_id,
+            CodinhEmployee.is_active == True
+        ).first()
+        if dup_ht:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Họ và tên đã trùng với nhân viên '{dup_ht.ho_ten}' (Username: {dup_ht.username}) đang hoạt động trong danh mục"
+            )
+
+    emp.team_id = data.team_id
+    emp.username = data.username.strip()
+    emp.username_key = u_key
+    emp.ho_ten = data.ho_ten.strip()
+    emp.ho_ten_key = ht_key
+    emp.la_doi_truong = bool(data.la_doi_truong)
+    emp.sort_order = data.sort_order or 0
+    emp.is_active = is_active
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success"}
+
+
+@router.delete("/org/employees/{employee_id}")
+def delete_employee(employee_id: int, db: Session = Depends(get_db)):
+    emp = db.query(CodinhEmployee).filter(CodinhEmployee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Không tìm thấy nhân viên")
+    db.delete(emp)
+    db.commit()
+    bump_org_version()
+    clear_codinh_stats_cache()
+    return {"status": "success"}
+
+
+# =========================================================================
+# QLCTKT Endpoints (Upload, History, Activate, Delete, Warnings, Golden test)
+# =========================================================================
+
+@router.post("/qlctkt/upload")
+async def upload_qlctkt_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Nạp file Excel QLCTKT hằng ngày (thay thế toàn bộ dữ liệu qlctkt_tasks)."""
+    clean_name, safe_name, ext = _sanitize_and_validate_filename(file.filename or "upload_qlctkt.xlsx")
+    temp_path = UPLOAD_DIR / safe_name
+
+    try:
+        content = await file.read()
+        file_size = len(content)
+        with open(temp_path, "wb") as f:
+            f.write(content)
+
+        log = ImportLog(
+            file_name=clean_name,
+            stored_filename=safe_name,
+            file_size_bytes=file_size,
+            is_active=0,
+            status="PENDING",
+            progress_percent=0,
+            domain="qlctkt",
+        )
+        db.add(log)
+        db.commit()
+
+        # Run import in threadpool
+        res = await run_in_threadpool(
+            import_qlctkt_from_excel,
+            db=db,
+            file_path=temp_path,
+            filename=clean_name,
+            import_id=log.id
+        )
+
+        clear_codinh_stats_cache()
+        return res
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Lỗi nạp file QLCTKT: {str(e)}")
+
+
+@router.get("/qlctkt/history")
+def get_qlctkt_import_history(
+    limit: int = Query(20),
+    db: Session = Depends(get_db)
+):
+    """Lấy lịch sử các lần nạp file QLCTKT."""
+    logs = db.query(ImportLog).filter(
+        ImportLog.domain == "qlctkt"
+    ).order_by(ImportLog.imported_at.desc()).limit(limit).all()
+
+    return [
+        {
+            "id": log.id,
+            "file_name": log.file_name,
+            "stored_filename": log.stored_filename,
+            "file_size_bytes": log.file_size_bytes,
+            "is_active": bool(log.is_active),
+            "status": log.status,
+            "total_rows": log.total_rows,
+            "inserted_count": log.inserted_count,
+            "imported_at": (log.imported_at + timedelta(hours=7)).strftime("%d/%m/%Y %H:%M:%S") if log.imported_at else None,
+            "error_message": log.error_message,
+        }
+        for log in logs
+    ]
+
+
+@router.post("/qlctkt/activate/{log_id}")
+async def activate_qlctkt_import(log_id: int, db: Session = Depends(get_db)):
+    """Kích hoạt lại một bản import QLCTKT đã lưu."""
+    log = db.query(ImportLog).filter(ImportLog.id == log_id, ImportLog.domain == "qlctkt").first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi import QLCTKT")
+
+    file_path = UPLOAD_DIR / log.stored_filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File vật lý không còn tồn tại trên server: {log.stored_filename}")
+
+    res = await run_in_threadpool(
+        import_qlctkt_from_excel,
+        db=db,
+        file_path=file_path,
+        filename=log.file_name,
+        import_id=log.id
+    )
+
+    clear_codinh_stats_cache()
+    return res
+
+
+@router.delete("/qlctkt/history/{log_id}")
+def delete_qlctkt_history(log_id: int, db: Session = Depends(get_db)):
+    """Xóa một bản ghi lịch sử nạp QLCTKT."""
+    log = db.query(ImportLog).filter(ImportLog.id == log_id, ImportLog.domain == "qlctkt").first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi import")
+
+    if log.is_active:
+        raise HTTPException(status_code=400, detail="Không thể xóa bản ghi import đang được kích hoạt")
+
+    if log.stored_filename:
+        p = UPLOAD_DIR / log.stored_filename
+        if p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
+
+    db.delete(log)
+    db.commit()
+    return {"status": "success", "message": "Đã xóa bản ghi import"}
+
+
+@router.get("/qlctkt/unmatched-names")
+def get_qlctkt_unmatched_names(db: Session = Depends(get_db)):
+    """Lấy danh sách các nhân viên trong file QLCTKT chưa có trong danh mục."""
+    return get_unmatched_qlctkt_names(db)
+
+
+@router.get("/org/warnings")
+def get_org_warnings(db: Session = Depends(get_db)):
+    """Lấy danh sách cảnh báo danh mục: trùng họ tên, unmatched names..."""
+    from backend.services.codinh.org import get_org_lookup
+    org = get_org_lookup(db)
+    dup_names = org.get("duplicate_ho_ten_keys", [])
+    unmatched_qlctkt = get_unmatched_qlctkt_names(db)
+    return {
+        "duplicate_ho_ten_keys": dup_names,
+        "duplicate_count": len(dup_names),
+        "unmatched_qlctkt_names": unmatched_qlctkt,
+        "unmatched_qlctkt_count": len(unmatched_qlctkt),
+    }
+
+
+@router.get("/qlctkt/test_golden")
+def test_golden(
+    date: str = Query("2026-10-11"),
+    now_str: str = Query("2026-10-12 14:22:00"),
+    db: Session = Depends(get_db)
+):
+    """Endpoint đối chiếu số liệu golden với file demo_QLCTKT.xlsx."""
+    sample_path = Path("demo_QLCTKT.xlsx")
+    if not sample_path.exists():
+        sample_path = Path("E:/CodeVCC2/KpiCoDien/demo_QLCTKT.xlsx")
+
+    # Run import
+    import_res = import_qlctkt_from_excel(db, sample_path, "demo_QLCTKT.xlsx")
+
+    # Run compute_stats
+    from backend.services.codinh.reports.qlctkt_trien_khai import QlctktTrienKhaiReport
+    rep = QlctktTrienKhaiReport()
+    now_dt = datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S")
+    stats = rep.compute_stats(db, target_date=date, now_override=now_dt, bypass_cache=True)
+
+    return {
+        "import_result": import_res,
+        "golden_test": {
+            "date": date,
+            "now": now_str,
+            "summary": stats["summary"],
+            "by_cluster": [
+                {
+                    "ten_cum": c.get("ten_cum"),
+                    "tong_ton": c.get("tong_ton"),
+                    "nghiem_thu_n": c.get("nghiem_thu_n"),
+                    "qua_han": c.get("qua_han"),
+                    "huy": c.get("huy"),
+                }
+                for c in stats["by_cluster"]
+            ],
+        }
+    }

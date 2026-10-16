@@ -24,6 +24,13 @@ class TaskCodinh(Base):
     thoi_gian_con_lai = Column(Float, nullable=True)
     thoi_diem_ft_hoan_thanh = Column(DateTime, nullable=True)
     thoi_diem_cd_dong = Column(DateTime, nullable=True)
+    muc_do_uu_tien = Column(String(100), nullable=True)
+    is_su_co = Column(Integer, default=0, nullable=False, index=True)
+    is_hot = Column(Integer, default=0, nullable=False, index=True)
+    is_tam_dung = Column(Integer, default=0, nullable=False, index=True)
+    is_open = Column(Integer, default=1, nullable=False, index=True)
+    closed_time = Column(DateTime, nullable=True, index=True)
+    thoi_gian_con_lai_num = Column(Float, nullable=True)
     import_filename = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -34,4 +41,9 @@ class TaskCodinh(Base):
         Index("idx_codinh_tasks_nhom", "nhom"),
         Index("idx_codinh_tasks_nhan_vien", "nhan_vien"),
         Index("idx_codinh_tasks_he_thong", "he_thong"),
+        Index("idx_codinh_tasks_is_su_co", "is_su_co"),
+        Index("idx_codinh_tasks_is_hot", "is_hot"),
+        Index("idx_codinh_tasks_is_tam_dung", "is_tam_dung"),
+        Index("idx_codinh_tasks_is_open", "is_open"),
+        Index("idx_codinh_tasks_closed_time", "closed_time"),
     )

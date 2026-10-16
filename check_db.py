@@ -1,9 +1,10 @@
-import sqlite3
+import sys
+from backend.database import SessionLocal
+from backend.models.codinh_org import CodinhEmployee
 
-conn = sqlite3.connect('kpi_codien.db')
-c = conn.cursor()
-tables = c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-for t in tables:
-    name = t[0]
-    count = c.execute(f"SELECT COUNT(*) FROM `{name}`").fetchone()[0]
-    print(f"{name}: {count} records")
+db = SessionLocal()
+emps = db.query(CodinhEmployee).all()
+print(f"Total employees: {len(emps)}")
+for e in emps[:10]:
+    print(f"ID={e.id}, user={e.username}, name={e.ho_ten}")
+db.close()

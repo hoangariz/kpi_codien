@@ -13,3 +13,7 @@ uploads/
 *.xlsx
 *.xls
 *.csv
+
+# Logs & temp
+*.log
+scratch/
