@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { exportSingleSheetXlsx } from '../utils/excelExport';
 
 export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
   const [showTable, setShowTable] = useState(true); // Checkbox state
@@ -41,8 +42,8 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
     return m;
   };
 
-  // Export CSV
-  const handleExportCSV = () => {
+  // Export XLSX
+  const handleExportCSV = async () => {
     const headers = [
       'STT',
       activeView === 'employee' ? 'Nhân Viên Thực Hiện' : 'Nhóm Điều Phối (Cụm)',
@@ -58,20 +59,20 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
 
     const rows = currentList.map((row, idx) => [
       idx + 1,
-      `"${row.key_name}"`,
+      row.key_name,
       row.total,
       row.closed,
       row.pending,
       row.overdue,
-      row.closed_today,
+      row.closed_today || 0,
       row.closed_yesterday || 0,
-      row.closed_last_7_days,
+      row.closed_last_7_days || 0,
       `${row.completion_rate}%`
     ]);
 
     rows.push([
-      'TỔNG CỘNG',
       '--',
+      'TỔNG CỘNG',
       summary.total ?? total_valid_records,
       summary.closed ?? 0,
       summary.pending ?? 0,
@@ -82,15 +83,8 @@ export default function MaintenanceSpecialWidget({ data, onSelectFilter }) {
       `${summary.completion_rate ?? 0}%`
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Bao_duong_co_dien_${active_month}_${activeView}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const sheetName = activeView === 'employee' ? 'Theo Nhân viên' : 'Theo Nhóm Cụm';
+    await exportSingleSheetXlsx(`Bao_duong_co_dien_${active_month}_${activeView}`, sheetName, headers, rows);
   };
 
   return (

@@ -2,6 +2,8 @@ import os
 import sys
 import math
 import json
+import time
+import logging
 import threading
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
@@ -14,6 +16,7 @@ import shutil
 import traceback
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request, status
+from starlette.requests import ClientDisconnect
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -91,13 +94,16 @@ class SetLeaderRequest(BaseModel):
     employee_id: int
 
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/codinh", tags=["Cố Định Băng Rộng"])
 
-# 8MB chunk size as specified in requirements
-UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
+# 1MB chunk size for high network resilience
+UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024
 
 _executor: Optional[ProcessPoolExecutor] = None
 _executor_lock = threading.Lock()
+_codinh_parts_lock = threading.Lock()
 
 
 def get_executor() -> ProcessPoolExecutor:
@@ -259,17 +265,119 @@ def remove_codinh_category(cat_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+def cleanup_stale_codinh_upload_sessions(db: Optional[Session] = None):
+    """
+    Xóa các phiên UPLOADING CĐBR quá 24 giờ (file data, .parts, .meta)
+    và đánh dấu ImportLog tương ứng là FAILED với thông báo 'Phiên upload bị bỏ dở'.
+    """
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=24)
+    should_close_db = False
+    if db is None:
+        db = SessionLocal()
+        should_close_db = True
+
+    try:
+        for meta_file in UPLOAD_DIR.glob("session_codinh_*.meta"):
+            try:
+                mtime = datetime.utcfromtimestamp(meta_file.stat().st_mtime)
+                meta_data = {}
+                try:
+                    meta_data = json.loads(meta_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+
+                created_at_str = meta_data.get("created_at")
+                created_at = None
+                if created_at_str:
+                    try:
+                        created_at = datetime.fromisoformat(created_at_str)
+                    except Exception:
+                        pass
+                session_time = created_at or mtime
+
+                if session_time < cutoff:
+                    import_id = meta_data.get("import_id")
+                    stored_filename = meta_data.get("stored_filename")
+
+                    if stored_filename:
+                        data_file = UPLOAD_DIR / stored_filename
+                        parts_file = UPLOAD_DIR / f"{stored_filename}.parts"
+                        if data_file.exists():
+                            try:
+                                data_file.unlink()
+                            except Exception:
+                                pass
+                        if parts_file.exists():
+                            try:
+                                parts_file.unlink()
+                            except Exception:
+                                pass
+
+                    try:
+                        meta_file.unlink()
+                    except Exception:
+                        pass
+
+                    if import_id:
+                        log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
+                        if log and log.status == "UPLOADING":
+                            log.status = "FAILED"
+                            log.error_message = "Phiên upload bị bỏ dở (quá 24 giờ)"
+                            db.commit()
+            except Exception as e:
+                logger.warning(f"Lỗi dọn dẹp meta file CĐBR {meta_file}: {e}")
+
+        stale_logs = db.query(ImportLog).filter(
+            ImportLog.status == "UPLOADING",
+            ImportLog.domain == "codinh",
+            ImportLog.imported_at < cutoff
+        ).all()
+        for slog in stale_logs:
+            slog.status = "FAILED"
+            slog.error_message = "Phiên upload bị bỏ dở (quá 24 giờ)"
+            if slog.stored_filename:
+                fpath = UPLOAD_DIR / slog.stored_filename
+                ppath = UPLOAD_DIR / f"{slog.stored_filename}.parts"
+                mpath = UPLOAD_DIR / f"session_codinh_{slog.id}.meta"
+                for p in (fpath, ppath, mpath):
+                    if p.exists():
+                        try:
+                            p.unlink()
+                        except Exception:
+                            pass
+        if stale_logs:
+            db.commit()
+    except Exception as e:
+        logger.error(f"Lỗi dọn dẹp stale upload CĐBR: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        if should_close_db:
+            db.close()
+
+
 @router.post("/wos/chunked/init")
-async def init_codinh_chunked_upload(
+def init_codinh_chunked_upload(
     file_name: str = Form(...),
     file_size: int = Form(...),
     db: Session = Depends(get_db)
 ):
     """
-    Khởi tạo phiên chunked upload cho file WO CĐBR (bỏ qua giới hạn Cloudflare / timeout).
+    Khởi tạo phiên chunked upload cho file WO CĐBR với chunk 1MB.
+    Tạo sẵn file trống, file .parts và file .meta cho phiên.
+    Chạy trong threadpool (sync def).
     """
     if file_size <= 0:
         raise HTTPException(status_code=400, detail="Kích thước file không hợp lệ (file_size phải > 0)")
+
+    # Lazy cleanup stale sessions
+    try:
+        cleanup_stale_codinh_upload_sessions(db)
+    except Exception:
+        pass
 
     clean_name, safe_filename, ext = _sanitize_and_validate_filename(file_name)
     file_path = UPLOAD_DIR / safe_filename
@@ -289,14 +397,26 @@ async def init_codinh_chunked_upload(
     db.commit()
     db.refresh(import_log)
 
-    def _preallocate():
-        with open(file_path, "wb") as f:
-            f.truncate(file_size)
-        parts_path.write_text("", encoding="utf-8")
-
-    await run_in_threadpool(_preallocate)
+    with open(file_path, "wb") as f:
+        f.truncate(file_size)
+    parts_path.write_text("", encoding="utf-8")
 
     total_chunks = math.ceil(file_size / UPLOAD_CHUNK_SIZE)
+
+    # Ghi file meta cho session CĐBR
+    meta_path = UPLOAD_DIR / f"session_codinh_{import_log.id}.meta"
+    meta_data = {
+        "import_id": import_log.id,
+        "stored_filename": safe_filename,
+        "file_size": file_size,
+        "chunk_size": UPLOAD_CHUNK_SIZE,
+        "total_chunks": total_chunks,
+        "status": "UPLOADING",
+        "created_at": datetime.utcnow().isoformat()
+    }
+    with open(meta_path, "w", encoding="utf-8") as mf:
+        json.dump(meta_data, mf)
+
     return {
         "import_id": import_log.id,
         "stored_filename": safe_filename,
@@ -310,73 +430,171 @@ async def init_codinh_chunked_upload(
 async def upload_codinh_chunk(
     import_id: int,
     chunk_index: int,
-    request: Request,
-    db: Session = Depends(get_db)
+    request: Request
 ):
     """
-    Tải lên từng chunk binary cho file CĐBR (raw octet-stream). Ghi vào đúng byte offset.
+    Tải lên từng chunk binary cho file CĐBR (raw octet-stream).
+    Tuyệt đối KHÔNG dùng Depends(get_db) và không chạm DB.
+    Đọc meta từ session_codinh_{import_id}.meta.
+    Ghi dữ liệu tại offset, thread-safe append vào .parts, bắt ClientDisconnect.
     """
-    import_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
-    if not import_log:
-        raise HTTPException(status_code=404, detail="Upload session CĐBR không tồn tại")
+    t_start = time.perf_counter()
 
-    if import_log.status != "UPLOADING":
+    meta_path = UPLOAD_DIR / f"session_codinh_{import_id}.meta"
+    if not meta_path.exists():
+        raise HTTPException(status_code=404, detail="Upload session CĐBR không tồn tại hoặc đã kết thúc")
+
+    try:
+        meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Không thể đọc metadata của phiên upload CĐBR")
+
+    if meta_data.get("status") != "UPLOADING":
         raise HTTPException(status_code=400, detail="Upload session CĐBR đã kết thúc hoặc không ở trạng thái UPLOADING")
 
-    file_size = import_log.file_size_bytes or 0
-    offset = chunk_index * UPLOAD_CHUNK_SIZE
-    if offset >= file_size or offset < 0:
-        raise HTTPException(status_code=400, detail=f"Chỉ số chunk {chunk_index} vượt quá giới hạn file")
+    file_size = meta_data.get("file_size", 0)
+    chunk_size = meta_data.get("chunk_size", UPLOAD_CHUNK_SIZE)
+    stored_filename = meta_data.get("stored_filename")
+    if not stored_filename:
+        raise HTTPException(status_code=500, detail="Metadata không chứa tên file lưu trữ")
 
-    expected_bytes = min(UPLOAD_CHUNK_SIZE, file_size - offset)
-    file_path = UPLOAD_DIR / import_log.stored_filename
-    parts_path = UPLOAD_DIR / f"{import_log.stored_filename}.parts"
+    total_chunks = meta_data.get("total_chunks") or math.ceil(file_size / chunk_size)
+    if chunk_index < 0 or chunk_index >= total_chunks:
+        raise HTTPException(status_code=400, detail=f"Chỉ số chunk {chunk_index} vượt quá giới hạn file ({total_chunks})")
 
-    # Nhả lock DB trước khi nhận stream mạng
-    db.rollback()
+    offset = chunk_index * chunk_size
+    expected_bytes = min(chunk_size, file_size - offset)
+    file_path = UPLOAD_DIR / stored_filename
+    parts_path = UPLOAD_DIR / f"{stored_filename}.parts"
 
-    chunks_data = bytearray()
-    async for chunk in request.stream():
-        chunks_data.extend(chunk)
+    # Stream raw body blocks
+    data_blocks = []
+    total_received = 0
+    try:
+        async for chunk in request.stream():
+            data_blocks.append(chunk)
+            total_received += len(chunk)
+            if total_received > expected_bytes:
+                duration_ms = (time.perf_counter() - t_start) * 1000
+                logger.warning(
+                    f"[CodinhChunkedUpload] Oversized chunk: import_id={import_id} chunk={chunk_index} "
+                    f"received={total_received} expected={expected_bytes} time={duration_ms:.1f}ms"
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Kích thước chunk {chunk_index} ({total_received} bytes) vượt quá mong đợi ({expected_bytes} bytes)"
+                )
+    except ClientDisconnect:
+        duration_ms = (time.perf_counter() - t_start) * 1000
+        logger.warning(
+            f"[CodinhChunkedUpload] Client disconnected: import_id={import_id} chunk={chunk_index} "
+            f"received={total_received}/{expected_bytes} bytes after {duration_ms:.1f}ms"
+        )
+        raise HTTPException(status_code=499, detail="Client disconnected during CĐBR chunk upload")
 
-    if len(chunks_data) != expected_bytes:
+    if total_received != expected_bytes:
+        duration_ms = (time.perf_counter() - t_start) * 1000
+        logger.warning(
+            f"[CodinhChunkedUpload] Size mismatch: import_id={import_id} chunk={chunk_index} "
+            f"received={total_received}/{expected_bytes} bytes time={duration_ms:.1f}ms"
+        )
         raise HTTPException(
             status_code=400,
-            detail=f"Kích thước chunk {chunk_index} không khớp: nhận {len(chunks_data)} bytes, mong đợi {expected_bytes} bytes"
+            detail=f"Kích thước chunk {chunk_index} không khớp: nhận {total_received} bytes, mong đợi {expected_bytes} bytes"
         )
 
     # Ghi khối byte dùng pwrite / seek qua threadpool
-    await run_in_threadpool(_pwrite_block, file_path, offset, bytes(chunks_data))
+    all_bytes = b"".join(data_blocks)
+    await run_in_threadpool(_pwrite_block, file_path, offset, all_bytes)
 
-    # Ghi nhận chunk vào .parts
+    # Ghi nhận chunk vào .parts dưới khóa luồng thread-safe
     def _record_part():
-        with open(parts_path, "a", encoding="utf-8") as f:
-            f.write(f"{chunk_index}\n")
+        with _codinh_parts_lock:
+            with open(parts_path, "a", encoding="utf-8") as f:
+                f.write(f"{chunk_index}\n")
 
     await run_in_threadpool(_record_part)
+    duration_ms = (time.perf_counter() - t_start) * 1000
+    logger.info(
+        f"[CodinhChunkedUpload] OK import_id={import_id} chunk={chunk_index}/{total_chunks} "
+        f"bytes={total_received} time={duration_ms:.1f}ms"
+    )
 
-    # Cập nhật tiến độ DB mỗi 8 chunks hoặc ở chunk cuối
-    total_chunks = math.ceil(file_size / UPLOAD_CHUNK_SIZE)
-    if chunk_index % 8 == 0 or chunk_index == total_chunks - 1:
+    return {
+        "import_id": import_id,
+        "chunk_index": chunk_index,
+        "status": "ok",
+        "bytes_received": total_received,
+        "duration_ms": round(duration_ms, 1)
+    }
+
+
+@router.get("/wos/chunked/{import_id}/status")
+def get_codinh_chunked_upload_status(
+    import_id: int
+):
+    """
+    Kiểm tra trạng thái phiên chunked upload CĐBR và danh sách chunk_index đã nhận.
+    Đọc từ .meta và .parts, KHÔNG chạm DB nặng.
+    Dùng cho client kiểm tra resume.
+    """
+    meta_path = UPLOAD_DIR / f"session_codinh_{import_id}.meta"
+    if not meta_path.exists():
+        db = SessionLocal()
         try:
-            db_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
-            if db_log and db_log.status == "UPLOADING":
-                pct = int(((chunk_index + 1) / max(1, total_chunks)) * 100)
-                db_log.progress_percent = min(pct, 99)
-                db.commit()
-        except Exception:
-            db.rollback()
+            log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
+            if log:
+                return {
+                    "import_id": import_id,
+                    "received": [],
+                    "received_count": 0,
+                    "total_chunks": 0,
+                    "chunk_size": UPLOAD_CHUNK_SIZE,
+                    "status": log.status
+                }
+        finally:
+            db.close()
+        raise HTTPException(status_code=404, detail="Upload session CĐBR không tồn tại hoặc đã bị xóa")
 
-    return {"import_id": import_id, "chunk_index": chunk_index, "status": "ok"}
+    try:
+        meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Không thể đọc metadata của phiên upload CĐBR")
+
+    stored_filename = meta_data.get("stored_filename", "")
+    parts_path = UPLOAD_DIR / f"{stored_filename}.parts"
+
+    received = []
+    if parts_path.exists():
+        try:
+            with open(parts_path, "r", encoding="utf-8") as pf:
+                received = sorted(list({int(line.strip()) for line in pf if line.strip().isdigit()}))
+        except Exception:
+            pass
+
+    total_chunks = meta_data.get("total_chunks", 0)
+    chunk_size = meta_data.get("chunk_size", UPLOAD_CHUNK_SIZE)
+    status = meta_data.get("status", "UPLOADING")
+
+    return {
+        "import_id": import_id,
+        "received": received,
+        "received_count": len(received),
+        "total_chunks": total_chunks,
+        "chunk_size": chunk_size,
+        "file_size": meta_data.get("file_size", 0),
+        "status": status
+    }
 
 
 @router.post("/wos/chunked/{import_id}/finalize", response_model=ImportLogResponse)
-async def finalize_codinh_chunked_upload(
+def finalize_codinh_chunked_upload(
     import_id: int,
     db: Session = Depends(get_db)
 ):
     """
     Hoàn tất tải các chunk: kiểm tra tính toàn vẹn, chuyển trạng thái sang PENDING và nạp ngầm qua ProcessPoolExecutor.
+    Chạy trong threadpool (sync def). Xóa .parts và .meta sau khi hoàn tất.
     """
     import_log = db.query(ImportLog).filter(ImportLog.id == import_id, ImportLog.domain == "codinh").first()
     if not import_log:
@@ -387,6 +605,7 @@ async def finalize_codinh_chunked_upload(
 
     file_path = UPLOAD_DIR / import_log.stored_filename
     parts_path = UPLOAD_DIR / f"{import_log.stored_filename}.parts"
+    meta_path = UPLOAD_DIR / f"session_codinh_{import_id}.meta"
 
     if not file_path.exists():
         raise HTTPException(status_code=400, detail="File vật lý không tồn tại trên máy chủ")
@@ -394,7 +613,7 @@ async def finalize_codinh_chunked_upload(
     file_size = import_log.file_size_bytes or 0
     total_chunks = math.ceil(file_size / UPLOAD_CHUNK_SIZE)
 
-    parts_uploaded = await run_in_threadpool(_read_parts_file, parts_path)
+    parts_uploaded = _read_parts_file(parts_path)
     missing = [i for i in range(total_chunks) if i not in parts_uploaded]
 
     if missing:
@@ -413,12 +632,17 @@ async def finalize_codinh_chunked_upload(
             detail=f"Kích thước file thực tế ({actual_size} bytes) không khớp với khai báo ({file_size} bytes)"
         )
 
-    # Clean up parts file
-    if parts_path.exists():
-        try:
+    # Clean up parts and meta file
+    try:
+        if parts_path.exists():
             parts_path.unlink()
-        except Exception:
-            pass
+    except Exception:
+        pass
+    try:
+        if meta_path.exists():
+            meta_path.unlink()
+    except Exception:
+        pass
 
     import_log.status = "PENDING"
     import_log.progress_percent = 0
@@ -427,6 +651,7 @@ async def finalize_codinh_chunked_upload(
 
     submit_codinh_import_job(import_log.id, str(file_path))
     return import_log
+
 
 
 @router.post("/wos/upload", response_model=ImportLogResponse)

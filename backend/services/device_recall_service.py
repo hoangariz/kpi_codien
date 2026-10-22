@@ -422,6 +422,99 @@ def export_device_recall_csv(
     return output.getvalue()
 
 
+def export_device_recall_xlsx(
+    db: Session,
+    cluster: str,
+    ft_name: Optional[str] = None,
+    search: Optional[str] = None
+) -> bytes:
+    """Xuất danh sách thiết bị cần thu hồi ra file Excel (.xlsx)."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    data = get_device_recall_items(db, cluster=cluster, ft_name=ft_name, search=search)
+    items = data.get("items", [])
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Thu hồi thiết bị"
+    ws.views.sheetView[0].showGridLines = True
+
+    headers = [
+        "STT",
+        "Mã nhân viên",
+        "Họ và tên",
+        "Cụm xã",
+        "Số Thuê Bao",
+        "Dịch Vụ",
+        "Địa Chỉ Khách Hàng",
+        "Mức Thuê Bao",
+        "Mức Thiết Bị",
+        "Tổng Tbi Phải Thu",
+        "Loại Thiết Bị",
+        "Tuổi Thọ Mesh",
+        "Số Tbi Mesh Phải Thu",
+    ]
+    ws.append(headers)
+    ws.row_dimensions[1].height = 26
+    ws.freeze_panes = "A2"
+
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+    thin_border_side = Side(border_style="thin", color="CBD5E1")
+    cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+    center_align = Alignment(horizontal="center", vertical="center")
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = cell_border
+
+    for idx, it in enumerate(items, 1):
+        ws.append([
+            idx,
+            it.get("ma_nv", ""),
+            it.get("ten_ft", ""),
+            it.get("cum_xa", ""),
+            it.get("so_thue_bao", ""),
+            it.get("dich_vu", ""),
+            it.get("dia_chi_khach_hang", ""),
+            it.get("muc_thue_bao", ""),
+            it.get("muc_thiet_bi", ""),
+            it.get("tong_tbi_phai_thu", 0),
+            it.get("loai_thiet_bi", ""),
+            it.get("tuoi_tho_mesh", ""),
+            it.get("so_tbi_mesh_phai_thu", ""),
+        ])
+
+    for r_idx in range(2, len(items) + 2):
+        ws.row_dimensions[r_idx].height = 20
+        for c_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=r_idx, column=c_idx)
+            cell.border = cell_border
+            cell.font = Font(name="Calibri", size=10)
+            if isinstance(cell.value, (int, float)):
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val = str(cell.value or "")
+            if len(val) > max_len:
+                max_len = len(val)
+        ws.column_dimensions[col_letter].width = max(10, min(max_len + 4, 60))
+
+    bio = io.BytesIO()
+    wb.save(bio)
+    return bio.getvalue()
+
+
 def get_device_recall_meta(db: Session) -> dict:
     """Lấy thông tin metadata về lần cập nhật gần nhất."""
     total_count = _get_setting(db, "device_recall_total_count", "0")

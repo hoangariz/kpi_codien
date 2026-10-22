@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { deviceRecallApi } from '../api/deviceRecallApi';
 import { formatGroupName } from '../utils/groupFormat';
+import { exportSingleSheetXlsx } from '../utils/excelExport';
 
 function getClusterShortCode(cumXa) {
   if (!cumXa) return '';
@@ -131,8 +132,8 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
     }, 1800);
   };
 
-  // Handle Export CSV (Chuẩn UTF-8 BOM cho Microsoft Excel)
-  const handleExportCsv = () => {
+  // Handle Export XLSX
+  const handleExportCsv = async () => {
     if (!items.length) {
       alert('Không có dữ liệu để xuất');
       return;
@@ -154,29 +155,22 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
     ];
     const rows = items.map((it, idx) => [
       idx + 1,
-      `"${it.ma_nv || selectedFtObj?.ma_nv || ''}"`,
-      `"${it.ten_ft || selectedFt || ''}"`,
-      `"${it.cum_xa || selectedCluster || ''}"`,
-      `"${it.so_thue_bao || ''}"`,
-      `"${it.dich_vu || ''}"`,
-      `"${(it.dia_chi_khach_hang || '').replace(/"/g, '""')}"`,
-      `"${it.muc_thue_bao || ''}"`,
-      `"${it.muc_thiet_bi || ''}"`,
+      it.ma_nv || selectedFtObj?.ma_nv || '',
+      it.ten_ft || selectedFt || '',
+      it.cum_xa || selectedCluster || '',
+      it.so_thue_bao || '',
+      it.dich_vu || '',
+      it.dia_chi_khach_hang || '',
+      it.muc_thue_bao || '',
+      it.muc_thiet_bi || '',
       it.tong_tbi_phai_thu || 0,
-      `"${it.loai_thiet_bi || ''}"`,
-      `"${it.tuoi_tho_mesh || ''}"`,
-      `"${it.so_tbi_mesh_phai_thu || ''}"`,
+      it.loai_thiet_bi || '',
+      it.tuoi_tho_mesh || '',
+      it.so_tbi_mesh_phai_thu || '',
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
     const cleanFt = selectedFt ? `_${selectedFt.replace(/\s+/g, '_')}` : '_TatCa';
-    link.download = `ThuHoiThietBi_${selectedCluster}${cleanFt}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    await exportSingleSheetXlsx(`ThuHoiThietBi_${selectedCluster}${cleanFt}`, 'Thu hồi thiết bị', headers, rows);
   };
 
   const handleRefreshAll = () => {

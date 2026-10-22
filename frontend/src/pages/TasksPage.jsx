@@ -303,6 +303,11 @@ export default function TasksPage({ initialFilters = {} }) {
                   <td>{getStatusBadge(task.trang_thai)}</td>
                   <td>
                     <strong>{task.employee_assigned_name || 'Chưa gán'}</strong>
+                    {task.employee_created_name && (
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }} title={`Nhân viên khởi tạo: ${task.employee_created_name}`}>
+                        Tạo: {task.employee_created_name}
+                      </span>
+                    )}
                   </td>
                   <td style={{ maxWidth: '200px', fontSize: '0.8rem' }}>
                     {task.group_name || '--'}

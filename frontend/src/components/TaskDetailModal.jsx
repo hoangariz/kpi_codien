@@ -356,14 +356,12 @@ export default function TaskDetailModal({ task, isOpen, onClose, onNoteAdded }) 
               </div>
             )}
 
-            {task.loi && (
-              <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Mức Độ Lỗi / Ưu Tiên</span>
-                <strong style={{ fontSize: '0.92rem', color: 'var(--warning-dark)' }}>
-                  {task.loi}
-                </strong>
-              </div>
-            )}
+            <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nhân viên khởi tạo</span>
+              <strong style={{ fontSize: '0.92rem', color: 'var(--brand-primary)' }}>
+                {task.employee_created_name || '--'}
+              </strong>
+            </div>
           </div>
 
           {/* Timing details */}

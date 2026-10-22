@@ -33,11 +33,14 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
   const [baseWoFile, setBaseWoFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isUploadingChunks, setIsUploadingChunks] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [statusNotice, setStatusNotice] = useState('');
   const [currentImportId, setCurrentImportId] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef(null);
+  const uploadAbortControllerRef = useRef(null);
 
   // Cabinet upload state
   const [cabinetFile, setCabinetFile] = useState(null);
@@ -101,7 +104,7 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
   const { data: importLogs = [], isLoading: loadingLogs, refetch: refetchLogs } = useQuery({
     queryKey: ['codinh-import-logs'],
     queryFn: () => codinhApi.getImportLogs(50),
-    refetchInterval: uploading ? 1500 : 12000,
+    refetchInterval: uploading ? false : 12000,
   });
 
   // Poll for progress when currentImportId exists and status is PROCESSING or PENDING
@@ -115,6 +118,8 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
           if (['COMPLETED', 'FAILED'].includes(status.status)) {
             clearInterval(timer);
             setUploading(false);
+            setIsUploadingChunks(false);
+            setStatusNotice('');
             queryClient.invalidateQueries({ queryKey: ['codinh-stats'] });
             queryClient.invalidateQueries({ queryKey: ['codinh-reports'] });
             queryClient.invalidateQueries({ queryKey: ['codinh-import-logs'] });
@@ -124,7 +129,7 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
         } catch (err) {
           console.error('Error polling codinh import status:', err);
         }
-      }, 1200);
+      }, 2000);
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -168,6 +173,16 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
     if (dropped) validateAndSetBaseWoFile(dropped);
   };
 
+  const handleCancelUpload = () => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort();
+    }
+    setIsUploadingChunks(false);
+    setUploading(false);
+    setStatusNotice('');
+    setErrorMessage('Đã hủy tải lên. Phiên tải lên đã được lưu, bạn có thể chọn lại file này để tiếp tục gửi các phần còn thiếu bất kỳ lúc nào.');
+  };
+
   // Base WO Upload Submit with Chunked Upload & Progress Bar
   const handleBaseWoUploadSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -177,22 +192,42 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
     }
 
     setUploading(true);
+    setIsUploadingChunks(true);
     setErrorMessage('');
     setImportStatus(null);
     setUploadProgress(0);
+    setStatusNotice('Bắt đầu kết nối tải lên file CĐBR...');
+
+    const abortController = new AbortController();
+    uploadAbortControllerRef.current = abortController;
 
     try {
-      const res = await codinhApi.uploadWoFile(baseWoFile, (progress) => {
-        setUploadProgress(progress);
-      });
+      const res = await codinhApi.uploadWoFile(
+        baseWoFile,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        (notice) => {
+          setStatusNotice(notice);
+        },
+        abortController.signal
+      );
+      setIsUploadingChunks(false);
       setCurrentImportId(res.id);
       setImportStatus(res);
+      setStatusNotice('');
       refetchLogs();
     } catch (err) {
+      setIsUploadingChunks(false);
       setUploading(false);
+      setStatusNotice('');
+      if (abortController.signal.aborted || err.message?.includes('hủy')) {
+        setErrorMessage('Đã hủy tải lên file.');
+        return;
+      }
       const detail = err.response?.data?.detail;
       const msg = typeof detail === 'string' ? detail : (err.message || 'Lỗi tải file');
-      setErrorMessage(msg + '\n\nMẹo: Nếu gặp sự cố mạng hoặc timeout, hệ thống sẽ tự động chia nhỏ file (chunked) và gửi lại từng phần.');
+      setErrorMessage(msg + '\n\nMẹo: Hệ thống hỗ trợ tiếp tục (resume). Khi kết nối mạng ổn định lại, bạn hãy chọn lại đúng file này để tiếp tục tải lên các phần còn thiếu.');
     }
   };
 
@@ -476,16 +511,28 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                       }
                     </strong>
                   </div>
-                  <span style={{ fontWeight: 800, color: '#8b5cf6' }}>
-                    {importStatus?.progress_percent || uploadProgress || 10}%
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {isUploadingChunks && (
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={handleCancelUpload}
+                        style={{ fontSize: '0.75rem', padding: '4px 10px', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                      >
+                        Hủy
+                      </button>
+                    )}
+                    <span style={{ fontWeight: 800, color: '#8b5cf6' }}>
+                      {importStatus?.progress_percent || uploadProgress || 0}%
+                    </span>
+                  </div>
                 </div>
 
                 <div className="progress-bar-outer" style={{ height: '8px', background: 'var(--bg-tertiary)', borderRadius: '999px', overflow: 'hidden', marginBottom: '10px' }}>
                   <div 
                     className="progress-bar-inner" 
                     style={{ 
-                      width: `${importStatus?.progress_percent || uploadProgress || 10}%`,
+                      width: `${importStatus?.progress_percent || uploadProgress || 0}%`,
                       height: '100%',
                       background: 'linear-gradient(90deg, #8b5cf6, #a855f7)',
                       borderRadius: '999px',
@@ -493,6 +540,12 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                     }} 
                   />
                 </div>
+
+                {statusNotice && (
+                  <p style={{ fontSize: '0.8rem', color: '#8b5cf6', margin: '0 0 6px 0', fontWeight: 600 }}>
+                    {statusNotice}
+                  </p>
+                )}
 
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
                   Hệ thống đang chuẩn hóa danh mục, đọc các dòng Excel (quét tiêu đề tự động), ghi vết lịch sử. Quá trình xử lý chạy ngầm và không làm gián đoạn các thao tác khác.

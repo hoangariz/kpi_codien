@@ -53,18 +53,18 @@ def export_items(
     db: Session = Depends(get_db)
 ):
     """
-    Xuất danh sách thiết bị cần thu hồi ra file CSV (chuẩn UTF-8 BOM cho Excel).
+    Xuất danh sách thiết bị cần thu hồi ra file Excel (.xlsx).
     Có đầy đủ cột Mã nhân viên, Họ và tên.
     """
-    csv_content = device_recall_service.export_device_recall_csv(db, cluster=cluster, ft_name=ft, search=search)
+    xlsx_bytes = device_recall_service.export_device_recall_xlsx(db, cluster=cluster, ft_name=ft, search=search)
     clean_cluster = cluster.replace(" ", "_")
     clean_ft = f"_{ft.replace(' ', '_')}" if ft else "_TatCa"
-    filename = f"ThuHoiThietBi_{clean_cluster}{clean_ft}.csv"
+    filename = f"ThuHoiThietBi_{clean_cluster}{clean_ft}.xlsx"
     encoded_filename = quote(filename)
 
     return Response(
-        content=csv_content.encode("utf-8-sig"),
-        media_type="text/csv; charset=utf-8",
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
             "Access-Control-Expose-Headers": "Content-Disposition",

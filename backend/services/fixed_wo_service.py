@@ -1144,7 +1144,7 @@ def get_fixed_wo_tasks(
             thoi_diem_ft_hoan_thanh=t.thoi_diem_ft_hoan_thanh,
             thoi_diem_cd_dong=t.thoi_diem_cd_dong,
             thue_bao=t.thue_bao,
-            loi=t.loi,
+            loi=None,
             assigned_to_id=t.assigned_to_id,
             group_id=t.group_id,
             employee_assigned_name=t.employee_assigned.name if t.employee_assigned else None,

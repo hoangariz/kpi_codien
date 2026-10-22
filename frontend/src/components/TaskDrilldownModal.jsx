@@ -21,6 +21,7 @@ import {
 import { statsApi } from '../api/statsApi';
 import { fixedWoApi } from '../api/fixedWoApi';
 import { formatGroupName } from '../utils/groupFormat';
+import { exportToXlsx, exportSingleSheetXlsx } from '../utils/excelExport';
 
 /**
  * Format datetime string as dd/MM/yyyy HH:mm:ss
@@ -343,41 +344,32 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     return monthlyMatrix.rows.filter(row => row.loai_cong_viec.toLowerCase().includes(term));
   }, [monthlyMatrix.rows, analyticsJobSearch]);
 
-  // Export Deep Analysis to Excel CSV (including Table 1 and Table 2)
-  const handleExportAnalyticsCSV = () => {
+  // Export Deep Analysis to Excel XLSX (including Table 1 and Table 2)
+  const handleExportAnalyticsCSV = async () => {
     if (!items.length) return;
-    const lines = [];
+    const cleanTarget = (filterInfo.targetName || 'WO').replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_');
+    const filename = `Phan_tich_sau_${cleanTarget}_${filterInfo.metric || 'qua_han'}`;
 
-    lines.push(`BÁO CÁO PHÂN TÍCH SÂU DỮ LIỆU WO`);
-    lines.push(`Đối tượng: "${(filterInfo.targetName || 'Tất cả').replace(/"/g, '""')}" - Chỉ tiêu: "${(filterInfo.metricLabel || 'Quá Hạn').replace(/"/g, '""')}"`);
-    lines.push(`Tổng: ${totalTongTon} | Treo: ${totalSoTreo} (${overallTreoRate}%) | Tồn thực: ${totalTonConLai} (${overallConLaiRate}%)`);
-    lines.push(`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`);
-    lines.push('');
-
-    // BẢNG 1: THỐNG KÊ THEO LOẠI CÔNG VIỆC
-    lines.push('=== BẢNG 1: THỐNG KÊ THEO LOẠI CÔNG VIỆC ===');
-    lines.push('STT,Loại công việc,Tổng,Treo,Tồn thực,% Tồn thực');
-    analyticsByType.forEach((item, idx) => {
-      const pctTonConLai = totalTongTon > 0 ? ((item.ton_con_lai / totalTongTon) * 100).toFixed(1) : '0.0';
-      lines.push(`${idx + 1},"${item.loai_cong_viec.replace(/"/g, '""')}",${item.tong_ton},${item.so_treo},${item.ton_con_lai},${pctTonConLai}%`);
+    // SHEET 1: THỐNG KÊ THEO LOẠI CÔNG VIỆC
+    const headers1 = ['STT', 'Loại công việc', 'Tổng', 'Treo', 'Tồn thực', '% Tồn thực'];
+    const rows1 = analyticsByType.map((item, idx) => {
+      const pctTonConLai = totalTongTon > 0 ? ((item.ton_con_lai / totalTongTon) * 100).toFixed(1) + '%' : '0.0%';
+      return [idx + 1, item.loai_cong_viec, item.tong_ton, item.so_treo, item.ton_con_lai, pctTonConLai];
     });
-    lines.push(`TỔNG CỘNG,,${totalTongTon},${totalSoTreo},${totalTonConLai},${overallConLaiRate}%`);
-    lines.push('');
+    rows1.push(['TỔNG CỘNG', '', totalTongTon, totalSoTreo, totalTonConLai, `${overallConLaiRate}%`]);
 
-    // BẢNG 2: THỐNG KÊ CHI TIẾT THEO THÁNG
-    lines.push('=== BẢNG 2: THỐNG KÊ CHI TIẾT THEO THÁNG (NGÀY BẮT ĐẦU THỰC HIỆN) ===');
-    const headerCols = ['STT', 'Loại công việc'];
+    // SHEET 2: THỐNG KÊ THEO THÁNG
+    const headers2 = ['STT', 'Loại công việc'];
     distinctMonths.forEach(m => {
       const label = formatMonthLabel(m);
-      headerCols.push(`"${label} - Tồn thực"`);
-      headerCols.push(`"${label} - Treo"`);
+      headers2.push(`${label} - Tồn thực`);
+      headers2.push(`${label} - Treo`);
     });
-    headerCols.push('Tồn thực');
-    headerCols.push('Treo');
-    lines.push(headerCols.join(','));
+    headers2.push('Tồn thực (Tổng)');
+    headers2.push('Treo (Tổng)');
 
-    // Row TỔNG CỘNG THEO THÁNG đưa lên trên cùng
-    const totalRowCols = ['TỔNG CỘNG THEO THÁNG', ''];
+    const rows2 = [];
+    const totalRowCols = ['TỔNG CỘNG', ''];
     distinctMonths.forEach(m => {
       const mTot = monthlyMatrix.monthTotals[m] || { so_ton: 0, so_treo: 0, ton_thuc: 0 };
       totalRowCols.push(mTot.ton_thuc || 0);
@@ -385,10 +377,10 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     });
     totalRowCols.push(totalTonConLai);
     totalRowCols.push(totalSoTreo);
-    lines.push(totalRowCols.join(','));
+    rows2.push(totalRowCols);
 
     monthlyMatrix.rows.forEach((row, idx) => {
-      const rowCols = [idx + 1, `"${row.loai_cong_viec.replace(/"/g, '""')}"`];
+      const rowCols = [idx + 1, row.loai_cong_viec];
       distinctMonths.forEach(m => {
         const cell = row.by_month[m] || { so_ton: 0, so_treo: 0, ton_thuc: 0 };
         rowCols.push(cell.ton_thuc || 0);
@@ -396,20 +388,13 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       });
       rowCols.push(row.total_con_lai);
       rowCols.push(row.total_treo);
-      lines.push(rowCols.join(','));
+      rows2.push(rowCols);
     });
 
-    const csvContent = '\uFEFF' + lines.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const cleanTarget = (filterInfo.targetName || 'WO').replace(/[^a-zA-Z0-9_-]/g, '_');
-    link.download = `Phan_tich_sau_${cleanTarget}_${filterInfo.metric || 'qua_han'}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    await exportToXlsx(filename, [
+      { name: 'Theo Loại việc', headers: headers1, rows: rows1 },
+      { name: 'Theo Tháng', headers: headers2, rows: rows2 },
+    ]);
   };
 
   // -------------------------------------------------------------------------
@@ -493,7 +478,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
   };
 
   // Export only the drilldown filtered tasks
-  const handleExportDrilldownTasksCSV = () => {
+  const handleExportDrilldownTasksCSV = async () => {
     if (!sortedDrilldownTasks.length) return;
     const headers = [
       'STT',
@@ -505,51 +490,32 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       'Mô tả',
       'Trạng thái',
       'Nhóm điều phối',
-      'Nhân viên',
+      'Nhân viên thực hiện',
+      'Nhân viên khởi tạo',
       'Thời điểm BĐ thực hiện',
       'Thời điểm yêu cầu kết thúc',
       'Thời gian còn lại (H)'
     ];
 
-    const escapeCSV = (val) => {
-      if (val == null) return '';
-      const str = String(val);
-      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
+    const rows = sortedDrilldownTasks.map((t, index) => [
+      index + 1,
+      t.latest_note || '',
+      t.ma_cong_viec || '',
+      t.station_code || '',
+      t.loai_cong_viec || '',
+      t.noi_dung_cong_viec || '',
+      t.ghi_chu || '',
+      t.trang_thai || '',
+      t.group_name || '',
+      t.employee_assigned_name || '',
+      t.employee_created_name || '',
+      formatDateTime(t.thoi_diem_bat_dau_thuc_hien),
+      formatDateTime(t.thoi_diem_yeu_cau_ket_thuc),
+      t.thoi_gian_con_lai != null ? t.thoi_gian_con_lai : ''
+    ]);
 
-    const csvRows = [
-      headers.join(','),
-      ...sortedDrilldownTasks.map((t, index) => [
-        index + 1,
-        escapeCSV(t.latest_note || ''),
-        escapeCSV(t.ma_cong_viec || ''),
-        escapeCSV(t.station_code || ''),
-        escapeCSV(t.loai_cong_viec || ''),
-        escapeCSV(t.noi_dung_cong_viec || ''),
-        escapeCSV(t.ghi_chu || ''),
-        escapeCSV(t.trang_thai || ''),
-        escapeCSV(t.group_name || ''),
-        escapeCSV(t.employee_assigned_name || ''),
-        escapeCSV(formatDateTime(t.thoi_diem_bat_dau_thuc_hien)),
-        escapeCSV(formatDateTime(t.thoi_diem_yeu_cau_ket_thuc)),
-        escapeCSV(t.thoi_gian_con_lai != null ? t.thoi_gian_con_lai : '')
-      ].join(','))
-    ];
-
-    const csvContent = '\uFEFF' + csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const cleanTitle = (drilldownFilter?.title || 'chi_tiet').replace(/[^a-zA-Z0-9_-]/g, '_');
-    link.download = `Chi_tiet_WO_${cleanTitle}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const cleanTitle = (drilldownFilter?.title || 'chi_tiet').replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_');
+    await exportSingleSheetXlsx(`Chi_tiet_WO_${cleanTitle}`, 'Chi tiết WO', headers, rows);
   };
 
   // Helper to render interactive clickable number buttons in tables
@@ -606,8 +572,8 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     );
   };
 
-  // Export current filtered list as CSV
-  const handleExportCSV = () => {
+  // Export current filtered list as Excel (.xlsx)
+  const handleExportCSV = async () => {
     if (!items.length) return;
     const headers = [
       'STT',
@@ -619,7 +585,8 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       'Mô tả',
       'Trạng thái',
       'Nhóm điều phối',
-      'Nhân viên',
+      'Nhân viên thực hiện',
+      'Nhân viên khởi tạo',
       'Thời điểm bắt đầu thực hiện',
       'Thời điểm yêu cầu kết thúc',
       'Thời gian còn lại (H)'
@@ -627,30 +594,23 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
 
     const rows = items.map((t, idx) => [
       idx + 1,
-      `"${(t.latest_note || '').replace(/"/g, '""')}"`,
-      `"${t.ma_cong_viec || ''}"`,
-      `"${t.station_code || ''}"`,
-      `"${(t.loai_cong_viec || '').replace(/"/g, '""')}"`,
-      `"${(t.noi_dung_cong_viec || '').replace(/"/g, '""')}"`,
-      `"${(t.ghi_chu || '').replace(/"/g, '""')}"`,
-      `"${t.trang_thai || ''}"`,
-      `"${t.group_name || ''}"`,
-      `"${t.employee_assigned_name || ''}"`,
-      `"${formatDateTime(t.thoi_diem_bat_dau_thuc_hien)}"`,
-      `"${formatDateTime(t.thoi_diem_yeu_cau_ket_thuc)}"`,
-      t.thoi_gian_con_lai ?? ''
+      t.latest_note || '',
+      t.ma_cong_viec || '',
+      t.station_code || '',
+      t.loai_cong_viec || '',
+      t.noi_dung_cong_viec || '',
+      t.ghi_chu || '',
+      t.trang_thai || '',
+      t.group_name || '',
+      t.employee_assigned_name || '',
+      t.employee_created_name || '',
+      formatDateTime(t.thoi_diem_bat_dau_thuc_hien),
+      formatDateTime(t.thoi_diem_yeu_cau_ket_thuc),
+      t.thoi_gian_con_lai != null ? t.thoi_gian_con_lai : ''
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
     const safeTitle = `${filterInfo.targetName || 'Tat_ca'}_${filterInfo.metricLabel || 'Chi_tiet'}`.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_');
-    link.setAttribute('download', `Chi_tiet_${safeTitle}_Toan_bo.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await exportSingleSheetXlsx(`Chi_tiet_${safeTitle}_Toan_bo`, 'Danh sách WO', headers, rows);
   };
 
   return (
@@ -1615,6 +1575,9 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                           <th onClick={() => handleDrilldownSort('employee_assigned_name')} style={{ cursor: 'pointer', textAlign: 'left', minWidth: '140px' }}>
                             Nhân viên {renderDrilldownSortIndicator('employee_assigned_name')}
                           </th>
+                          <th onClick={() => handleDrilldownSort('employee_created_name')} style={{ cursor: 'pointer', textAlign: 'left', minWidth: '120px' }}>
+                            Người tạo {renderDrilldownSortIndicator('employee_created_name')}
+                          </th>
                           <th onClick={() => handleDrilldownSort('thoi_diem_bat_dau_thuc_hien')} style={{ cursor: 'pointer', textAlign: 'right' }}>
                             Bắt đầu TH {renderDrilldownSortIndicator('thoi_diem_bat_dau_thuc_hien')}
                           </th>
@@ -1674,6 +1637,9 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                                   <strong style={{ color: isOverdue ? 'var(--danger-dark)' : (t.employee_assigned_name ? 'var(--text-primary)' : 'var(--text-muted)') }}>
                                     {t.employee_assigned_name || 'Chưa gán'}
                                   </strong>
+                                </td>
+                                <td style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }} title={t.employee_created_name || '--'}>
+                                  {t.employee_created_name || '--'}
                                 </td>
                                 <td className="cell-num" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                   {formatDateTime(t.thoi_diem_bat_dau_thuc_hien)}
@@ -1811,9 +1777,17 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                   <th 
                     onClick={() => handleSort('employee_assigned_name')}
                     style={{ width: '140px', minWidth: '130px', maxWidth: '170px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
-                    title="Nhấn để sắp xếp theo Nhân viên"
+                    title="Nhấn để sắp xếp theo Nhân viên thực hiện"
                   >
                     Nhân viên {renderSortIndicator('employee_assigned_name')}
+                  </th>
+
+                  <th 
+                    onClick={() => handleSort('employee_created_name')}
+                    style={{ width: '130px', minWidth: '120px', maxWidth: '150px', textAlign: 'left', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    title="Nhấn để sắp xếp theo Người khởi tạo"
+                  >
+                    Người tạo {renderSortIndicator('employee_created_name')}
                   </th>
 
                   <th 
@@ -1987,6 +1961,20 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                         <strong style={{ color: isOverdue ? 'var(--danger-dark)' : (t.employee_assigned_name ? 'var(--text-primary)' : 'var(--text-muted)') }}>
                           {t.employee_assigned_name || 'Chưa gán'}
                         </strong>
+                      </td>
+
+                      {/* 7.5 Nhân viên khởi tạo */}
+                      <td 
+                        style={{ 
+                          whiteSpace: 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          maxWidth: '150px',
+                          color: 'var(--text-secondary)'
+                        }}
+                        title={t.employee_created_name || '--'}
+                      >
+                        {t.employee_created_name || '--'}
                       </td>
 
                       {/* 8. Thời điểm bắt đầu thực hiện */}

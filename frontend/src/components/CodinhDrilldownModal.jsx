@@ -18,6 +18,7 @@ import {
 import { codinhApi } from '../api/codinhApi';
 import { formatGroupName } from '../utils/groupFormat';
 import { getUserFullName } from '../utils/userMapping';
+import { exportSingleSheetXlsx } from '../utils/excelExport';
 
 function formatDateTime(val) {
   if (!val) return '--';
@@ -264,8 +265,8 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
   const items = data?.items || [];
   const totalCabinets = items.reduce((acc, t) => acc + (t.total_cabinets || 0), 0);
 
-  // Export CSV
-  const handleExportCSV = () => {
+  // Export XLSX
+  const handleExportCSV = async () => {
     if (!items.length) return;
     if (isQlctkt) {
       const headers = [
@@ -291,34 +292,27 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
       ];
       const rows = items.map((t, idx) => [
         idx + 1,
-        `"${t.task_id || ''}"`,
-        `"${(t.dich_vu || '').replace(/"/g, '""')}"`,
-        `"${(t.loai_yeu_cau || '').replace(/"/g, '""')}"`,
-        `"${(t.account || '').replace(/"/g, '""')}"`,
-        `"${(t.ten_khach_hang || '').replace(/"/g, '""')}"`,
-        `"${(t.dia_chi_lap_dat || '').replace(/"/g, '""')}"`,
-        `"${(t.to_doi_raw || '').replace(/"/g, '""')}"`,
-        `"${(t.nv_thuc_hien || '').replace(/"/g, '""')}"`,
-        `"${t.tram || ''}"`,
-        `"${t.tien_do || ''}"`,
-        `"${t.ngay_tao || ''}"`,
-        `"${t.ngay_ket_thuc_thuc_te || ''}"`,
+        t.task_id || '',
+        t.dich_vu || '',
+        t.loai_yeu_cau || '',
+        t.account || '',
+        t.ten_khach_hang || '',
+        t.dia_chi_lap_dat || '',
+        t.to_doi_raw || '',
+        t.nv_thuc_hien || '',
+        t.tram || '',
+        t.tien_do || '',
+        t.ngay_tao || '',
+        t.ngay_ket_thuc_thuc_te || '',
         t.so_gio_ton ?? '',
-        `"${t.trang_thai_gpon || ''}"`,
-        `"${t.tich_hen || ''}"`,
-        `"${(t.ghi_chu_dau_moi || '').replace(/"/g, '""')}"`,
-        `"${(t.ly_do_tich_huy || '').replace(/"/g, '""')}"`,
-        `"${(t.cmtasktypename || '').replace(/"/g, '""')}"`,
+        t.trang_thai_gpon || '',
+        t.tich_hen || '',
+        t.ghi_chu_dau_moi || '',
+        t.ly_do_tich_huy || '',
+        t.cmtasktypename || '',
       ]);
-      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const fileBase = `ChiTiet_QLCTKT_${filterInfo.targetName || 'ToanMang'}_${filterInfo.metric || 'All'}`;
-      link.download = `${fileBase.replace(/[\s/\\:]/g, '_')}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const fileBase = `ChiTiet_QLCTKT_${filterInfo.targetName || 'ToanMang'}_${filterInfo.metric || 'All'}`.replace(/[\s/\\:]/g, '_');
+      await exportSingleSheetXlsx(fileBase, 'Chi tiết QLCTKT', headers, rows);
       return;
     }
     const headers = [
@@ -344,31 +338,24 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
         .join('; ');
       return [
         idx + 1,
-        `"${t.ma_cong_viec || ''}"`,
-        `"${t.station_code || ''}"`,
-        `"${(t.loai_cong_viec || '').replace(/"/g, '""')}"`,
-        `"${(t.noi_dung_cong_viec || '').replace(/"/g, '""')}"`,
-        `"${(t.ghi_chu || '').replace(/"/g, '""')}"`,
-        `"${t.trang_thai || ''}"`,
-        `"${formatGroupName(t.group_name)}"`,
-        `"${t.employee_assigned_name || ''}"`,
-        `"${formatDateTime(t.thoi_diem_yeu_cau_ket_thuc)}"`,
+        t.ma_cong_viec || '',
+        t.station_code || '',
+        t.loai_cong_viec || '',
+        t.noi_dung_cong_viec || '',
+        t.ghi_chu || '',
+        t.trang_thai || '',
+        formatGroupName(t.group_name),
+        t.employee_assigned_name || '',
+        formatDateTime(t.thoi_diem_yeu_cau_ket_thuc),
         t.thoi_gian_con_lai ?? '',
         t.total_cabinets || 0,
         t.completed_cabinets || 0,
-        `"${cabStr.replace(/"/g, '""')}"`
+        cabStr
       ];
     });
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const fileBase = `ChiTiet_CDBR_${filterInfo.targetName || 'ToanMang'}_${filterInfo.metric || 'All'}`;
-    link.download = `${fileBase.replace(/[\s/\\:]/g, '_')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const fileBase = `ChiTiet_CDBR_${filterInfo.targetName || 'ToanMang'}_${filterInfo.metric || 'All'}`.replace(/[\s/\\:]/g, '_');
+    await exportSingleSheetXlsx(fileBase, 'Chi tiết CĐBR', headers, rows);
   };
 
   return (

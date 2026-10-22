@@ -12,6 +12,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { formatGroupName } from '../utils/groupFormat';
+import { exportToXlsx, exportSingleSheetXlsx } from '../utils/excelExport';
 
 /**
  * Reusable Large Excel Spreadsheet Table Component
@@ -231,66 +232,57 @@ export default function MaintenanceSpreadsheetTable({
     maxDay > 0 ? Math.round((summaryClosedUpToMax / maxDay) * 100) / 100 : 0
   );
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     // 1. Daily Tab Export
     if (currentTab === 'daily') {
-      let csvLines = [];
       const dayHeaders = daysList.map(d => `Ngày ${d}`);
+      const sheets = [];
 
       if (dailySubView === 'all' || dailySubView === 'group') {
-        csvLines.push(`BẢNG TIẾN ĐỘ ĐÓNG WO & NSLĐ THEO NHÓM / CỤM (NGÀY 1 ĐẾN 31)`);
         const grpHeaders = ['STT', 'Nhóm / Cụm', 'NSLĐ (TB/ngày)', `Tổng Đóng (1->${maxDay})`, ...dayHeaders];
-        csvLines.push(grpHeaders.join(','));
-        csvLines.push([
+        const grpRows = [];
+        grpRows.push([
           '--',
-          '"TỔNG CỘNG"',
-          summaryNsld.toFixed(2),
+          'TỔNG CỘNG',
+          summaryNsld,
           summaryClosedUpToMax,
           ...daysList.map(d => summary.daily_closed?.[d] ?? summary.daily_closed?.[String(d)] ?? 0)
-        ].join(','));
+        ]);
         sortedDailyGroups.forEach((r, idx) => {
-          csvLines.push([
+          grpRows.push([
             idx + 1,
-            `"${formatGroupName(r.key_name)}"`,
-            getRowNsld(r).toFixed(2),
+            formatGroupName(r.key_name),
+            Number(getRowNsld(r).toFixed(2)),
             getRowClosedSum(r),
             ...daysList.map(d => r.daily_closed?.[d] ?? r.daily_closed?.[String(d)] ?? 0)
-          ].join(','));
+          ]);
         });
-        csvLines.push('');
+        sheets.push({ name: 'Theo Nhóm Cụm', headers: grpHeaders, rows: grpRows });
       }
 
       if (dailySubView === 'all' || dailySubView === 'employee') {
-        csvLines.push(`BẢNG TIẾN ĐỘ ĐÓNG WO & NSLĐ THEO NHÂN VIÊN (NGÀY 1 ĐẾN 31)`);
         const empHeaders = ['STT', 'Nhân viên', 'NSLĐ (TB/ngày)', `Tổng Đóng (1->${maxDay})`, ...dayHeaders];
-        csvLines.push(empHeaders.join(','));
-        csvLines.push([
+        const empRows = [];
+        empRows.push([
           '--',
-          '"TỔNG CỘNG"',
-          summaryNsld.toFixed(2),
+          'TỔNG CỘNG',
+          summaryNsld,
           summaryClosedUpToMax,
           ...daysList.map(d => summary.daily_closed?.[d] ?? summary.daily_closed?.[String(d)] ?? 0)
-        ].join(','));
+        ]);
         sortedDailyEmployees.forEach((r, idx) => {
-          csvLines.push([
+          empRows.push([
             idx + 1,
-            `"${r.key_name}"`,
-            getRowNsld(r).toFixed(2),
+            r.key_name,
+            Number(getRowNsld(r).toFixed(2)),
             getRowClosedSum(r),
             ...daysList.map(d => r.daily_closed?.[d] ?? r.daily_closed?.[String(d)] ?? 0)
-          ].join(','));
+          ]);
         });
+        sheets.push({ name: 'Theo Nhân viên', headers: empHeaders, rows: empRows });
       }
 
-      const csvContent = '\uFEFF' + csvLines.join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${exportFilename}_theo_ngay_nsld.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      await exportToXlsx(`${exportFilename}_theo_ngay_nsld`, sheets);
       return;
     }
 
@@ -311,7 +303,7 @@ export default function MaintenanceSpreadsheetTable({
 
     const rows = sortedList.map((row, idx) => [
       idx + 1,
-      currentTab === 'group' ? `"${formatGroupName(row.key_name)}"` : `"${row.key_name}"`,
+      currentTab === 'group' ? formatGroupName(row.key_name) : row.key_name,
       row.total,
       row.closed,
       `${row.completion_rate}%`,
@@ -324,8 +316,8 @@ export default function MaintenanceSpreadsheetTable({
     ]);
 
     rows.push([
-      'TỔNG CỘNG',
       '--',
+      'TỔNG CỘNG',
       summary.total ?? 0,
       summary.closed ?? 0,
       `${summary.completion_rate ?? 0}%`,
@@ -337,15 +329,8 @@ export default function MaintenanceSpreadsheetTable({
       `${summary.completion_rate ?? 0}%`
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${exportFilename}_${currentTab}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const sheetTitle = currentTab === 'employee' ? 'Theo Nhân viên' : 'Theo Nhóm Cụm';
+    await exportSingleSheetXlsx(`${exportFilename}_${currentTab}`, sheetTitle, headers, rows);
   };
 
   const handleCellClick = (metric, metricLabel, row = null) => {
