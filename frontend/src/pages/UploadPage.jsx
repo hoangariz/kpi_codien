@@ -9,7 +9,8 @@ import {
   ArrowRight,
   Database,
   PlusCircle,
-  RefreshCw
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
 import { importsApi } from '../api/importsApi';
 
@@ -17,6 +18,8 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isUploadingChunks, setIsUploadingChunks] = useState(false);
+  const [statusNotice, setStatusNotice] = useState('');
   const [currentImportId, setCurrentImportId] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -24,11 +27,17 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
   const [uploadProgress, setUploadProgress] = useState(0); // 0-100 for chunk upload progress
 
   const fileInputRef = useRef(null);
+  const uploadAbortControllerRef = useRef(null);
 
-  // Poll for progress when currentImportId exists and status is PROCESSING or PENDING
+  // Poll for progress ONLY AFTER chunk upload finishes and ETL is PROCESSING or PENDING (every 2s)
   useEffect(() => {
     let timer = null;
-    if (currentImportId && (!importStatus || ['PENDING', 'PROCESSING'].includes(importStatus.status))) {
+    if (
+      !isUploadingChunks &&
+      currentImportId &&
+      importStatus &&
+      ['PENDING', 'PROCESSING'].includes(importStatus.status)
+    ) {
       timer = setInterval(async () => {
         try {
           const status = await importsApi.getImportStatus(currentImportId);
@@ -40,12 +49,12 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
         } catch (err) {
           console.error('Error polling import status:', err);
         }
-      }, 1200);
+      }, 2000); // Poll exactly every 2 seconds
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [currentImportId, importStatus]);
+  }, [currentImportId, importStatus, isUploadingChunks]);
 
   const handleFileChange = (e) => {
     const selected = e.target.files?.[0];
@@ -63,6 +72,7 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
     setFile(f);
     setImportStatus(null);
     setErrorMessage('');
+    setStatusNotice('');
     setUploadProgress(0);
   };
 
@@ -73,27 +83,59 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
     if (dropped) validateAndSetFile(dropped);
   };
 
+  const handleCancelUpload = () => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort();
+    }
+    setIsUploadingChunks(false);
+    setUploading(false);
+    setStatusNotice('');
+    setErrorMessage('Đã hủy tải lên. Phiên tải lên đã được lưu, bạn có thể chọn lại file này để tiếp tục gửi các phần còn thiếu bất kỳ lúc nào.');
+  };
+
   const handleUploadSubmit = async () => {
     if (!file) return;
 
     setUploading(true);
+    setIsUploadingChunks(true);
     setErrorMessage('');
     setImportStatus(null);
     setUploadProgress(0);
+    setStatusNotice('Bắt đầu kết nối tải lên file...');
+
+    const abortController = new AbortController();
+    uploadAbortControllerRef.current = abortController;
 
     try {
-      const res = await importsApi.uploadFile(file, filterSpm, (progress) => {
-        setUploadProgress(progress);
-      });
+      const res = await importsApi.uploadFile(
+        file,
+        filterSpm,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        (notice) => {
+          setStatusNotice(notice);
+        },
+        abortController.signal
+      );
+      setIsUploadingChunks(false);
       setCurrentImportId(res.id);
       setImportStatus(res);
+      setStatusNotice('');
     } catch (err) {
+      setIsUploadingChunks(false);
       setUploading(false);
+      setStatusNotice('');
+      if (abortController.signal.aborted || err.message?.includes('hủy')) {
+        setErrorMessage('Đã hủy tải lên file.');
+        return;
+      }
       const detail = err.response?.data?.detail;
       const msg = typeof detail === 'string' ? detail : (err.message || 'Lỗi tải file');
-      setErrorMessage(msg + '\n\nMẹo: Nếu gặp lỗi timeout từ Cloudflare, hãy thử lại. Hệ thống sẽ tự động chia nhỏ file và gửi lại từng phần.');
+      setErrorMessage(msg + '\n\nMẹo: Hệ thống hỗ trợ tiếp tục (resume). Khi kết nối mạng ổn định lại, bạn hãy chọn lại đúng file này để tiếp tục tải lên các phần còn thiếu.');
     }
   };
+
 
   return (
     <div style={{ maxWidth: '840px', margin: '0 auto' }}>
@@ -244,9 +286,33 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
                 }
               </strong>
             </div>
-            <span style={{ fontWeight: 800, color: 'var(--brand-primary)' }}>
-              {importStatus?.progress_percent || uploadProgress || 10}%
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {isUploadingChunks && (
+                <button
+                  type="button"
+                  onClick={handleCancelUpload}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--danger)',
+                    color: 'var(--danger)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '3px 10px',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 600
+                  }}
+                  title="Hủy upload và lưu tiến độ hiện tại để resume sau"
+                >
+                  <XCircle size={13} /> Hủy
+                </button>
+              )}
+              <span style={{ fontWeight: 800, color: 'var(--brand-primary)', minWidth: '40px', textAlign: 'right' }}>
+                {importStatus?.progress_percent || uploadProgress || 10}%
+              </span>
+            </div>
           </div>
 
           <div className="progress-bar-outer">
@@ -256,7 +322,13 @@ export default function UploadPage({ onNavigateToTasks, onNavigateToDashboard })
             />
           </div>
 
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          {statusNotice && (
+            <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--brand-primary)', fontWeight: 600 }}>
+              {statusNotice}
+            </div>
+          )}
+
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
             {filterSpm 
               ? 'Hệ thống đang chuẩn hóa danh mục, lọc bỏ SPM/SPM_VTNET, kiểm tra các bản ghi và ghi nhận vết thay đổi.'
               : 'Hệ thống đang chuẩn hóa danh mục, kiểm tra các bản ghi và ghi nhận vết thay đổi. Quá trình xử lý chạy ngầm và không làm gián đoạn các thao tác khác.'

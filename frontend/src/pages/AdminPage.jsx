@@ -69,11 +69,11 @@ export default function AdminPage({ onNavigateToDashboard }) {
     }
   }, [settingsData]);
 
-  // 2. Fetch import logs (50 latest)
+  // 2. Fetch import logs (50 latest) - pause polling completely while uploading
   const { data: importLogs, isLoading: loadingLogs, refetch: refetchLogs } = useQuery({
     queryKey: ['admin-import-logs'],
     queryFn: () => importsApi.getImportLogs(50),
-    refetchInterval: uploading ? 1500 : 12000,
+    refetchInterval: uploading ? false : 12000,
   });
 
   // Save month mutation
@@ -622,10 +622,10 @@ export default function AdminPage({ onNavigateToDashboard }) {
     }
   });
 
-  // Poll for progress when currentImportId exists
+  // Poll for progress when currentImportId exists (poll every 2s until COMPLETED or FAILED)
   useEffect(() => {
     let timer = null;
-    if (currentImportId && (!importStatus || ['PENDING', 'PROCESSING'].includes(importStatus.status))) {
+    if (currentImportId && importStatus && ['PENDING', 'PROCESSING'].includes(importStatus.status)) {
       timer = setInterval(async () => {
         try {
           const status = await importsApi.getImportStatus(currentImportId);
@@ -640,7 +640,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
         } catch (err) {
           console.error('Error polling import status:', err);
         }
-      }, 1200);
+      }, 2000);
     }
     return () => {
       if (timer) clearInterval(timer);

@@ -280,7 +280,7 @@ except Exception as _ex:
 
 from backend.api.router_tasks import router as tasks_router
 from backend.api.router_stats import router as stats_router
-from backend.api.router_imports import router as imports_router
+from backend.api.router_imports import router as imports_router, cleanup_stale_upload_sessions
 from backend.api.router_meta import router as meta_router
 from backend.api.router_settings import router as settings_router
 from backend.api.router_tracking import router as tracking_router
@@ -288,6 +288,12 @@ from backend.api.router_report_categories import router as reports_router
 from backend.api.router_fixed_wo import router as fixed_wo_router
 from backend.api.router_codinh import router as codinh_router
 from backend.api.router_device_recall import router as device_recall_router
+
+# Cleanup stale upload sessions older than 24h at startup
+try:
+    cleanup_stale_upload_sessions()
+except Exception as _ex:
+    print(f"Startup upload cleanup notice: {_ex}")
 
 app = FastAPI(
     title=APP_TITLE,
