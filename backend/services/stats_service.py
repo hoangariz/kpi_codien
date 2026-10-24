@@ -946,6 +946,7 @@ def get_special_maintenance_stats(
                 "name": sub.name,
                 "keyword": sub.keyword,
                 "description": sub.description,
+                "is_standalone_table": bool(getattr(sub, 'is_standalone_table', False)),
                 "is_other": False,
                 "summary": sub_sum,
                 "by_employee": sub_emp,
@@ -1302,44 +1303,68 @@ def get_special_maintenance_tasks(
 
 
 def get_timeline_stats(db: Session, days: int = 14) -> List[Dict[str, Any]]:
-    """Timeline stats for created and completed tasks."""
-    # Group created tasks by date string
+    """
+    Timeline stats for created and completed tasks.
+    Sequenced strictly from past -> current day (quá khứ -> ngày hiện tại).
+    """
+    now_vn = datetime.utcnow() + timedelta(hours=7)
+    today = now_vn.date()
+
+    # Find max date available in tasks (never in the future beyond today)
+    max_db_date_str = db.query(
+        func.max(func.date(func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong, Task.thoi_diem_tao)))
+    ).scalar()
+
+    end_date = today
+    if max_db_date_str:
+        try:
+            max_db_date = datetime.strptime(str(max_db_date_str)[:10], "%Y-%m-%d").date()
+            if max_db_date > today:
+                end_date = today
+            elif (today - max_db_date).days > 7:
+                end_date = max_db_date
+            else:
+                end_date = today
+        except Exception:
+            end_date = today
+
+    start_date = end_date - timedelta(days=days - 1)
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+
+    # Group created tasks in this exact date range
     created_query = db.query(
         func.strftime("%Y-%m-%d", Task.thoi_diem_tao).label("d"),
         func.count(Task.ma_cong_viec).label("cnt")
-    ).filter(Task.thoi_diem_tao != None)\
-     .group_by("d")\
-     .order_by("d")\
-     .limit(days).all()
+    ).filter(
+        Task.thoi_diem_tao != None,
+        func.strftime("%Y-%m-%d", Task.thoi_diem_tao) >= start_str,
+        func.strftime("%Y-%m-%d", Task.thoi_diem_tao) <= end_str,
+    ).group_by("d").all()
 
-    # Create map
     created_map = {r.d: r.cnt for r in created_query if r.d}
 
+    # Group completed tasks in this exact date range
     completed_query = db.query(
         func.strftime("%Y-%m-%d", func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)).label("d"),
         func.count(Task.ma_cong_viec).label("cnt")
     ).filter(
         func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong) != None,
-        Task.trang_thai.in_(CLOSED_STATUSES)
-    )\
-     .group_by("d")\
-     .order_by("d")\
-     .limit(days).all()
+        Task.trang_thai.in_(CLOSED_STATUSES),
+        func.strftime("%Y-%m-%d", func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)) >= start_str,
+        func.strftime("%Y-%m-%d", func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)) <= end_str,
+    ).group_by("d").all()
 
     completed_map = {r.d: r.cnt for r in completed_query if r.d}
 
-    all_dates = sorted(set(list(created_map.keys()) + list(completed_map.keys())))
-    if not all_dates:
-        # Fallback dummy 7 days if empty
-        base = datetime.utcnow().date()
-        all_dates = [(base - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7, -1, -1)]
-
+    # Continuous chronological dates from start_date to end_date (past -> present)
     timeline = []
-    for d in all_dates[-days:]:
+    for i in range(days):
+        d_str = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
         timeline.append({
-            "date": d,
-            "created_count": created_map.get(d, 0),
-            "completed_count": completed_map.get(d, 0),
+            "date": d_str,
+            "created_count": created_map.get(d_str, 0),
+            "completed_count": completed_map.get(d_str, 0),
         })
     return timeline
 

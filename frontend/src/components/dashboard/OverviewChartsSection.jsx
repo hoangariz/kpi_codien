@@ -126,9 +126,23 @@ export default function OverviewChartsSection({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 11 }} 
+                tickFormatter={(d) => {
+                  if (!d) return '';
+                  const p = d.split('-');
+                  return p.length === 3 ? `${p[2]}/${p[1]}` : d;
+                }}
+              />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <Tooltip 
+                labelFormatter={(d) => {
+                  if (!d) return '';
+                  const p = d.split('-');
+                  return p.length === 3 ? `Ngày ${p[2]}/${p[1]}/${p[0]}` : d;
+                }}
+              />
               <Legend verticalAlign="top" height={36} />
               <Area type="monotone" dataKey="created_count" name="Tạo mới" stroke="#0284c7" fillOpacity={1} fill="url(#colorCreated)" />
               <Area type="monotone" dataKey="completed_count" name="Hoàn thành/Đóng" stroke="#10b981" fillOpacity={1} fill="url(#colorCompleted)" />

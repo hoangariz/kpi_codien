@@ -53,6 +53,7 @@ def auto_migrate_db():
             "ALTER TABLE codinh_tasks ADD COLUMN closed_time DATETIME",
             "ALTER TABLE codinh_tasks ADD COLUMN thoi_gian_con_lai_num FLOAT",
             "ALTER TABLE qlctkt_tasks ADD COLUMN ngay_tich_huy VARCHAR(100)",
+            "ALTER TABLE report_sub_categories ADD COLUMN is_standalone_table INTEGER DEFAULT 0",
         ]:
             try:
                 conn.execute(text(col_def))
@@ -148,22 +149,66 @@ def auto_migrate_db():
         except Exception:
             pass
 
-        # Seed default report category if empty
+        # Migration: add is_standalone_table to report_sub_categories if not present
         try:
-            cnt = conn.execute(text("SELECT COUNT(*) FROM report_categories")).scalar()
-            if not cnt or cnt == 0:
-                conn.execute(text("""
-                    INSERT INTO report_categories (name, loai_cong_viec, description, is_default, exclude_closed_prior_months, sort_order)
-                    VALUES (
-                        'Bảo Dưỡng Cứng Cơ Điện Điều Hòa, Máy Phát Điện, Thông Gió Lọc Bụi ICMS',
-                        'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS',
-                        'Báo cáo tự động loại bỏ các việc đã đóng tháng trước. Bảng tính chi tiết theo Nhân viên và Nhóm điều phối.',
-                        1,
-                        1,
-                        1
-                    )
-                """))
-                conn.commit()
+            conn.execute(text("ALTER TABLE report_sub_categories ADD COLUMN is_standalone_table INTEGER DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Migration: add dashboard_view to report_categories if not present
+        try:
+            conn.execute(text("ALTER TABLE report_categories ADD COLUMN dashboard_view VARCHAR(50) DEFAULT 'codien'"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Migration: add dashboard_view to fixed_wo_reports if not present
+        try:
+            conn.execute(text("ALTER TABLE fixed_wo_reports ADD COLUMN dashboard_view VARCHAR(50) DEFAULT 'nhatram'"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Migration: add sort_order, is_priority, is_all_wo to fixed_wo_reports
+        try:
+            conn.execute(text("ALTER TABLE fixed_wo_reports ADD COLUMN sort_order INTEGER DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE fixed_wo_reports ADD COLUMN is_priority BOOLEAN DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE fixed_wo_reports ADD COLUMN is_all_wo BOOLEAN DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Migration: add is_priority, is_all_wo to report_categories
+        try:
+            conn.execute(text("ALTER TABLE report_categories ADD COLUMN is_priority BOOLEAN DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE report_categories ADD COLUMN is_all_wo BOOLEAN DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Auto-mark any report named All-WO as is_all_wo = 1
+        try:
+            conn.execute(text("UPDATE fixed_wo_reports SET is_all_wo = 1 WHERE name LIKE '%All-WO%' OR name LIKE '%all-wo%'"))
+            conn.execute(text("UPDATE report_categories SET is_all_wo = 1 WHERE name LIKE '%All-WO%' OR name LIKE '%all-wo%'"))
+            # Cho phép người dùng toàn quyền xoá mọi danh mục, không khoá is_default
+            conn.execute(text("UPDATE report_categories SET is_default = 0 WHERE is_default = 1"))
+            conn.commit()
         except Exception:
             pass
 

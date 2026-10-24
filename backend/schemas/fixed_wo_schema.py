@@ -52,12 +52,20 @@ class FixedWoBreakdownItem(BaseModel):
 class FixedWoReportCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    dashboard_view: Optional[str] = "nhatram"  # "nhatram" | "codien" | "overview" | "all"
+    sort_order: Optional[int] = 0
+    is_priority: Optional[bool] = False
+    is_all_wo: Optional[bool] = False
     wo_codes: Optional[Union[List[str], str]] = []
 
 
 class FixedWoReportUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    dashboard_view: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_priority: Optional[bool] = None
+    is_all_wo: Optional[bool] = None
     wo_codes: Optional[Union[List[str], str]] = None  # If given, replaces all WOs
     wo_codes_to_add: Optional[Union[List[str], str]] = None
     wo_codes_to_remove: Optional[Union[List[str], str]] = None
@@ -69,6 +77,10 @@ class FixedWoReportResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    dashboard_view: str = "nhatram"
+    sort_order: int = 0
+    is_priority: bool = False
+    is_all_wo: bool = False
     total_wos: int = 0
     matched_wos: int = 0
     summary: Optional[FixedWoSummary] = None

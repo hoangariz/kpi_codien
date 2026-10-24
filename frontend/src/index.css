@@ -229,6 +229,104 @@ body {
   margin: 0 auto;
 }
 
+/* Dashboard Sub-navigation Tabs (3 Pages View) */
+.dashboard-subnav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.dashboard-subnav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.dashboard-subnav-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.dashboard-subnav-btn.active {
+  background: var(--brand-light);
+  color: var(--brand-primary);
+  border-color: rgba(2, 132, 199, 0.4);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15);
+}
+
+.dashboard-subnav-btn.active.view-codien {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0284c7;
+  border-color: rgba(2, 132, 199, 0.4);
+}
+
+.dashboard-subnav-btn.active.view-nhatram {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.dashboard-subnav-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .dashboard-subnav-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+.dashboard-subnav-btn.active .dashboard-subnav-badge {
+  background: rgba(2, 132, 199, 0.2);
+  color: var(--brand-primary);
+}
+
+.dashboard-subnav-btn.active.view-nhatram .dashboard-subnav-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #d97706;
+}
+
+.dashboard-quick-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+}
+
+.dashboard-quick-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-primary);
+}
+
 /* Excel-like Spreadsheet Grid System */
 .excel-table-container {
   border: 1px solid var(--border-color);
@@ -1102,6 +1200,49 @@ table.data-table tbody tr:hover {
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 16px)) !important;
   }
 
+  /* 2b. Dashboard Sub-navigation Tabs on Mobile (Native Segmented Control) */
+  .dashboard-subnav {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+    padding: 4px !important;
+    margin-bottom: 14px !important;
+    border-radius: var(--radius-md) !important;
+    overflow-x: hidden !important;
+    background: var(--bg-tertiary) !important;
+  }
+
+  .dashboard-subnav-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 8px 2px !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  .dashboard-subnav-btn svg {
+    width: 15px !important;
+    height: 15px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .dashboard-quick-card {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-quick-card h4 {
+    font-size: 0.92rem !important;
+  }
+
+  .dashboard-quick-card p {
+    font-size: 0.72rem !important;
+  }
+
   /* Ensure modals always render over bottom nav bar */
   .modal-overlay {
     z-index: 1000 !important;
@@ -1110,23 +1251,23 @@ table.data-table tbody tr:hover {
   /* 3. Report Selector Cards */
   .report-cards-grid {
     grid-template-columns: 1fr !important;
-    gap: 12px !important;
+    gap: 10px !important;
   }
 
   .report-selector-card {
-    padding: 14px 14px !important;
+    padding: 12px 12px !important;
     min-height: auto !important;
   }
 
   .report-selector-card h4 {
-    font-size: 0.94rem !important;
-    margin-bottom: 10px !important;
+    font-size: 0.88rem !important;
+    margin-bottom: 8px !important;
     min-height: auto !important;
-    -webkit-line-clamp: 3 !important;
+    -webkit-line-clamp: 2 !important;
   }
 
   .card-kpi-summary-row {
-    padding: 8px 4px !important;
+    padding: 6px 4px !important;
     gap: 2px !important;
   }
 
@@ -1136,7 +1277,7 @@ table.data-table tbody tr:hover {
   }
 
   .card-kpi-summary-row div strong {
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
   }
 
   /* 4. High Priority Board Section */
@@ -1283,6 +1424,17 @@ table.data-table tbody tr:hover {
 
 /* Extra small mobile screens (<= 480px) */
 @media (max-width: 480px) {
+  .dashboard-subnav-btn {
+    font-size: 0.74rem !important;
+    padding: 7px 2px !important;
+    gap: 3px !important;
+  }
+
+  .dashboard-subnav-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
   .table-metric-strip {
     grid-template-columns: repeat(2, 1fr) !important;
   }

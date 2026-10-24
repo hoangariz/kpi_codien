@@ -1593,7 +1593,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                       <tbody>
                         {sortedDrilldownTasks.length === 0 ? (
                           <tr>
-                            <td colSpan={14} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                            <td colSpan={15} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                               Không có công việc nào phù hợp với bộ lọc
                             </td>
                           </tr>
@@ -1603,12 +1603,34 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                             return (
                               <tr key={t.task_id || t.ma_cong_viec || idx} className="excel-row">
                                 <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
-                                <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t.latest_note || ''}>
+                                <td 
+                                  style={{ 
+                                    maxWidth: '180px', 
+                                    overflow: 'hidden', 
+                                    textOverflow: 'ellipsis',
+                                    cursor: 'pointer'
+                                  }} 
+                                  title={t.latest_note ? `Ghi chú: ${t.latest_note} (Nhấn để xem chi tiết)` : 'Chưa có ghi chú (Nhấn để xem chi tiết)'}
+                                  onClick={() => onSelectTask && onSelectTask(t)}
+                                >
                                   {t.latest_note ? (
-                                    <span style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>{t.latest_note}</span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                      <span style={{ color: 'var(--brand-primary)', fontSize: '11px' }}>📝</span>
+                                      <span style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>{t.latest_note}</span>
+                                    </span>
                                   ) : <span style={{ opacity: 0.35 }}>--</span>}
                                 </td>
-                                <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }} title={t.ma_cong_viec}>
+                                <td 
+                                  style={{ 
+                                    fontFamily: 'var(--font-mono)', 
+                                    fontWeight: 700,
+                                    color: isOverdue ? 'var(--danger-dark)' : 'var(--brand-primary)',
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline decoration-dotted'
+                                  }} 
+                                  title={t.ma_cong_viec ? `Nhấn để xem chi tiết công việc: ${t.ma_cong_viec}` : '--'}
+                                  onClick={() => onSelectTask && onSelectTask(t)}
+                                >
                                   {t.ma_cong_viec || '--'}
                                 </td>
                                 <td title={t.station_code || '--'}>

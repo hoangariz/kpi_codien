@@ -32,6 +32,9 @@ def _build_type_conditions(cat, db: Session):
     mode = (cat.filter_mode or "by_loai").strip()
     values = _parse_filter_values(cat.filter_values)
 
+    if getattr(cat, "is_all_wo", False):
+        return [Task.id != None]
+
     if not values:
         # Fallback: dùng loai_cong_viec cũ
         if cat.loai_cong_viec and not cat.loai_cong_viec.startswith("["):
@@ -64,10 +67,11 @@ def get_report_categories(
     using the active month time rule. Supports multi-value filter_mode/filter_values.
     """
     query = db.query(ReportCategory)
-    if domain:
+    if domain and domain != 'all':
         query = query.filter(ReportCategory.domain == domain)
 
     cats = query.order_by(
+        ReportCategory.is_priority.desc(),
         ReportCategory.sort_order.asc(),
         ReportCategory.created_at.asc()
     ).all()
@@ -89,11 +93,14 @@ def get_report_categories(
             "description": cat.description,
             "icon": cat.icon,
             "sort_order": cat.sort_order,
+            "is_priority": bool(getattr(cat, "is_priority", False)),
+            "is_all_wo": bool(getattr(cat, "is_all_wo", False)),
             "is_default": cat.is_default,
             "exclude_closed_prior_months": cat.exclude_closed_prior_months,
             "filter_mode": cat.filter_mode or "by_loai",
             "filter_values": _parse_filter_values(cat.filter_values),
             "domain": getattr(cat, "domain", "codien") or "codien",
+            "dashboard_view": getattr(cat, "dashboard_view", "codien") or "codien",
             "other_sub_category_name": getattr(cat, "other_sub_category_name", None) or "Còn lại / Khác",
             "created_at": cat.created_at,
             "updated_at": cat.updated_at,
@@ -147,6 +154,7 @@ def get_report_categories(
                         "keyword": sub.keyword,
                         "description": sub.description,
                         "sort_order": sub.sort_order,
+                        "is_standalone_table": bool(getattr(sub, 'is_standalone_table', False)),
                         "created_at": sub.created_at,
                         "updated_at": sub.updated_at,
                         "summary": None
@@ -205,21 +213,62 @@ def get_report_categories(
                 "completion_rate": rate
             }
 
-        # Include sub_categories
-        item["sub_categories"] = [
-            {
+        # Include sub_categories with individual summary
+        sub_list = []
+        for sub in (cat.sub_categories or []):
+            sub_sum = None
+            kw = (sub.keyword or '').strip()
+            if kw and base_conds is not None:
+                sub_conds = list(base_conds) + [Task.noi_dung_cong_viec.ilike(f"%{kw}%")]
+                sub_res = db.query(
+                    func.count(Task.ma_cong_viec).label("total"),
+                    func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+                    func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
+                    func.sum(
+                        case(
+                            (
+                                and_(
+                                    ~Task.trang_thai.in_(CLOSED_STATUSES),
+                                    or_(
+                                        Task.thoi_gian_con_lai < 0,
+                                        and_(
+                                            Task.thoi_diem_yeu_cau_ket_thuc != None,
+                                            Task.thoi_diem_yeu_cau_ket_thuc < now
+                                        )
+                                    )
+                                ),
+                                1
+                            ),
+                            else_=0
+                        )
+                    ).label("overdue")
+                ).filter(*sub_conds).first()
+                s_tot = (sub_res.total if sub_res else 0) or 0
+                s_cl = (sub_res.closed if sub_res else 0) or 0
+                s_pe = (sub_res.pending if sub_res else 0) or 0
+                s_ov = (sub_res.overdue if sub_res else 0) or 0
+                s_rate = round((s_cl / s_tot * 100), 1) if s_tot > 0 else 0.0
+                sub_sum = {
+                    "total": s_tot,
+                    "closed": s_cl,
+                    "pending": s_pe,
+                    "overdue": s_ov,
+                    "completion_rate": s_rate
+                }
+
+            sub_list.append({
                 "id": sub.id,
                 "category_id": sub.category_id,
                 "name": sub.name,
                 "keyword": sub.keyword,
                 "description": sub.description,
                 "sort_order": sub.sort_order,
+                "is_standalone_table": bool(getattr(sub, 'is_standalone_table', False)),
                 "created_at": sub.created_at,
                 "updated_at": sub.updated_at,
-                "summary": None
-            }
-            for sub in (cat.sub_categories or [])
-        ]
+                "summary": sub_sum
+            })
+        item["sub_categories"] = sub_list
 
         output.append(item)
 
@@ -257,11 +306,14 @@ def create_report_category(db: Session, payload: ReportCategoryCreate) -> Report
         description=payload.description.strip() if payload.description else None,
         icon=payload.icon.strip() if payload.icon else None,
         sort_order=payload.sort_order or 0,
+        is_priority=bool(payload.is_priority),
+        is_all_wo=bool(payload.is_all_wo),
         is_default=False,
         exclude_closed_prior_months=payload.exclude_closed_prior_months if payload.exclude_closed_prior_months is not None else True,
         filter_mode=mode,
         filter_values=json.dumps(values, ensure_ascii=False),
         domain=(payload.domain or "codien").strip(),
+        dashboard_view=(payload.dashboard_view or "codien").strip(),
         other_sub_category_name=(payload.other_sub_category_name or "Còn lại / Khác").strip() if payload.other_sub_category_name else "Còn lại / Khác",
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
@@ -325,6 +377,15 @@ def update_report_category(
     if payload.domain is not None:
         cat.domain = payload.domain.strip()
 
+    if payload.dashboard_view is not None:
+        cat.dashboard_view = payload.dashboard_view.strip()
+
+    if payload.is_priority is not None:
+        cat.is_priority = bool(payload.is_priority)
+
+    if payload.is_all_wo is not None:
+        cat.is_all_wo = bool(payload.is_all_wo)
+
     if payload.other_sub_category_name is not None:
         clean_other = payload.other_sub_category_name.strip()
         cat.other_sub_category_name = clean_other if clean_other else "Còn lại / Khác"
@@ -339,8 +400,6 @@ def delete_report_category(db: Session, cat_id: int) -> bool:
     cat = db.query(ReportCategory).filter(ReportCategory.id == cat_id).first()
     if not cat:
         return False
-    if cat.is_default:
-        raise ValueError("Không thể xoá loại báo cáo mặc định của hệ thống")
 
     db.delete(cat)
     db.commit()
@@ -393,6 +452,7 @@ def create_sub_category(
         keyword=clean_kw,
         description=payload.description.strip() if payload.description else None,
         sort_order=payload.sort_order or 0,
+        is_standalone_table=bool(payload.is_standalone_table),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
@@ -441,6 +501,9 @@ def update_sub_category(
 
     if payload.sort_order is not None:
         sub.sort_order = payload.sort_order
+
+    if payload.is_standalone_table is not None:
+        sub.is_standalone_table = bool(payload.is_standalone_table)
 
     sub.updated_at = datetime.utcnow()
     db.commit()

@@ -99,7 +99,7 @@ export default function MaintenancePage({ onNavigateToTasks }) {
             onClick={() => setActiveSubCategoryFilter('parent')}
             style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: '20px', fontWeight: 700 }}
           >
-            🏛️ Chỉ Bảng Mẹ Tổng Hợp ({summary.total ?? 0})
+            Tổng hợp ({summary.total ?? 0})
           </button>
 
           {sub_categories.map((sub) => {

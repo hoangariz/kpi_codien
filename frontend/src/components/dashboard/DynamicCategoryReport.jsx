@@ -4,7 +4,8 @@ import {
   Calendar, 
   Layers,
   Filter,
-  ArrowLeft
+  ArrowLeft,
+  ThumbsUp
 } from 'lucide-react';
 import MaintenanceSpreadsheetTable from '../MaintenanceSpreadsheetTable';
 
@@ -34,16 +35,24 @@ export default function DynamicCategoryReport({
     return m;
   };
 
-  // Resolve sub-categories: ONLY from backend stats or category definition, NO hardcoded fake fallbacks!
-  const subCategoriesList = (maintSpecial?.sub_categories && maintSpecial.sub_categories.length > 0)
-    ? maintSpecial.sub_categories
-    : (maintSpecial?.sub_categories_stats && maintSpecial.sub_categories_stats.length > 0)
-      ? maintSpecial.sub_categories_stats
+  // Resolve sub-categories with standalone flag merged from definition
+  const rawList = (maintSpecial?.sub_categories_stats && maintSpecial.sub_categories_stats.length > 0)
+    ? maintSpecial.sub_categories_stats
+    : (maintSpecial?.sub_categories && maintSpecial.sub_categories.length > 0)
+      ? maintSpecial.sub_categories
       : (activeCategory?.sub_categories && activeCategory.sub_categories.length > 0)
         ? activeCategory.sub_categories
         : [];
 
-  const categoryTitle = activeCategory?.name || maintSpecial?.target_task_type || 'Báo Cáo Cơ Điện';
+  const subCategoriesList = rawList.map(s => {
+    const def = (activeCategory?.sub_categories || []).find(d => d.id === s.id);
+    return {
+      ...s,
+      is_standalone_table: s.is_standalone_table ?? def?.is_standalone_table ?? false
+    };
+  });
+
+  const categoryTitle = activeCategory?.name || maintSpecial?.target_task_type || 'Báo Cáo';
 
   const handleSelectSubCategory = (subId) => {
     setActiveSubCategoryFilter(subId);
@@ -151,7 +160,7 @@ export default function DynamicCategoryReport({
           </div>
         </div>
 
-        {/* Sub-categories Navigator Tabs / Pills - ONLY shown when there ARE configured sub-categories */}
+        {/* Sub-categories Navigator Tabs / Pills */}
         {subCategoriesList.length > 0 && (
           <div style={{ 
             display: 'flex', 
@@ -173,11 +182,12 @@ export default function DynamicCategoryReport({
               gap: '5px'
             }}>
               <Filter size={14} style={{ color: 'var(--brand-primary)' }} />
-              Chọn đầu việc con:
+              Chọn bảng:
             </span>
 
-            {/* Tab: Tất Cả (Bảng Mẹ) */}
+            {/* Tab: Tổng hợp (Bảng tổng hợp gốc) */}
             <button
+              type="button"
               onClick={() => handleSelectSubCategory('parent')}
               style={{
                 padding: '6px 14px',
@@ -195,7 +205,7 @@ export default function DynamicCategoryReport({
                 transition: 'all 0.15s ease'
               }}
             >
-              <span>🏛️ Tất Cả</span>
+              <span>Tổng hợp</span>
               <span style={{
                 padding: '1px 6px',
                 borderRadius: '10px',
@@ -218,6 +228,7 @@ export default function DynamicCategoryReport({
               return (
                 <button
                   key={sub.id}
+                  type="button"
                   onClick={() => handleSelectSubCategory(String(sub.id))}
                   title={sub.keyword ? `Từ khóa: ${sub.keyword}` : sub.name}
                   style={{
@@ -226,9 +237,21 @@ export default function DynamicCategoryReport({
                     borderRadius: '20px',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: isSelected ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
-                    background: isSelected ? 'var(--brand-primary)' : 'var(--bg-tertiary)',
-                    color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                    border: isSelected 
+                      ? '1.5px solid var(--brand-primary)' 
+                      : sub.is_standalone_table 
+                        ? '1.5px solid rgba(16, 185, 129, 0.4)' 
+                        : '1px solid var(--border-color)',
+                    background: isSelected 
+                      ? 'var(--brand-primary)' 
+                      : sub.is_standalone_table 
+                        ? 'rgba(16, 185, 129, 0.08)' 
+                        : 'var(--bg-tertiary)',
+                    color: isSelected 
+                      ? '#ffffff' 
+                      : sub.is_standalone_table 
+                        ? 'var(--success-dark)' 
+                        : 'var(--text-secondary)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -237,6 +260,23 @@ export default function DynamicCategoryReport({
                   }}
                 >
                   <span>{icon} {sub.name}</span>
+                  {sub.is_standalone_table && !isSelected && (
+                    <span 
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        color: 'var(--success-dark)',
+                        padding: '2px 5px',
+                        borderRadius: '6px',
+                        lineHeight: 1
+                      }}
+                      title="Bảng độc lập"
+                    >
+                      <ThumbsUp size={11} />
+                    </span>
+                  )}
                   <span style={{
                     padding: '1px 6px',
                     borderRadius: '10px',
@@ -259,7 +299,7 @@ export default function DynamicCategoryReport({
         <MaintenanceSpreadsheetTable
           key={`maint-summary-${activeCategory?.id || 'main'}-${maintActiveTab}`}
           title={`BẢNG TỔNG HỢP: ${categoryTitle}`}
-          badgeText="BẢNG BÁO CÁO TỔNG HỢP"
+          badgeText="BẢNG TỔNG HỢP"
           badgeType="badge-info"
           isChild={false}
           summary={maintSummary}
@@ -273,14 +313,13 @@ export default function DynamicCategoryReport({
         />
       )}
 
-
-      {/* Case 3: Sub-categories exist & filter is 'parent' -> Render Parent Table Only */}
+      {/* Case 2: Sub-categories exist & filter is 'parent' -> Render Parent Table Only */}
       {subCategoriesList.length > 0 && activeSubCategoryFilter === 'parent' && (
         <div>
           <MaintenanceSpreadsheetTable
             key={`maint-parent-${activeCategory?.id || 'main'}-${maintActiveTab}`}
-            title={`BẢNG MẸ: ${categoryTitle}`}
-            badgeText="BẢNG MẸ TỔNG HỢP"
+            title={`BẢNG TỔNG HỢP: ${categoryTitle}`}
+            badgeText="BẢNG TỔNG HỢP"
             badgeType="badge-info"
             isChild={false}
             summary={maintSummary}
@@ -290,36 +329,49 @@ export default function DynamicCategoryReport({
             onTabChange={setMaintActiveTab}
             onDrilldown={handleOpenDrilldown}
             excludeTuChoi={excludeTuChoi}
-            exportFilename={`Bao_cao_me_${maintSpecial?.active_month || '2026-09'}`}
+            exportFilename={`Bao_cao_tong_hop_${maintSpecial?.active_month || '2026-09'}`}
           />
         </div>
       )}
 
-      {/* Case 4: Sub-categories exist & filter is a specific child table -> Render that Child Table Only */}
-      {subCategoriesList.length > 0 && activeSubCategoryFilter !== 'all' && activeSubCategoryFilter !== 'parent' && (() => {
+      {/* Case 3: Sub-categories exist & filter is a specific child / standalone table -> Render that Table Only */}
+      {subCategoriesList.length > 0 && activeSubCategoryFilter !== 'parent' && (() => {
         const selectedSub = subCategoriesList.find(s => String(s.id) === String(activeSubCategoryFilter));
         if (!selectedSub) return null;
         const icon = selectedSub.keyword === 'CONDITIONER' ? '❄️ ' :
                      selectedSub.keyword === 'GENERATOR' ? '⚡ ' :
                      selectedSub.keyword === 'VENTILATION' ? '🌀 ' :
                      selectedSub.is_other ? '📦 ' : '🔧 ';
+
+        const isStandalone = Boolean(selectedSub.is_standalone_table);
+        const titleText = isStandalone 
+          ? `${icon}BẢNG ĐỘC LẬP: ${selectedSub.name.toUpperCase()}`
+          : `${icon}BẢNG CON: ${selectedSub.name}`;
+        const badgeTitle = isStandalone
+          ? 'BẢNG ĐỘC LẬP'
+          : (selectedSub.is_other ? (selectedSub.name ? selectedSub.name.toUpperCase() : 'BẢNG KHÁC') : `TỪ KHÓA: ${selectedSub.keyword}`);
+        const badgeColor = isStandalone
+          ? 'badge-success'
+          : (selectedSub.is_other ? 'badge-neutral' : 'badge-primary');
+
         return (
           <div>
             <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button
+                type="button"
                 className="btn btn-outline"
                 onClick={() => handleSelectSubCategory('parent')}
                 style={{ fontSize: '0.84rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
               >
-                <ArrowLeft size={15} /> Quay lại tất cả
+                <ArrowLeft size={15} /> Quay lại Tổng hợp
               </button>
             </div>
             <MaintenanceSpreadsheetTable
               key={`maint-sub-${selectedSub.id}-${maintActiveTab}`}
-              title={`${icon}BẢNG CON: ${selectedSub.name}`}
-              badgeText={selectedSub.is_other ? (selectedSub.name ? selectedSub.name.toUpperCase() : 'BẢNG KHÁC') : `TỪ KHÓA: ${selectedSub.keyword}`}
-              badgeType={selectedSub.is_other ? 'badge-neutral' : 'badge-primary'}
-              isChild={true}
+              title={titleText}
+              badgeText={badgeTitle}
+              badgeType={badgeColor}
+              isChild={!isStandalone}
               keyword={selectedSub.keyword}
               isOther={selectedSub.is_other}
               summary={selectedSub.summary || {}}
@@ -336,7 +388,7 @@ export default function DynamicCategoryReport({
                 subCategoryName: selectedSub.name,
                 allSubKeywords: subCategoriesList.map(s => s.keyword).filter(Boolean)
               }}
-              exportFilename={`Bao_cao_con_${selectedSub.keyword || 'khac'}_${maintSpecial?.active_month || '2026-09'}`}
+              exportFilename={`Bao_cao_${isStandalone ? 'doc_lap_' : 'con_'}${selectedSub.keyword || 'khac'}_${maintSpecial?.active_month || '2026-09'}`}
             />
           </div>
         );

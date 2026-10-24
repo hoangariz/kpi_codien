@@ -21,6 +21,10 @@ class ReportCategory(Base):
     filter_values = Column(Text, nullable=True)
     # Phân hệ / domain: 'codien' (Cơ điện di động) | 'codinh' (Cố định băng rộng)
     domain = Column(String(50), default="codien", nullable=False, index=True)
+    # Vị trí hiển thị trên Dashboard: 'codien' (2. Báo Cáo Cơ Điện) | 'nhatram' (3. Báo Cáo Nhà Trạm) | 'overview' (1. Tổng Quan) | 'all' (Tất cả)
+    dashboard_view = Column(String(50), default="codien", nullable=False)
+    is_priority = Column(Boolean, default=False, nullable=False)
+    is_all_wo = Column(Boolean, default=False, nullable=False)
     # Tên bảng con dự phòng tự động gom các công việc không khớp từ khóa con (mặc định: 'Còn lại / Khác')
     other_sub_category_name = Column(String(255), default="Còn lại / Khác", nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -43,6 +47,7 @@ class ReportSubCategory(Base):
     keyword = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     sort_order = Column(Integer, default=0)
+    is_standalone_table = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

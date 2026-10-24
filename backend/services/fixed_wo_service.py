@@ -46,6 +46,10 @@ def create_fixed_wo_report(db: Session, data: FixedWoReportCreate) -> FixedWoRep
     report = FixedWoReport(
         name=name,
         description=data.description.strip() if data.description else None,
+        dashboard_view=(data.dashboard_view or "nhatram").strip(),
+        sort_order=data.sort_order if data.sort_order is not None else 0,
+        is_priority=bool(data.is_priority),
+        is_all_wo=bool(data.is_all_wo),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -74,6 +78,14 @@ def update_fixed_wo_report(db: Session, report_id: int, data: FixedWoReportUpdat
         report.name = data.name.strip()
     if data.description is not None:
         report.description = data.description.strip() if data.description else None
+    if data.dashboard_view is not None:
+        report.dashboard_view = data.dashboard_view.strip()
+    if data.sort_order is not None:
+        report.sort_order = data.sort_order
+    if data.is_priority is not None:
+        report.is_priority = bool(data.is_priority)
+    if data.is_all_wo is not None:
+        report.is_all_wo = bool(data.is_all_wo)
 
     # Replace all WO codes if explicitly provided
     if data.wo_codes is not None:
@@ -134,53 +146,93 @@ def delete_fixed_wo_report(db: Session, report_id: int) -> bool:
 
 def get_fixed_wo_reports(db: Session) -> List[Dict[str, Any]]:
     """List all fixed WO reports with counts and summary metrics."""
-    reports = db.query(FixedWoReport).order_by(FixedWoReport.id.asc()).all()
+    reports = db.query(FixedWoReport).order_by(
+        FixedWoReport.is_priority.desc(),
+        FixedWoReport.sort_order.asc(),
+        FixedWoReport.id.asc()
+    ).all()
     results = []
 
     now = datetime.utcnow()
 
     for r in reports:
         total_wos = db.query(func.count(FixedWoItem.id)).filter(FixedWoItem.report_id == r.id).scalar() or 0
+        is_all_wo = bool(getattr(r, "is_all_wo", False))
 
-        # Subquery for tasks belonging to this report
-        task_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == r.id)
-
-        agg = db.query(
-            func.count(Task.ma_cong_viec).label("matched"),
-            func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
-            func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
-            func.sum(
-                case(
-                    (
-                        and_(
-                            ~Task.trang_thai.in_(CLOSED_STATUSES),
-                            or_(
-                                Task.thoi_gian_con_lai < 0,
-                                and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
-                            )
+        if is_all_wo and total_wos == 0:
+            # All-WO report without explicit list: encompass ALL tasks in DB
+            total_wos = db.query(func.count(Task.ma_cong_viec)).scalar() or 0
+            agg = db.query(
+                func.count(Task.ma_cong_viec).label("matched"),
+                func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+                func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                ~Task.trang_thai.in_(CLOSED_STATUSES),
+                                or_(
+                                    Task.thoi_gian_con_lai < 0,
+                                    and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                                )
+                            ),
+                            1
                         ),
-                        1
-                    ),
-                    else_=0
-                )
-            ).label("overdue"),
-        ).filter(Task.ma_cong_viec.in_(task_subquery)).first()
+                        else_=0
+                    )
+                ).label("overdue"),
+            ).first()
 
-        matched = agg.matched or 0 if agg else 0
-        cl_matched = agg.closed or 0 if agg else 0
-        pe = agg.pending or 0 if agg else 0
-        ov = agg.overdue or 0 if agg else 0
+            matched = agg.matched or 0 if agg else 0
+            cl = agg.closed or 0 if agg else 0
+            pe = agg.pending or 0 if agg else 0
+            ov = agg.overdue or 0 if agg else 0
+            unmatched = 0
+            rate = round((cl / total_wos * 100), 1) if total_wos > 0 else 0.0
+        else:
+            # Subquery for tasks belonging to this report
+            task_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == r.id)
 
-        # Quy tắc: Những WO không tìm thấy trong log để Đã giao FT -> tính vào Tồn việc (chưa đóng), note ghi chú (IS KL)
-        unmatched = max(0, total_wos - matched)
-        cl = cl_matched
-        pe = pe + unmatched
-        rate = round((cl / total_wos * 100), 1) if total_wos > 0 else 0.0
+            agg = db.query(
+                func.count(Task.ma_cong_viec).label("matched"),
+                func.sum(case((Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("closed"),
+                func.sum(case((~Task.trang_thai.in_(CLOSED_STATUSES), 1), else_=0)).label("pending"),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                ~Task.trang_thai.in_(CLOSED_STATUSES),
+                                or_(
+                                    Task.thoi_gian_con_lai < 0,
+                                    and_(Task.thoi_diem_yeu_cau_ket_thuc != None, Task.thoi_diem_yeu_cau_ket_thuc < now)
+                                )
+                            ),
+                            1
+                        ),
+                        else_=0
+                    )
+                ).label("overdue"),
+            ).filter(Task.ma_cong_viec.in_(task_subquery)).first()
+
+            matched = agg.matched or 0 if agg else 0
+            cl_matched = agg.closed or 0 if agg else 0
+            pe = agg.pending or 0 if agg else 0
+            ov = agg.overdue or 0 if agg else 0
+
+            # Quy tắc: Những WO không tìm thấy trong log để Đã giao FT -> tính vào Tồn việc (chưa đóng), note ghi chú (IS KL)
+            unmatched = max(0, total_wos - matched)
+            cl = cl_matched
+            pe = pe + unmatched
+            rate = round((cl / total_wos * 100), 1) if total_wos > 0 else 0.0
 
         results.append({
             "id": r.id,
             "name": r.name,
             "description": r.description,
+            "dashboard_view": getattr(r, "dashboard_view", "nhatram") or "nhatram",
+            "sort_order": getattr(r, "sort_order", 0) or 0,
+            "is_priority": bool(getattr(r, "is_priority", False)),
+            "is_all_wo": is_all_wo,
             "total_wos": total_wos,
             "matched_wos": matched,
             "unmatched_wos": unmatched,
@@ -242,27 +294,39 @@ def get_fixed_wo_stats(
 
     # All WO codes registered in this report
     total_wos = db.query(func.count(FixedWoItem.id)).filter(FixedWoItem.report_id == report_id).scalar() or 0
-    wo_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id)
+    is_all_wo = bool(getattr(report, "is_all_wo", False))
 
-    # Condition: task is in this report's WOs
-    condition = Task.ma_cong_viec.in_(wo_subquery)
-    if exclude_tu_choi:
-        rejected_wos_sub = db.query(Task.ma_cong_viec).filter(
-            Task.ma_cong_viec.in_(wo_subquery),
-            or_(
-                Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
-                Task.trang_thai.ilike("%từ chối%")
+    if is_all_wo and total_wos == 0:
+        total_wos = db.query(func.count(Task.ma_cong_viec)).scalar() or 0
+        condition = (Task.id != None)
+        if exclude_tu_choi:
+            condition = and_(
+                condition,
+                ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                ~Task.trang_thai.ilike("%từ chối%")
             )
-        )
-        total_wos = db.query(func.count(FixedWoItem.id)).filter(
-            FixedWoItem.report_id == report_id,
-            ~FixedWoItem.ma_cong_viec.in_(rejected_wos_sub)
-        ).scalar() or 0
-        condition = and_(
-            condition,
-            ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
-            ~Task.trang_thai.ilike("%từ chối%")
-        )
+            total_wos = db.query(func.count(Task.ma_cong_viec)).filter(condition).scalar() or 0
+    else:
+        wo_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id)
+        # Condition: task is in this report's WOs
+        condition = Task.ma_cong_viec.in_(wo_subquery)
+        if exclude_tu_choi:
+            rejected_wos_sub = db.query(Task.ma_cong_viec).filter(
+                Task.ma_cong_viec.in_(wo_subquery),
+                or_(
+                    Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                    Task.trang_thai.ilike("%từ chối%")
+                )
+            )
+            total_wos = db.query(func.count(FixedWoItem.id)).filter(
+                FixedWoItem.report_id == report_id,
+                ~FixedWoItem.ma_cong_viec.in_(rejected_wos_sub)
+            ).scalar() or 0
+            condition = and_(
+                condition,
+                ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),
+                ~Task.trang_thai.ilike("%từ chối%")
+            )
 
     # Query closed tasks for daily breakdown
     closed_tasks_records = db.query(
@@ -902,18 +966,26 @@ def get_fixed_wo_tasks(
     yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
 
+    report = db.query(FixedWoReport).filter(FixedWoReport.id == report_id).first()
+    is_all_wo = bool(getattr(report, "is_all_wo", False)) if report else False
+
     # 1. Toàn bộ mã WO thuộc báo cáo cố định này
     all_report_wos = [
         row[0] for row in db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id).all()
     ]
-    matched_wos_set = set(
-        row[0] for row in db.query(Task.ma_cong_viec).filter(Task.ma_cong_viec.in_(all_report_wos)).all()
-    ) if all_report_wos else set()
-    unmatched_wos = [w for w in all_report_wos if w not in matched_wos_set]
+    if is_all_wo and not all_report_wos:
+        matched_wos_set = set()
+        unmatched_wos = []
+        query = db.query(Task)
+    else:
+        matched_wos_set = set(
+            row[0] for row in db.query(Task.ma_cong_viec).filter(Task.ma_cong_viec.in_(all_report_wos)).all()
+        ) if all_report_wos else set()
+        unmatched_wos = [w for w in all_report_wos if w not in matched_wos_set]
 
-    # 2. Xây dựng query cho các tasks có trong DB
-    wo_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id)
-    query = db.query(Task).filter(Task.ma_cong_viec.in_(wo_subquery))
+        # 2. Xây dựng query cho các tasks có trong DB
+        wo_subquery = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id)
+        query = db.query(Task).filter(Task.ma_cong_viec.in_(wo_subquery))
     if exclude_tu_choi:
         query = query.filter(
             ~Task.trang_thai.in_(["FT từ chối", "CD từ chối", "CĐ từ chối"]),

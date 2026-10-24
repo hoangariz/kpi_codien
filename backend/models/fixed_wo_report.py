@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from backend.database import Base
 
@@ -10,6 +10,11 @@ class FixedWoReport(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
+    # Vị trí hiển thị trên Dashboard: 'nhatram' (3. Báo Cáo Nhà Trạm) | 'codien' (2. Báo Cáo Cơ Điện) | 'overview' (1. Tổng Quan) | 'all' (Tất cả)
+    dashboard_view = Column(String(50), default="nhatram", nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    is_priority = Column(Boolean, default=False, nullable=False)
+    is_all_wo = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

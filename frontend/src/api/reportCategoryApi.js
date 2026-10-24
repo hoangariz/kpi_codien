@@ -1,7 +1,7 @@
 import api from './client';
 
 export const reportCategoryApi = {
-  getCategories: async (month = null, domain = 'codien') => {
+  getCategories: async (month = null, domain = 'all') => {
     const params = {};
     if (month) params.month = month;
     if (domain && domain !== 'all') params.domain = domain;

@@ -72,7 +72,9 @@ export default function SearchPage({ onNavigateToDashboard }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [woTags, setWoTags] = useState([]); // Parsed WO codes when multiple pasted
   const [ftInput, setFtInput] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatuses, setSelectedStatuses] = useState([]); // Multi-select array of statuses
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef(null);
   const [selectedTaskType, setSelectedTaskType] = useState('');
   const [isOverdue, setIsOverdue] = useState('');
 
@@ -80,7 +82,7 @@ export default function SearchPage({ onNavigateToDashboard }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  // Auto-suggest state for FT
+  // Auto-suggest state for FT / Employees
   const [showFtSuggestions, setShowFtSuggestions] = useState(false);
   const ftSuggestRef = useRef(null);
 
@@ -92,11 +94,14 @@ export default function SearchPage({ onNavigateToDashboard }) {
   const [quickNoteText, setQuickNoteText] = useState('');
   const [quickNoteAuthor, setQuickNoteAuthor] = useState('Điều hành');
 
-  // Close FT suggestion dropdown on click outside
+  // Close FT suggestion dropdown & Status dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (ftSuggestRef.current && !ftSuggestRef.current.contains(e.target)) {
         setShowFtSuggestions(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target)) {
+        setShowStatusDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -158,7 +163,7 @@ export default function SearchPage({ onNavigateToDashboard }) {
   const queryParams = {
     page,
     page_size: pageSize,
-    trang_thai: selectedStatus || undefined,
+    trang_thai: selectedStatuses.length > 0 ? selectedStatuses.join(',') : undefined,
     loai_cong_viec: selectedTaskType || undefined,
     is_overdue: isOverdue === 'true' ? true : isOverdue === 'false' ? false : undefined,
     sort_by: 'thoi_diem_tao',
@@ -199,10 +204,83 @@ export default function SearchPage({ onNavigateToDashboard }) {
   const totalTasks = tasksData?.total || 0;
   const totalPages = tasksData?.total_pages || 1;
 
-  // Filter FT suggestions based on input
-  const matchingFtList = FT_SUGGESTION_LIST.filter(ft =>
-    !ftInput.trim() || ft.toLowerCase().includes(ftInput.toLowerCase().trim())
-  );
+  // Distinct statuses list combining default and DB statuses
+  const defaultStatusList = [
+    'Đang thực hiện',
+    'Đã giao FT',
+    'Chờ CD tiếp nhận',
+    'FT hoàn thành',
+    'Đóng',
+    'FT từ chối',
+    'CD từ chối'
+  ];
+  const allAvailableStatuses = React.useMemo(() => {
+    const fromMeta = filtersMeta?.statuses || [];
+    const set = new Set([...defaultStatusList, ...fromMeta]);
+    return Array.from(set).filter(Boolean);
+  }, [filtersMeta?.statuses]);
+
+  // Color dot helper for status items
+  const getStatusDotColor = (st) => {
+    const s = String(st || '').toLowerCase();
+    if (s.includes('đóng')) return '#10b981';
+    if (s.includes('ft hoàn thành')) return '#06b6d4';
+    if (s.includes('chờ')) return '#8b5cf6';
+    if (s.includes('từ chối') || s.includes('quá hạn')) return '#ef4444';
+    if (s.includes('thực hiện') || s.includes('tiếp nhận') || s.includes('giao ft')) return '#0284c7';
+    return '#f59e0b';
+  };
+
+  // Toggle single status checkbox
+  const handleToggleStatus = (st) => {
+    setSelectedStatuses((prev) => {
+      const next = prev.includes(st) ? prev.filter((s) => s !== st) : [...prev, st];
+      return next;
+    });
+    setPage(1);
+  };
+
+  // Toggle select all statuses
+  const handleSelectAllStatuses = () => {
+    if (selectedStatuses.length === allAvailableStatuses.length) {
+      setSelectedStatuses([]);
+    } else {
+      setSelectedStatuses([...allAvailableStatuses]);
+    }
+    setPage(1);
+  };
+
+  // Smart suggestions for employees / FT combining database employees and common FT accounts
+  const matchingEmployees = React.useMemo(() => {
+    const query = ftInput.trim().toLowerCase();
+    const list = [];
+    const seenNames = new Set();
+
+    // 1. Employees from database
+    const dbEmps = filtersMeta?.employees || [];
+    dbEmps.forEach((e) => {
+      const name = (e.name || '').trim();
+      if (!name) return;
+      if (!query || name.toLowerCase().includes(query)) {
+        if (!seenNames.has(name.toLowerCase())) {
+          seenNames.add(name.toLowerCase());
+          list.push({ type: 'emp', name, id: e.id });
+        }
+      }
+    });
+
+    // 2. Common FT suggestion accounts
+    FT_SUGGESTION_LIST.forEach((ft) => {
+      if (!query || ft.toLowerCase().includes(query)) {
+        if (!seenNames.has(ft.toLowerCase())) {
+          seenNames.add(ft.toLowerCase());
+          list.push({ type: 'ft', name: ft, id: null });
+        }
+      }
+    });
+
+    return list.slice(0, 30);
+  }, [ftInput, filtersMeta?.employees]);
 
   // Handler to open full task detail
   const handleOpenTaskDetail = async (ma_cong_viec) => {
@@ -235,7 +313,7 @@ export default function SearchPage({ onNavigateToDashboard }) {
     setSearchQuery('');
     setWoTags([]);
     setFtInput('');
-    setSelectedStatus('');
+    setSelectedStatuses([]);
     setSelectedTaskType('');
     setIsOverdue('');
     setPage(1);
@@ -489,24 +567,32 @@ export default function SearchPage({ onNavigateToDashboard }) {
             )}
           </div>
 
-          {/* Row 2: Secondary Filters (FT Auto-suggest, Trạng Thái, Đầu Việc, Quá Hạn) */}
+          {/* Row 2: Secondary Filters (FT Auto-suggest, Trạng Thái Multi-select, Đầu Việc, Tiến Độ) */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '14px',
             paddingTop: '16px',
             borderTop: '1px solid var(--border-color)'
           }}>
-            {/* Filter 1: FT / Người thực hiện with Auto-suggest */}
-            <div ref={ftSuggestRef} style={{ position: 'relative', zIndex: 20 }}>
+            {/* Filter 1: Nhân viên thực hiện with Auto-suggest */}
+            <div ref={ftSuggestRef} style={{ position: 'relative' }}>
               <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                 👤 Nhân viên thực hiện (FT):
               </label>
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+                <User 
+                  size={15} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '10px', 
+                    color: 'var(--text-muted)', 
+                    pointerEvents: 'none' 
+                  }} 
+                />
                 <input
                   type="text"
-                  className="select-filter"
-                  placeholder="Gõ mã FT (vd: duandt, hoainm...)"
+                  placeholder="Gõ tên nhân viên hoặc mã FT..."
                   value={ftInput}
                   onChange={(e) => {
                     setFtInput(e.target.value);
@@ -515,17 +601,39 @@ export default function SearchPage({ onNavigateToDashboard }) {
                   onFocus={() => setShowFtSuggestions(true)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    maxWidth: 'none',
+                    boxSizing: 'border-box',
+                    padding: '8px 30px 8px 32px',
                     fontSize: '0.85rem',
-                    fontFamily: 'var(--font-mono)',
-                    borderRadius: 'var(--radius-sm)'
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    height: '38px',
+                    cursor: 'text'
                   }}
+                  onFocusCapture={(e) => { e.target.style.borderColor = 'var(--brand-primary)'; }}
+                  onBlurCapture={(e) => { e.target.style.borderColor = 'var(--border-color)'; }}
                 />
                 {ftInput && (
                   <button
                     type="button"
-                    onClick={() => setFtInput('')}
-                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                    onClick={() => { setFtInput(''); setPage(1); }}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '1.1rem',
+                      lineHeight: 1,
+                      padding: '2px 4px'
+                    }}
+                    title="Xóa tìm kiếm nhân viên"
                   >
                     ×
                   </button>
@@ -533,91 +641,230 @@ export default function SearchPage({ onNavigateToDashboard }) {
               </div>
 
               {/* Auto-suggest Dropdown */}
-              {showFtSuggestions && matchingFtList.length > 0 && (
+              {showFtSuggestions && matchingEmployees.length > 0 && (
                 <div
                   style={{
                     position: 'absolute',
-                    top: '100%',
+                    top: 'calc(100% + 4px)',
                     left: 0,
                     right: 0,
-                    zIndex: 50,
+                    zIndex: 100,
                     background: 'var(--bg-secondary)',
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-md)',
                     boxShadow: 'var(--shadow-lg)',
-                    maxHeight: '220px',
+                    maxHeight: '260px',
                     overflowY: 'auto',
-                    marginTop: '4px',
                     padding: '6px'
                   }}
                 >
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', padding: '4px 8px', fontWeight: 700 }}>
-                    GỢI Ý TỪ DANH SÁCH FT ({matchingFtList.length}):
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', padding: '4px 8px', fontWeight: 700, borderBottom: '1px solid var(--border-color)', marginBottom: '4px' }}>
+                    GỢI Ý NHÂN VIÊN / MÃ FT ({matchingEmployees.length}):
                   </div>
-                  {matchingFtList.map((ft) => (
+                  {matchingEmployees.map((item) => (
                     <div
-                      key={ft}
+                      key={item.name}
                       onClick={() => {
-                        setFtInput(ft);
+                        setFtInput(item.name);
                         setShowFtSuggestions(false);
+                        setPage(1);
                       }}
                       style={{
-                        padding: '6px 10px',
+                        padding: '7px 10px',
                         cursor: 'pointer',
                         fontSize: '0.82rem',
-                        fontFamily: 'var(--font-mono)',
+                        fontFamily: item.type === 'ft' ? 'var(--font-mono)' : 'inherit',
                         borderRadius: 'var(--radius-sm)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: ftInput.toLowerCase() === ft.toLowerCase() ? 'rgba(2, 132, 199, 0.15)' : 'transparent',
-                        color: ftInput.toLowerCase() === ft.toLowerCase() ? 'var(--brand-primary)' : 'var(--text-primary)'
+                        background: ftInput.toLowerCase() === item.name.toLowerCase() ? 'rgba(2, 132, 199, 0.15)' : 'transparent',
+                        color: ftInput.toLowerCase() === item.name.toLowerCase() ? 'var(--brand-primary)' : 'var(--text-primary)',
+                        transition: 'background 0.1s ease'
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-tertiary)'; }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = ftInput.toLowerCase() === ft.toLowerCase() ? 'rgba(2, 132, 199, 0.15)' : 'transparent';
+                        e.currentTarget.style.background = ftInput.toLowerCase() === item.name.toLowerCase() ? 'rgba(2, 132, 199, 0.15)' : 'transparent';
                       }}
                     >
-                      <span>👤 {ft}</span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>chọn</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{item.type === 'ft' ? '⚡' : '👤'}</span>
+                        <strong>{item.name}</strong>
+                      </span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        {item.type === 'ft' ? 'Mã FT' : 'Nhân viên'}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Filter 2: Trạng thái */}
-            <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                📌 Trạng thái WO:
+            {/* Filter 2: Trạng thái WO (Multi-select) */}
+            <div ref={statusDropdownRef} style={{ position: 'relative' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span>📌 Trạng thái WO (chọn nhiều):</span>
+                {selectedStatuses.length > 0 && (
+                  <span
+                    onClick={() => { setSelectedStatuses([]); setPage(1); }}
+                    style={{ fontSize: '0.7rem', color: 'var(--brand-primary)', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Bỏ chọn ({selectedStatuses.length})
+                  </span>
+                )}
               </label>
-              <select
-                className="select-filter"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
+
+              {/* Multi-select Trigger Box */}
+              <div
+                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  boxSizing: 'border-box',
+                  padding: '6px 12px',
+                  fontSize: '0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: showStatusDropdown ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  userSelect: 'none'
+                }}
               >
-                <option value="">Tất cả trạng thái</option>
-                <option value="Đang thực hiện">Đang thực hiện</option>
-                <option value="Đã giao FT">Đã giao FT</option>
-                <option value="Chờ CD tiếp nhận">Chờ CD tiếp nhận</option>
-                <option value="FT hoàn thành">FT hoàn thành</option>
-                <option value="Đóng">Đóng (Hoàn thành)</option>
-                <option value="FT từ chối">FT từ chối</option>
-                <option value="CD từ chối">CD từ chối</option>
-              </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                  {selectedStatuses.length === 0 ? (
+                    <span style={{ color: 'var(--text-muted)' }}>Tất cả trạng thái</span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="badge badge-primary" style={{ padding: '1px 6px', fontSize: '0.72rem', fontWeight: 700 }}>
+                        {selectedStatuses.length} đã chọn
+                      </span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                        {selectedStatuses.length <= 2 
+                          ? selectedStatuses.join(', ') 
+                          : `${selectedStatuses[0]}, ${selectedStatuses[1]}...`}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                  {showStatusDropdown ? '▲' : '▼'}
+                </span>
+              </div>
+
+              {/* Multi-select Dropdown Popover */}
+              {showStatusDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    minWidth: '260px',
+                    zIndex: 100,
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-lg)',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    padding: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px 8px 6px', borderBottom: '1px solid var(--border-color)', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      Chọn một hoặc nhiều trạng thái
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllStatuses}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--brand-primary)',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: '2px 4px'
+                      }}
+                    >
+                      {selectedStatuses.length === allAvailableStatuses.length ? 'Bỏ chọn hết' : 'Chọn tất cả'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {allAvailableStatuses.map((st) => {
+                      const isChecked = selectedStatuses.includes(st);
+                      return (
+                        <label
+                          key={st}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem',
+                            fontWeight: isChecked ? 700 : 500,
+                            background: isChecked ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+                            color: isChecked ? 'var(--brand-primary)' : 'var(--text-primary)',
+                            transition: 'background 0.1s ease',
+                            userSelect: 'none'
+                          }}
+                          onMouseEnter={(e) => { if (!isChecked) e.currentTarget.style.background = 'var(--bg-tertiary)'; }}
+                          onMouseLeave={(e) => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleStatus(st)}
+                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                          />
+                          <span
+                            style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: getStatusDotColor(st),
+                              display: 'inline-block',
+                              flexShrink: 0
+                            }}
+                          />
+                          <span>{st}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Filter 3: Đầu việc / Loại công việc */}
+            {/* Filter 3: Đầu việc (Loại công việc) */}
             <div>
               <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                 📋 Đầu việc (Loại công việc):
               </label>
               <select
-                className="select-filter"
                 value={selectedTaskType}
-                onChange={(e) => setSelectedTaskType(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
+                onChange={(e) => { setSelectedTaskType(e.target.value); setPage(1); }}
+                style={{
+                  width: '100%',
+                  maxWidth: 'none',
+                  height: '38px',
+                  boxSizing: 'border-box',
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
               >
                 <option value="">Tất cả loại đầu việc</option>
                 {(categories || []).map(c => (
@@ -628,49 +875,117 @@ export default function SearchPage({ onNavigateToDashboard }) {
               </select>
             </div>
 
-            {/* Filter 4: Quá hạn tiến độ */}
+            {/* Filter 4: Tiến độ (Quá hạn hoặc Trong hạn) */}
             <div>
               <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                ⏰ Tiến độ / Quá hạn:
+                ⏰ Tiến độ:
               </label>
-              <select
-                className="select-filter"
-                value={isOverdue}
-                onChange={(e) => setIsOverdue(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
-              >
-                <option value="">Tất cả tiến độ</option>
-                <option value="true">Chỉ công việc QUÁ HẠN</option>
-                <option value="false">Trong hạn / Đã hoàn thành</option>
-              </select>
+              <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => { setIsOverdue(''); setPage(1); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 6px',
+                    fontSize: '0.8rem',
+                    fontWeight: isOverdue === '' ? 700 : 500,
+                    height: '38px',
+                    background: isOverdue === '' ? 'var(--brand-primary)' : 'var(--bg-tertiary)',
+                    color: isOverdue === '' ? '#ffffff' : 'var(--text-secondary)',
+                    border: isOverdue === '' ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  Tất cả
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => { setIsOverdue(isOverdue === 'true' ? '' : 'true'); setPage(1); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    height: '38px',
+                    background: isOverdue === 'true' ? 'var(--danger-dark)' : 'rgba(239, 68, 68, 0.08)',
+                    color: isOverdue === 'true' ? '#ffffff' : 'var(--danger-dark)',
+                    border: isOverdue === 'true' ? '1px solid var(--danger-dark)' : '1px solid rgba(239, 68, 68, 0.25)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Lọc các công việc bị QUÁ HẠN"
+                >
+                  ⚠️ Quá hạn
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => { setIsOverdue(isOverdue === 'false' ? '' : 'false'); setPage(1); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    height: '38px',
+                    background: isOverdue === 'false' ? 'var(--success-dark)' : 'rgba(16, 185, 129, 0.08)',
+                    color: isOverdue === 'false' ? '#ffffff' : 'var(--success-dark)',
+                    border: isOverdue === 'false' ? '1px solid var(--success-dark)' : '1px solid rgba(16, 185, 129, 0.25)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Lọc các công việc TRONG HẠN"
+                >
+                  ✓ Trong hạn
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Quick FT suggestions tags row */}
-          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Gợi ý nhanh FT:</span>
-            {FT_SUGGESTION_LIST.slice(0, 10).map((ft) => (
-              <button
-                key={ft}
-                type="button"
-                onClick={() => setFtInput(ft)}
-                style={{
-                  background: ftInput.toLowerCase() === ft.toLowerCase() ? 'var(--brand-primary)' : 'var(--bg-tertiary)',
-                  color: ftInput.toLowerCase() === ft.toLowerCase() ? '#ffffff' : 'var(--text-secondary)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '12px',
-                  padding: '2px 8px',
-                  fontSize: '0.72rem',
-                  fontFamily: 'var(--font-mono)',
-                  cursor: 'pointer'
-                }}
-              >
-                {ft}
-              </button>
-            ))}
-            {FT_SUGGESTION_LIST.length > 10 && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>+{FT_SUGGESTION_LIST.length - 10} FT khác</span>
-            )}
+          {/* Quick FT suggestions tags & Status pills row */}
+          <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Lọc nhanh trạng thái:</span>
+            {['Đang thực hiện', 'Đã giao FT', 'Chờ CD tiếp nhận', 'FT hoàn thành', 'Đóng', 'FT từ chối', 'CD từ chối'].map((st) => {
+              const active = selectedStatuses.includes(st);
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => handleToggleStatus(st)}
+                  style={{
+                    background: active ? 'rgba(2, 132, 199, 0.15)' : 'var(--bg-tertiary)',
+                    color: active ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                    border: active ? '1.5px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '2px 8px',
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    fontWeight: active ? 700 : 500,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: getStatusDotColor(st),
+                      display: 'inline-block'
+                    }}
+                  />
+                  <span>{st}</span>
+                  {active && <span>✓</span>}
+                </button>
+              );
+            })}
 
             <button
               type="button"

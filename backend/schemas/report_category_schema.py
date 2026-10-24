@@ -28,6 +28,7 @@ class ReportSubCategoryBase(BaseModel):
     keyword: str
     description: Optional[str] = None
     sort_order: Optional[int] = 0
+    is_standalone_table: Optional[bool] = False
 
 
 class ReportSubCategoryCreate(ReportSubCategoryBase):
@@ -39,6 +40,7 @@ class ReportSubCategoryUpdate(BaseModel):
     keyword: Optional[str] = None
     description: Optional[str] = None
     sort_order: Optional[int] = None
+    is_standalone_table: Optional[bool] = None
 
 
 class ReportSubCategoryResponse(ReportSubCategoryBase):
@@ -63,6 +65,9 @@ class ReportCategoryCreate(BaseModel):
     filter_mode: Optional[str] = "by_loai"   # "by_loai" | "by_system"
     filter_values: Optional[List[str]] = []   # list of selected values
     domain: Optional[str] = "codien"         # "codien" | "codinh"
+    dashboard_view: Optional[str] = "codien" # "codien" | "nhatram" | "overview" | "all"
+    is_priority: Optional[bool] = False
+    is_all_wo: Optional[bool] = False
     other_sub_category_name: Optional[str] = "Còn lại / Khác"
 
 
@@ -77,6 +82,9 @@ class ReportCategoryUpdate(BaseModel):
     filter_mode: Optional[str] = None
     filter_values: Optional[List[str]] = None
     domain: Optional[str] = None
+    dashboard_view: Optional[str] = None
+    is_priority: Optional[bool] = None
+    is_all_wo: Optional[bool] = None
     other_sub_category_name: Optional[str] = None
 
 
@@ -93,6 +101,9 @@ class ReportCategoryResponse(BaseModel):
     filter_mode: str = "by_loai"
     filter_values: List[str] = []
     domain: str = "codien"
+    dashboard_view: str = "codien"
+    is_priority: bool = False
+    is_all_wo: bool = False
     other_sub_category_name: Optional[str] = "Còn lại / Khác"
     summary: Optional[ReportCategorySummary] = None
     sub_categories: List[ReportSubCategoryResponse] = []

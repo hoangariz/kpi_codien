@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from sqlalchemy import desc, asc, or_, and_, func
@@ -60,7 +61,13 @@ def get_tasks_paginated(
         if station_code and station_code.strip():
             filters.append(Task.station.has(Station.code.ilike(f"%{station_code.strip()}%")))
         if ft_username and ft_username.strip():
-            filters.append(Task.employee_assigned.has(Employee.name.ilike(f"%{ft_username.strip()}%")))
+            val = ft_username.strip()
+            filters.append(
+                or_(
+                    Task.employee_assigned.has(Employee.name.ilike(f"%{val}%")),
+                    Task.employee_created.has(Employee.name.ilike(f"%{val}%")),
+                )
+            )
 
 
     if group_id:
@@ -68,7 +75,16 @@ def get_tasks_paginated(
     if assigned_to_id:
         filters.append(Task.assigned_to_id == assigned_to_id)
     if trang_thai:
-        filters.append(Task.trang_thai == trang_thai)
+        if isinstance(trang_thai, str) and (',' in trang_thai or ';' in trang_thai):
+            status_list = [s.strip() for s in re.split(r'[,;]+', trang_thai) if s.strip()]
+            if status_list:
+                filters.append(Task.trang_thai.in_(status_list))
+        elif isinstance(trang_thai, list):
+            status_list = [s.strip() for s in trang_thai if s and str(s).strip()]
+            if status_list:
+                filters.append(Task.trang_thai.in_(status_list))
+        else:
+            filters.append(Task.trang_thai == trang_thai.strip())
     if loai_cong_viec:
         filters.append(Task.loai_cong_viec == loai_cong_viec)
     if system_id:
