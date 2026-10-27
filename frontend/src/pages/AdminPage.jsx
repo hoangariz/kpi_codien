@@ -7,6 +7,7 @@ import {
   Layers, 
   BookmarkCheck, 
   FileSpreadsheet, 
+  Network,
   Eye 
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ import { importsApi } from '../api/importsApi';
 import AdminMonthSection from '../components/admin/AdminMonthSection';
 import AdminCategoriesSection from '../components/admin/AdminCategoriesSection';
 import AdminFixedWoSection from '../components/admin/AdminFixedWoSection';
+import AdminAllWoHthSection from '../components/admin/AdminAllWoHthSection';
 import AdminBoardsSection from '../components/admin/AdminBoardsSection';
 import AdminFilesSection from '../components/admin/AdminFilesSection';
 
@@ -26,7 +28,7 @@ export default function AdminPage({ onNavigateToDashboard }) {
   // Settings State
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
 
-  // Left Navbar Active Tab ('month' | 'categories' | 'fixed_wo_reports' | 'boards' | 'files' | 'all')
+  // Left Navbar Active Tab ('month' | 'categories' | 'all_wo_hth' | 'fixed_wo_reports' | 'boards' | 'files' | 'all')
   const [activeAdminNav, setActiveAdminNav] = useState('month');
 
   // 1. Fetch current settings
@@ -52,6 +54,11 @@ export default function AdminPage({ onNavigateToDashboard }) {
     queryFn: fixedWoApi.getReports,
   });
 
+  const { data: hthReport } = useQuery({
+    queryKey: ['admin-all-wo-hth-report'],
+    queryFn: fixedWoApi.getAllWoHthReport,
+  });
+
   const { data: trackingBoards } = useQuery({
     queryKey: ['tracking-boards'],
     queryFn: trackingApi.getBoards,
@@ -69,6 +76,13 @@ export default function AdminPage({ onNavigateToDashboard }) {
       icon: Calendar,
       color: '#0284c7',
       badge: selectedMonth,
+    },
+    {
+      id: 'all_wo_hth',
+      label: 'Quản Lý Báo Cáo All-Wo-HTH (Tổng Quan)',
+      icon: Network,
+      color: '#0ea5e9',
+      badge: hthReport ? `${hthReport.total_wos} mã WO` : null,
     },
     {
       id: 'categories',
@@ -263,6 +277,11 @@ export default function AdminPage({ onNavigateToDashboard }) {
               selectedMonth={selectedMonth} 
               setSelectedMonth={setSelectedMonth} 
             />
+          )}
+
+          {/* 1b. All-Wo-HTH Report */}
+          {(activeAdminNav === 'all' || activeAdminNav === 'all_wo_hth') && (
+            <AdminAllWoHthSection />
           )}
 
           {/* 2. Report Categories */}

@@ -14,6 +14,12 @@ export const fixedWoApi = {
     return res.data;
   },
 
+  // Lấy hoặc khởi tạo báo cáo All-Wo-HTH hệ thống
+  getAllWoHthReport: async () => {
+    const res = await api.get('/all-wo-hth');
+    return res.data;
+  },
+
   // Tạo báo cáo cố định WO mới kèm danh sách mã WO
   createReport: async (data) => {
     const res = await api.post('', data);
@@ -53,6 +59,12 @@ export const fixedWoApi = {
   // Lấy danh sách công việc drilldown
   getTasks: async (id, params = {}) => {
     const res = await api.get(`/${id}/tasks`, { params });
+    return res.data;
+  },
+
+  // Lấy bảng đánh giá KPI FT dựa trên All-Wo-HTH
+  getKpiFt: async (params = {}) => {
+    const res = await api.get('/all-wo-hth/kpi', { params });
     return res.data;
   },
 };

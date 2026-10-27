@@ -54,12 +54,27 @@ def auto_migrate_db():
             "ALTER TABLE codinh_tasks ADD COLUMN thoi_gian_con_lai_num FLOAT",
             "ALTER TABLE qlctkt_tasks ADD COLUMN ngay_tich_huy VARCHAR(100)",
             "ALTER TABLE report_sub_categories ADD COLUMN is_standalone_table INTEGER DEFAULT 0",
+            "ALTER TABLE fixed_wo_reports ADD COLUMN report_type VARCHAR(50) DEFAULT 'standard'",
+            "ALTER TABLE fixed_wo_items ADD COLUMN tag VARCHAR(100)",
+            "CREATE INDEX IF NOT EXISTS ix_fixed_wo_items_tag ON fixed_wo_items (tag)",
+            "CREATE INDEX IF NOT EXISTS idx_fixed_wo_item_tag ON fixed_wo_items (report_id, tag)",
         ]:
             try:
                 conn.execute(text(col_def))
                 conn.commit()
             except Exception:
                 pass
+
+        try:
+            hth_exists = conn.execute(text("SELECT id FROM fixed_wo_reports WHERE name = 'All-Wo-HTH' OR report_type = 'all_wo_hth'")).fetchone()
+            if not hth_exists:
+                conn.execute(text("""
+                    INSERT INTO fixed_wo_reports (name, description, dashboard_view, sort_order, is_priority, is_all_wo, report_type, created_at, updated_at)
+                    VALUES ('All-Wo-HTH', 'Báo cáo cố định All-Wo-HTH hiển thị tại Tổng quan', 'overview', 0, 1, 1, 'all_wo_hth', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """))
+                conn.commit()
+        except Exception:
+            pass
 
 
 
@@ -202,10 +217,12 @@ def auto_migrate_db():
         except Exception:
             pass
 
-        # Auto-mark any report named All-WO as is_all_wo = 1
+        # Bỏ chức năng is_all_wo và chuyển toàn bộ báo cáo về Cơ Điện hoặc Nhà Trạm (không nằm trên Tổng Quan)
         try:
-            conn.execute(text("UPDATE fixed_wo_reports SET is_all_wo = 1 WHERE name LIKE '%All-WO%' OR name LIKE '%all-wo%'"))
-            conn.execute(text("UPDATE report_categories SET is_all_wo = 1 WHERE name LIKE '%All-WO%' OR name LIKE '%all-wo%'"))
+            conn.execute(text("UPDATE fixed_wo_reports SET is_all_wo = 0 WHERE is_all_wo = 1"))
+            conn.execute(text("UPDATE report_categories SET is_all_wo = 0 WHERE is_all_wo = 1"))
+            conn.execute(text("UPDATE fixed_wo_reports SET dashboard_view = 'nhatram' WHERE dashboard_view IN ('overview', 'all')"))
+            conn.execute(text("UPDATE report_categories SET dashboard_view = 'codien' WHERE dashboard_view IN ('overview', 'all')"))
             # Cho phép người dùng toàn quyền xoá mọi danh mục, không khoá is_default
             conn.execute(text("UPDATE report_categories SET is_default = 0 WHERE is_default = 1"))
             conn.commit()

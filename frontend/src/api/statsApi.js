@@ -33,7 +33,7 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClos
             const pagePromises = [];
             for (let p = 2; p <= res.data.total_pages; p++) {
               pagePromises.push(api.get('/stats/maintenance-special/tasks', {
-                params: { task_type: targetType, month: activeMonth, metric: 'total', page: p, page_size: 5000 }
+                params: { task_type: targetType, target_type: targetType, month: activeMonth, metric: 'total', page: p, page_size: 5000, exclude_tu_choi: excludeTuChoi }
               }));
             }
             const rList = await Promise.all(pagePromises);
@@ -145,12 +145,41 @@ export const statsApi = {
     }
   },
   getMaintenanceTasks: async (params = {}) => {
-    const targetType = params.target_type || 'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS';
-    const activeMonth = params.month || '2026-09';
+    const targetType = params.target_type || params.task_type || 'Bảo dưỡng cứng cơ điện điều hòa, máy phát điện, thông gió lọc bụi ICMS';
+    const activeMonth = params.month || '2026-10';
     const excludeClosed = params.exclude_closed_prior_months !== false;
     const excludeTuChoi = Boolean(params.exclude_tu_choi);
 
-    // Load or slice from memory cache (< 1ms instant access)
+    // 1. Try querying backend endpoint /stats/maintenance-special/tasks directly for 100% mathematical consistency
+    try {
+      const backendParams = {
+        task_type: targetType,
+        target_type: targetType,
+        month: activeMonth,
+        metric: params.metric || 'total',
+        filter_type: params.filter_type || undefined,
+        filter_id: params.filter_id != null ? params.filter_id : undefined,
+        is_other: Boolean(params.is_other),
+        sub_category_id: params.sub_category_id != null ? params.sub_category_id : undefined,
+        board_id: params.board_id || undefined,
+        search: params.search?.trim() || undefined,
+        day: params.day || undefined,
+        max_day: params.max_day || undefined,
+        page: params.page || 1,
+        page_size: params.page_size || 20000,
+        sort_by: params.sort_by || 'thoi_diem_yeu_cau_ket_thuc',
+        sort_order: params.sort_order || 'desc',
+        exclude_tu_choi: excludeTuChoi,
+      };
+      const res = await api.get('/stats/maintenance-special/tasks', { params: backendParams });
+      if (res.data && Array.isArray(res.data.items)) {
+        return res.data;
+      }
+    } catch (e) {
+      console.warn('Backend maintenance-special/tasks failed, fallback to cache:', e.message);
+    }
+
+    // 2. Fallback to in-memory filter
     const allValidTasks = await loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClosed, excludeTuChoi);
     let items = [...allValidTasks];
     if (excludeTuChoi) {

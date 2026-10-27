@@ -54,7 +54,7 @@ def _build_cat_type_conditions(cat, db: Session):
 
 def get_kpi_overview(db: Session) -> Dict[str, Any]:
     """Overall KPIs across all tasks."""
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
 
     # Query aggregates in a single fast query
     res = db.query(
@@ -152,7 +152,7 @@ def get_stats_by_group(
     end_date: Optional[datetime] = None
 ) -> List[Dict[str, Any]]:
     """Group statistics with status counts and completion rate."""
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
 
     filters = []
     if task_type:
@@ -220,7 +220,7 @@ def get_stats_by_employee(
     limit: int = 100
 ) -> List[Dict[str, Any]]:
     """Employee statistics with status counts and optional group filter."""
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
 
     filters = []
     if group_id:
@@ -323,7 +323,7 @@ def get_special_maintenance_stats(
         active_month = now_dt.strftime("%Y-%m")
         month_start = datetime(y_int, m_int, 1, 0, 0, 0)
 
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
     yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
@@ -331,7 +331,7 @@ def get_special_maintenance_stats(
     import calendar
     from collections import defaultdict
     # Vietnam local time (+7) to determine current day n and calculate up to n-1
-    now_vn = datetime.utcnow() + timedelta(hours=7)
+    now_vn = now
     cur_ym = now_vn.strftime("%Y-%m")
     if active_month == cur_ym:
         max_day = max(1, now_vn.day - 1)
@@ -1034,7 +1034,7 @@ def get_special_maintenance_tasks(
         active_month = now_dt.strftime("%Y-%m")
         month_start = datetime(now_dt.year, now_dt.month, 1, 0, 0, 0)
 
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
     today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
     yesterday_start = today_start - timedelta(days=1)
     seven_days_ago = today_start - timedelta(days=7)
@@ -1371,7 +1371,7 @@ def get_timeline_stats(db: Session, days: int = 14) -> List[Dict[str, Any]]:
 
 def get_overdue_stats(db: Session, group_id: Optional[int] = None, limit: int = 20) -> Dict[str, Any]:
     """Detailed overdue summary."""
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
     condition = and_(
         ~Task.trang_thai.in_(COMPLETED_STATUSES),
         or_(

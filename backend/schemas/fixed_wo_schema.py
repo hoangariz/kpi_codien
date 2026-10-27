@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, Any
 from pydantic import BaseModel, ConfigDict, field_serializer
 
 
@@ -13,6 +13,10 @@ class FixedWoSummary(BaseModel):
     closed_last_7_days: int = 0
     cho_cd_tiep_nhan: int = 0
     ft_hoan_thanh: int = 0
+    tu_choi: int = 0
+    ft_tu_choi: int = 0
+    cd_tu_choi: int = 0
+    overdue_tu_choi: int = 0
     completion_rate: float = 0.0
     daily_closed: Optional[Dict[str, int]] = {}
     closed_up_to_max_day: Optional[int] = 0
@@ -56,7 +60,8 @@ class FixedWoReportCreate(BaseModel):
     sort_order: Optional[int] = 0
     is_priority: Optional[bool] = False
     is_all_wo: Optional[bool] = False
-    wo_codes: Optional[Union[List[str], str]] = []
+    report_type: Optional[str] = "standard"  # "standard" | "all_wo_hth"
+    wo_codes: Optional[Union[List[Union[str, Dict[str, Any]]], str]] = []
 
 
 class FixedWoReportUpdate(BaseModel):
@@ -66,9 +71,10 @@ class FixedWoReportUpdate(BaseModel):
     sort_order: Optional[int] = None
     is_priority: Optional[bool] = None
     is_all_wo: Optional[bool] = None
-    wo_codes: Optional[Union[List[str], str]] = None  # If given, replaces all WOs
-    wo_codes_to_add: Optional[Union[List[str], str]] = None
-    wo_codes_to_remove: Optional[Union[List[str], str]] = None
+    report_type: Optional[str] = None
+    wo_codes: Optional[Union[List[Union[str, Dict[str, Any]]], str]] = None  # If given, replaces all WOs
+    wo_codes_to_add: Optional[Union[List[Union[str, Dict[str, Any]]], str]] = None
+    wo_codes_to_remove: Optional[Union[List[Union[str, Dict[str, Any]]], str]] = None
 
 
 class FixedWoReportResponse(BaseModel):
@@ -81,6 +87,7 @@ class FixedWoReportResponse(BaseModel):
     sort_order: int = 0
     is_priority: bool = False
     is_all_wo: bool = False
+    report_type: str = "standard"
     total_wos: int = 0
     matched_wos: int = 0
     summary: Optional[FixedWoSummary] = None
@@ -109,7 +116,14 @@ class FixedWoStatsResponse(BaseModel):
     matched_wos: int = 0
     unmatched_wos: int = 0
     summary: FixedWoSummary
+    by_tag: List[FixedWoBreakdownItem] = []
     by_employee: List[FixedWoBreakdownItem] = []
     by_group: List[FixedWoBreakdownItem] = []
     max_day: Optional[int] = 1
     days_list: Optional[List[int]] = []
+
+
+FixedWoReportCreate.model_rebuild()
+FixedWoReportUpdate.model_rebuild()
+FixedWoReportResponse.model_rebuild()
+FixedWoStatsResponse.model_rebuild()

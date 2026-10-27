@@ -8,7 +8,7 @@ import {
   Moon,
   RefreshCw,
   Calendar,
-  Database,
+  Award,
   Sparkles
 } from 'lucide-react';
 
@@ -74,34 +74,15 @@ export default function Header({
             <span className="nav-text-mobile">Tra Cứu</span>
           </button>
 
-          {/* CSDL Tab – Coming Soon */}
+          {/* KPI FT Tab */}
           <button
-            className={`header-nav-btn ${activeTab === 'csdb' ? 'active' : ''}`}
-            onClick={() => setActiveTab('csdb')}
-            title="CSDL Trạm & MPĐ — Đang phát triển"
-            style={{ position: 'relative' }}
+            className={`header-nav-btn ${activeTab === 'kpi' ? 'active' : ''}`}
+            onClick={() => setActiveTab('kpi')}
+            title="Bảng đánh giá hệ số KPI FT theo All-WO-HTH"
           >
-            <Database size={16} />
-            <span className="nav-text-desktop">CSDL Trạm / MPĐ</span>
-            <span className="nav-text-mobile">CSDL Trạm</span>
-            {/* Pulsing badge */}
-            <span className="badge-soon" style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-6px',
-              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-              color: '#fff',
-              fontSize: '0.55rem',
-              fontWeight: 800,
-              padding: '1px 5px',
-              borderRadius: '8px',
-              letterSpacing: '0.03em',
-              whiteSpace: 'nowrap',
-              animation: 'pulse-badge 2s ease-in-out infinite',
-              boxShadow: '0 0 6px rgba(245, 158, 11, 0.6)'
-            }}>
-              SOON
-            </span>
+            <Award size={16} />
+            <span className="nav-text-desktop">KPI FT</span>
+            <span className="nav-text-mobile">KPI FT</span>
           </button>
         </nav>
       </div>

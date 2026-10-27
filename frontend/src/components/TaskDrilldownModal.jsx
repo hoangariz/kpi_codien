@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   X, 
@@ -73,6 +73,13 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
   const [sortOrder, setSortOrder] = useState('desc');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'analytics'
   const [analyticsJobSearch, setAnalyticsJobSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(300);
+
+  // Reset page when filterInfo, search, sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterInfo, searchTerm, sortKey, sortOrder]);
 
   // Interactive drilldown sub-table state (when clicking any number in Table 1 or Table 2)
   const [drilldownFilter, setDrilldownFilter] = useState(null);
@@ -130,6 +137,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
           metric: filterInfo.metric || 'total',
           filter_type: filterInfo.filterType || null,
           filter_id: filterInfo.filterId ?? null,
+          target_name: filterInfo.targetName || undefined,
           is_other: Boolean(filterInfo.isOther),
           search: searchTerm.trim() || undefined,
           day: filterInfo.day || undefined,
@@ -176,6 +184,14 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
   const total = data?.total || 0;
   const totalPages = data?.total_pages || 1;
   const items = data?.items || [];
+
+  const displayedItems = useMemo(() => {
+    if (pageSize === 0) return items;
+    const start = (currentPage - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, currentPage, pageSize]);
+
+  const totalDisplayPages = pageSize > 0 ? Math.max(1, Math.ceil(items.length / pageSize)) : 1;
 
   // =========================================================================
   // DEEP ANALYSIS CALCULATIONS (PHÂN TÍCH SÂU)
@@ -234,7 +250,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
 
   // Table 1: Group by Job Type
   const analyticsByType = useMemo(() => {
-    if (!items.length) return [];
+    if (viewMode !== 'analytics' || !items.length) return [];
     const map = new Map();
     items.forEach(t => {
       const typeName = (t.loai_cong_viec || 'Chưa phân loại').trim();
@@ -260,11 +276,11 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     const list = Array.from(map.values());
     list.sort((a, b) => b.tong_ton - a.tong_ton);
     return list;
-  }, [items]);
+  }, [items, viewMode]);
 
   // Distinct months sorted chronologically
   const distinctMonths = useMemo(() => {
-    if (!items.length) return [];
+    if (viewMode !== 'analytics' || !items.length) return [];
     const set = new Set();
     items.forEach(t => {
       set.add(getTaskMonthKey(t));
@@ -276,18 +292,21 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
       return a.localeCompare(b);
     });
     return arr;
-  }, [items]);
+  }, [items, viewMode]);
 
   // Overall totals
   const totalTongTon = items.length;
-  const totalSoTreo = useMemo(() => items.filter(t => isTreo(t.trang_thai)).length, [items]);
+  const totalSoTreo = useMemo(() => {
+    if (viewMode !== 'analytics' || !items.length) return 0;
+    return items.filter(t => isTreo(t.trang_thai)).length;
+  }, [items, viewMode]);
   const totalTonConLai = totalTongTon - totalSoTreo;
   const overallTreoRate = totalTongTon > 0 ? (totalSoTreo / totalTongTon * 100).toFixed(1) : '0.0';
   const overallConLaiRate = totalTongTon > 0 ? (totalTonConLai / totalTongTon * 100).toFixed(1) : '0.0';
 
   // Table 2: Monthly Matrix
   const monthlyMatrix = useMemo(() => {
-    if (!analyticsByType.length || !distinctMonths.length) {
+    if (viewMode !== 'analytics' || !analyticsByType.length || !distinctMonths.length) {
       return { rows: [], monthTotals: {} };
     }
 
@@ -329,7 +348,7 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
     });
 
     return { rows, monthTotals };
-  }, [analyticsByType, distinctMonths]);
+  }, [analyticsByType, distinctMonths, viewMode]);
 
   // Filter Table 1 and Table 2 if user searches in analytics
   const filteredAnalyticsByType = useMemo(() => {
@@ -742,10 +761,10 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
               className="btn btn-outline"
               onClick={viewMode === 'analytics' ? handleExportAnalyticsCSV : handleExportCSV}
               disabled={!items.length}
-              title={viewMode === 'analytics' ? 'Xuất toàn bộ bảng phân tích sâu ra Excel CSV' : 'Xuất danh sách này ra Excel CSV'}
+              title={viewMode === 'analytics' ? 'Xuất toàn bộ bảng phân tích sâu ra file Excel' : `Xuất toàn bộ tất cả ${items.length.toLocaleString()} công việc ra file Excel (không giới hạn theo trang)`}
               style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '5px' }}
             >
-              <Download size={14} /> Xuất Excel
+              <Download size={14} /> Xuất Excel (Toàn bộ)
             </button>
 
             <button 
@@ -1840,9 +1859,9 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
                 </tr>
               </thead>
               <tbody>
-                {items.map((t, idx) => {
+                {displayedItems.map((t, idx) => {
                   const isOverdue = t.thoi_gian_con_lai < 0;
-                  const stt = idx + 1;
+                  const stt = (pageSize === 0 ? 0 : (currentPage - 1) * pageSize) + idx + 1;
                   return (
                     <tr 
                       key={t.ma_cong_viec} 
@@ -2087,15 +2106,71 @@ export default function TaskDrilldownModal({ isOpen, onClose, filterInfo, onSele
               </span>
             </div>
           ) : (
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Tổng cộng:</span>
-              <strong style={{ color: 'var(--brand-primary)', fontSize: '0.98rem', fontFamily: 'var(--font-mono)' }}>
-                {total.toLocaleString()}
-              </strong>
-              <span>công việc</span>
-              <span className="badge badge-success" style={{ fontSize: '0.72rem', padding: '2px 8px', fontWeight: 700 }}>
-                Đang hiển thị toàn bộ ({items.length.toLocaleString()})
-              </span>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>Tổng cộng:</span>
+                <strong style={{ color: 'var(--brand-primary)', fontSize: '0.98rem', fontFamily: 'var(--font-mono)' }}>
+                  {total.toLocaleString()}
+                </strong>
+                <span>công việc</span>
+              </div>
+
+              {items.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="badge badge-neutral" style={{ fontSize: '0.72rem', padding: '2px 8px', fontWeight: 600 }}>
+                    {pageSize === 0 ? `Hiển thị toàn bộ ${items.length}` : `Trang ${currentPage}/${totalDisplayPages} (${((currentPage - 1) * pageSize + 1).toLocaleString()} - ${Math.min(currentPage * pageSize, items.length).toLocaleString()}/${items.length.toLocaleString()})`}
+                  </span>
+
+                  {pageSize > 0 && totalDisplayPages > 1 && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <button
+                        className="btn btn-outline"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', lineHeight: 1 }}
+                        title="Trang trước"
+                      >
+                        ◀ Trước
+                      </button>
+                      <button
+                        className="btn btn-outline"
+                        disabled={currentPage >= totalDisplayPages}
+                        onClick={() => setCurrentPage(p => Math.min(totalDisplayPages, p + 1))}
+                        style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', lineHeight: 1 }}
+                        title="Trang sau"
+                      >
+                        Sau ▶
+                      </button>
+                    </div>
+                  )}
+
+                  {items.length > 100 && (
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '0.72rem',
+                        borderRadius: '4px',
+                        background: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-color)',
+                        height: '24px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={100}>100 / trang</option>
+                      <option value={300}>300 / trang (mặc định)</option>
+                      <option value={500}>500 / trang</option>
+                      <option value={1000}>1000 / trang</option>
+                      <option value={0}>Tất cả ({items.length.toLocaleString()})</option>
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

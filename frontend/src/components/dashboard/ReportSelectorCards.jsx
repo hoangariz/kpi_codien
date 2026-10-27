@@ -39,11 +39,7 @@ export default function ReportSelectorCards({
   const cards = [];
 
   // Match items according to mode
-  // Chỉ có tick is_all_wo mới được tự động hiển thị ở cả 2 nơi: Tổng Quan và Nhà Trạm
   const isMatchMode = (item, defaultMode) => {
-    if (item?.is_all_wo) {
-      return mode === 'overview' || mode === 'nhatram';
-    }
     const view = item?.dashboard_view || defaultMode;
     if (view === 'all') return true;
     return view === mode;
@@ -54,7 +50,7 @@ export default function ReportSelectorCards({
   );
 
   const matchingFixedWoReports = (fixedWoReports || []).filter(rep => 
-    isMatchMode(rep, 'nhatram')
+    rep.report_type !== 'all_wo_hth' && rep.name !== 'All-Wo-HTH' && isMatchMode(rep, 'nhatram')
   );
 
   // 1. Process matching categories
@@ -73,7 +69,7 @@ export default function ReportSelectorCards({
       title: cat.name,
       sortOrder: cat.sort_order ?? 0,
       isPriority: Boolean(cat.is_priority),
-      isAllWo: Boolean(cat.is_all_wo),
+      isAllWo: false,
       isStandalone: false,
       badge: null,
       icon: null,
@@ -126,9 +122,9 @@ export default function ReportSelectorCards({
       title: rep.name,
       sortOrder: rep.sort_order ?? 0,
       isPriority: Boolean(rep.is_priority),
-      isAllWo: Boolean(rep.is_all_wo),
-      badge: rep.is_all_wo ? 'ALL-WO' : 'CỐ ĐỊNH WO',
-      badgeType: rep.is_all_wo ? 'badge-all-wo' : 'badge-warning',
+      isAllWo: false,
+      badge: 'CỐ ĐỊNH WO',
+      badgeType: 'badge-warning',
       summary: repSum,
       isSelected: isFixedSelected
     });
@@ -197,11 +193,9 @@ export default function ReportSelectorCards({
           borderRadius: 'var(--radius-lg)',
           border: card.isSelected 
             ? '2px solid var(--brand-primary)' 
-            : card.isAllWo
-              ? '1.5px solid rgba(139, 92, 246, 0.45)'
-              : card.isStandalone 
-                ? '1.5px solid rgba(16, 185, 129, 0.45)' 
-                : '1px solid var(--border-color)',
+            : card.isStandalone 
+              ? '1.5px solid rgba(16, 185, 129, 0.45)' 
+              : '1px solid var(--border-color)',
           background: card.isSelected 
             ? 'var(--brand-light)' 
             : 'var(--bg-secondary)',
@@ -229,24 +223,7 @@ export default function ReportSelectorCards({
                 </span>
               ) : null}
 
-              {card.isAllWo ? (
-                <span 
-                  className="badge"
-                  style={{ 
-                    gap: '4px', 
-                    fontWeight: 800, 
-                    fontSize: '0.7rem', 
-                    padding: '2px 8px',
-                    background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                    color: '#ffffff',
-                    border: 'none',
-                    boxShadow: '0 1px 4px rgba(139, 92, 246, 0.35)'
-                  }}
-                  title="Báo cáo nguồn All-WO hiển thị ở cả Tổng Quan và Nhà Trạm"
-                >
-                  🌐 ALL-WO
-                </span>
-              ) : card.badge ? (
+              {card.badge ? (
                 <span 
                   className={`badge ${card.badgeType}`}
                   style={{ gap: '4px', fontWeight: 800, fontSize: '0.72rem', padding: '2px 8px' }}

@@ -129,12 +129,10 @@ export default function AllWoKpiSection({
 
   // 1. Tự động tìm báo cáo All-WO mục tiêu
   const defaultTarget = useMemo(() => {
-    const fixedAllWo = fixedWoReports.find(r => r.is_all_wo)
-      || fixedWoReports.find(r => r.name?.toLowerCase().includes('all-wo') || r.name?.toLowerCase().includes('all_wo'));
+    const fixedAllWo = fixedWoReports.find(r => r.name?.toLowerCase().includes('all-wo') || r.name?.toLowerCase().includes('all_wo'));
     if (fixedAllWo) return { type: 'fixed', id: fixedAllWo.id, name: fixedAllWo.name, report: fixedAllWo };
 
-    const catAllWo = reportCategories.find(c => c.is_all_wo)
-      || reportCategories.find(c => c.name?.toLowerCase().includes('all-wo') || c.name?.toLowerCase().includes('all_wo'));
+    const catAllWo = reportCategories.find(c => c.name?.toLowerCase().includes('all-wo') || c.name?.toLowerCase().includes('all_wo'));
     if (catAllWo) return { type: 'category', id: catAllWo.id, name: catAllWo.name, category: catAllWo };
 
     if (fixedWoReports.length > 0) return { type: 'fixed', id: fixedWoReports[0].id, name: fixedWoReports[0].name, report: fixedWoReports[0] };
@@ -354,12 +352,12 @@ export default function AllWoKpiSection({
               >
                 {fixedWoReports.map(r => (
                   <option key={`fixed:${r.id}`} value={`fixed:${r.id}`}>
-                    {r.is_all_wo ? '🌐 ' : ''}{r.name}
+                    {r.name}
                   </option>
                 ))}
                 {reportCategories.map(c => (
                   <option key={`cat:${c.id}`} value={`cat:${c.id}`}>
-                    {c.is_all_wo ? '🌐 ' : ''}{c.name}
+                    {c.name}
                   </option>
                 ))}
               </select>

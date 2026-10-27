@@ -47,6 +47,36 @@ def create_report(data: FixedWoReportCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Lỗi tạo báo cáo cố định: {str(e)}")
 
 
+@router.get("/all-wo-hth", response_model=FixedWoReportResponse)
+def get_all_wo_hth_report_endpoint(db: Session = Depends(get_db)):
+    """Get or auto-create the singleton All-Wo-HTH report."""
+    from backend.services.fixed_wo_service import get_or_create_all_wo_hth_report
+    report = get_or_create_all_wo_hth_report(db)
+    reports = get_fixed_wo_reports(db)
+    found = next((r for r in reports if r["id"] == report.id), None)
+    if not found:
+        return report
+    return found
+
+
+@router.get("/all-wo-hth/kpi")
+def get_all_wo_hth_kpi_endpoint(
+    target_quota: int = Query(125, ge=1, description="Định mức WO hoàn thành trong hạn"),
+    min_wos: int = Query(40, ge=1, description="Ngưỡng tối thiểu WO được giao để xét duyệt KPI"),
+    exclude_tu_choi: bool = Query(False, description="Loại trừ các WO từ chối"),
+    db: Session = Depends(get_db)
+):
+    """Get FT KPI evaluation based on All-Wo-HTH data."""
+    from backend.services.fixed_wo_service import get_all_wo_hth_kpi_ft
+    return get_all_wo_hth_kpi_ft(
+        db=db,
+        target_quota=target_quota,
+        min_wos=min_wos,
+        exclude_tu_choi=exclude_tu_choi
+    )
+
+
+
 @router.get("/{report_id}", response_model=FixedWoReportResponse)
 def get_report(report_id: int, db: Session = Depends(get_db)):
     """Get single Fixed WO Report details."""
@@ -86,8 +116,9 @@ def delete_report(report_id: int, db: Session = Depends(get_db)):
 def list_wo_codes(
     report_id: int,
     search: Optional[str] = None,
+    tag: Optional[str] = None,
     matched_only: Optional[bool] = None,
-    limit: int = 1000,
+    limit: int = 2000,
     db: Session = Depends(get_db)
 ):
     """
@@ -97,21 +128,38 @@ def list_wo_codes(
     if not report:
         raise HTTPException(status_code=404, detail="Không tìm thấy báo cáo")
 
-    query = db.query(FixedWoItem.ma_cong_viec).filter(FixedWoItem.report_id == report_id)
-    if search:
-        query = query.filter(FixedWoItem.ma_cong_viec.ilike(f"%{search.strip()}%"))
+    all_tags = [
+        row[0] for row in db.query(FixedWoItem.tag).filter(
+            FixedWoItem.report_id == report_id,
+            FixedWoItem.tag != None,
+            FixedWoItem.tag != ""
+        ).distinct().order_by(FixedWoItem.tag.asc()).all()
+    ]
 
-    all_wos = [row[0] for row in query.all()]
-    total_count = len(all_wos)
+    query = db.query(FixedWoItem.ma_cong_viec, FixedWoItem.tag).filter(FixedWoItem.report_id == report_id)
+    if search:
+        s = search.strip()
+        from sqlalchemy import or_
+        query = query.filter(or_(FixedWoItem.ma_cong_viec.ilike(f"%{s}%"), FixedWoItem.tag.ilike(f"%{s}%")))
+    if tag:
+        from sqlalchemy import or_
+        if tag in ("Chưa phân nhóm", "none"):
+            query = query.filter(or_(FixedWoItem.tag == None, FixedWoItem.tag == ""))
+        else:
+            query = query.filter(FixedWoItem.tag == tag)
+
+    all_rows = query.all()
+    total_count = len(all_rows)
+    all_wos = [row[0] for row in all_rows]
 
     # Check which ones are in tasks
     matched_tasks = {
         row.ma_cong_viec: {"trang_thai": row.trang_thai, "ghi_chu": row.ghi_chu}
         for row in db.query(Task.ma_cong_viec, Task.trang_thai, Task.ghi_chu).filter(Task.ma_cong_viec.in_(all_wos)).all()
-    }
+    } if all_wos else {}
 
     items = []
-    for wo in all_wos:
+    for wo, w_tag in all_rows:
         is_matched = wo in matched_tasks
         if matched_only is True and not is_matched:
             continue
@@ -124,6 +172,7 @@ def list_wo_codes(
 
         items.append({
             "ma_cong_viec": wo,
+            "tag": w_tag,
             "is_matched": is_matched,
             "trang_thai": trang_thai,
             "ghi_chu": ghi_chu,
@@ -136,6 +185,7 @@ def list_wo_codes(
         "total_wos": total_count,
         "matched_count": len(matched_tasks),
         "unmatched_count": max(0, total_count - len(matched_tasks)),
+        "available_tags": all_tags,
         "items": items,
     }
 
@@ -165,6 +215,7 @@ def get_tasks(
     metric: str = Query("total"),
     filter_type: Optional[str] = None,
     filter_id: Optional[int] = None,
+    target_name: Optional[str] = Query(None),
     is_other: bool = Query(False),
     search: Optional[str] = None,
     day: Optional[int] = Query(None),
@@ -187,6 +238,7 @@ def get_tasks(
             metric=metric,
             filter_type=filter_type,
             filter_id=filter_id,
+            target_name=target_name,
             is_other=is_other,
             search=search,
             day=day,

@@ -5,7 +5,7 @@ import Header from './components/Header';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import SearchPage from './pages/SearchPage';
-import CsdbPage from './pages/CsdbPage';
+import KpiFtPage from './pages/KpiFtPage';
 import CodinhPage from './pages/CodinhPage';
 import AdminCodinhPage from './pages/AdminCodinhPage';
 import ThuHoiThietBiPage from './pages/ThuHoiThietBiPage';
@@ -65,7 +65,7 @@ export default function App() {
       if (path.includes('/codinh') || hash.includes('codinh')) return 'codinh';
       if (path.includes('/admin') || hash.includes('admin')) return 'admin';
       if (path.includes('/search') || hash.includes('search')) return 'search';
-      if (path.includes('/csdb') || hash.includes('csdb')) return 'csdb';
+      if (path.includes('/kpi') || hash.includes('kpi')) return 'kpi';
     } catch (e) {
       console.error(e);
     }
@@ -100,9 +100,9 @@ export default function App() {
       if (!window.location.pathname.includes('/search')) {
         window.history.pushState({}, '', '/search');
       }
-    } else if (tab === 'csdb') {
-      if (!window.location.pathname.includes('/csdb')) {
-        window.history.pushState({}, '', '/csdb');
+    } else if (tab === 'kpi') {
+      if (!window.location.pathname.includes('/kpi')) {
+        window.history.pushState({}, '', '/kpi');
       }
     } else {
       if (window.location.pathname !== '/' || window.location.hash) {
@@ -125,8 +125,8 @@ export default function App() {
         setActiveTab('admin');
       } else if (path.includes('/search') || hash.includes('search')) {
         setActiveTab('search');
-      } else if (path.includes('/csdb') || hash.includes('csdb')) {
-        setActiveTab('csdb');
+      } else if (path.includes('/kpi') || hash.includes('kpi')) {
+        setActiveTab('kpi');
       } else {
         setActiveTab('dashboard');
       }
@@ -172,8 +172,8 @@ export default function App() {
                 <AdminPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
               ) : activeTab === 'search' ? (
                 <SearchPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
-              ) : activeTab === 'csdb' ? (
-                <CsdbPage />
+              ) : activeTab === 'kpi' ? (
+                <KpiFtPage />
               ) : (
                 <DashboardPage />
               )}

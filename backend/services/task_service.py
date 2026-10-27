@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from sqlalchemy import desc, asc, or_, and_, func
 from sqlalchemy.orm import Session, joinedload
@@ -91,7 +91,7 @@ def get_tasks_paginated(
         filters.append(Task.system_id == system_id)
 
     if is_overdue is not None:
-        now = datetime.utcnow()
+        now = datetime.utcnow() + timedelta(hours=7)
         completed = ["Đóng", "Hoàn thành", "Đã hoàn thành", "Thành công", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
         if is_overdue:
             filters.append(

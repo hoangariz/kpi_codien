@@ -15,6 +15,7 @@ class FixedWoReport(Base):
     sort_order = Column(Integer, default=0, nullable=False)
     is_priority = Column(Boolean, default=False, nullable=False)
     is_all_wo = Column(Boolean, default=False, nullable=False)
+    report_type = Column(String(50), default="standard", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -32,6 +33,7 @@ class FixedWoItem(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     report_id = Column(Integer, ForeignKey("fixed_wo_reports.id", ondelete="CASCADE"), index=True, nullable=False)
     ma_cong_viec = Column(String(100), index=True, nullable=False)
+    tag = Column(String(100), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     report = relationship("FixedWoReport", back_populates="items")
@@ -39,4 +41,5 @@ class FixedWoItem(Base):
     __table_args__ = (
         UniqueConstraint("report_id", "ma_cong_viec", name="uq_fixed_report_wo"),
         Index("idx_fixed_wo_report_wo", "report_id", "ma_cong_viec"),
+        Index("idx_fixed_wo_item_tag", "report_id", "tag"),
     )

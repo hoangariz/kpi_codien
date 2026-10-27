@@ -22,7 +22,7 @@ import HighPriorityBoardSection from '../components/dashboard/HighPriorityBoardS
 import ReportSelectorCards from '../components/dashboard/ReportSelectorCards';
 import DynamicCategoryReport from '../components/dashboard/DynamicCategoryReport';
 import OverviewChartsSection from '../components/dashboard/OverviewChartsSection';
-import AllWoKpiSection from '../components/dashboard/AllWoKpiSection';
+import AllWoHthOverviewSection from '../components/dashboard/AllWoHthOverviewSection';
 import { formatGroupName } from '../utils/groupFormat';
 import { formatDataTimestamp } from '../utils/dateFormat';
 
@@ -123,9 +123,6 @@ export default function DashboardPage() {
   };
 
   const isItemForMode = (item, mode, fallbackDefault) => {
-    if (item?.is_all_wo) {
-      return mode === 'overview' || mode === 'nhatram';
-    }
     const v = item?.dashboard_view || fallbackDefault;
     if (v === 'all') return true;
     return v === mode;
@@ -521,28 +518,9 @@ export default function DashboardPage() {
             onOpenTaskDetail={handleOpenTaskDetail}
           />
 
-          {/* Section: Báo Cáo Hiển Thị Trên Trang Tổng Quan (Nếu được cấu hình ở /admin) */}
-          <ReportSelectorCards
-            mode="overview"
-            categories={reportCategories}
-            fixedWoReports={fixedWoReports}
-            selectedCard={null}
-            liveFixedWoSummary={fixedWoStats?.summary}
-            onSelectCard={(card) => {
-              if (card.type === 'fixed_wo' || card.isAllWo || card.fixedWoReport?.is_all_wo || card.category?.is_all_wo || card.category?.dashboard_view === 'nhatram') {
-                setSelectedNhaTramCard(card);
-                handleViewChange('nhatram');
-              } else {
-                setSelectedCodienCard(card);
-                handleViewChange('codien');
-              }
-            }}
-          />
 
-          {/* Section: Bảng Tính KPI VHKT Theo All-WO (Tham Khảo) */}
-          <AllWoKpiSection
-            fixedWoReports={fixedWoReports || []}
-            reportCategories={reportCategories || []}
+          {/* Section: Báo Cáo, UI Card & Biểu Đồ Riêng Nhóm WO All-Wo-HTH */}
+          <AllWoHthOverviewSection
             excludeTuChoi={excludeTuChoi}
             onOpenDrilldown={handleOpenDrilldown}
           />

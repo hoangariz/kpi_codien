@@ -71,7 +71,8 @@ def stats_by_employee(
 
 @router.get("/maintenance-special", response_model=MaintenanceSpecialResponse)
 def stats_maintenance_special(
-    task_type: Optional[str] = MAINTENANCE_TASK_TYPE,
+    task_type: Optional[str] = None,
+    target_type: Optional[str] = None,
     month: Optional[str] = None,
     board_id: Optional[int] = None,
     exclude_tu_choi: bool = Query(False),
@@ -84,9 +85,10 @@ def stats_maintenance_special(
     Filters out previous month closed tasks according to active month setting.
     Can also filter by custom tracking board_id.
     """
+    final_type = task_type or target_type or MAINTENANCE_TASK_TYPE
     return get_special_maintenance_stats(
         db,
-        target_type=task_type,
+        target_type=final_type,
         target_month=month,
         board_id=board_id,
         exclude_tu_choi=exclude_tu_choi
@@ -95,7 +97,8 @@ def stats_maintenance_special(
 
 @router.get("/maintenance-special/tasks", response_model=PaginatedTasksResponse)
 def stats_maintenance_tasks(
-    task_type: Optional[str] = MAINTENANCE_TASK_TYPE,
+    task_type: Optional[str] = None,
+    target_type: Optional[str] = None,
     month: Optional[str] = None,
     board_id: Optional[int] = None,
     sub_category_id: Optional[int] = None,
@@ -117,9 +120,10 @@ def stats_maintenance_tasks(
     Drilldown list of tasks for the special maintenance report.
     Returns exact tasks matching table number clicked (total, closed, pending, overdue, closed_today, closed_last_7_days, closed_day, closed_up_to_max).
     """
+    final_type = task_type or target_type or MAINTENANCE_TASK_TYPE
     return get_special_maintenance_tasks(
         db=db,
-        target_type=task_type,
+        target_type=final_type,
         target_month=month,
         board_id=board_id,
         sub_category_id=sub_category_id,

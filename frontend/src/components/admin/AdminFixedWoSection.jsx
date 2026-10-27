@@ -21,7 +21,6 @@ export default function AdminFixedWoSection() {
   const [fixedWoDashboardView, setFixedWoDashboardView] = useState('nhatram');
   const [fixedWoSortOrder, setFixedWoSortOrder] = useState(0);
   const [fixedWoIsPriority, setFixedWoIsPriority] = useState(false);
-  const [fixedWoIsAllWo, setFixedWoIsAllWo] = useState(false);
   const [fixedWoCodesText, setFixedWoCodesText] = useState('');
   const [editingFixedWo, setEditingFixedWo] = useState(null);
   const [editFixedWoName, setEditFixedWoName] = useState('');
@@ -29,7 +28,6 @@ export default function AdminFixedWoSection() {
   const [editFixedWoDashboardView, setEditFixedWoDashboardView] = useState('nhatram');
   const [editFixedWoSortOrder, setEditFixedWoSortOrder] = useState(0);
   const [editFixedWoIsPriority, setEditFixedWoIsPriority] = useState(false);
-  const [editFixedWoIsAllWo, setEditFixedWoIsAllWo] = useState(false);
   const [editFixedWoMode, setEditFixedWoMode] = useState('keep'); // 'keep' | 'append' | 'replace'
   const [editFixedWoCodesText, setEditFixedWoCodesText] = useState('');
 
@@ -70,7 +68,6 @@ export default function AdminFixedWoSection() {
       setFixedWoDashboardView('nhatram');
       setFixedWoSortOrder(0);
       setFixedWoIsPriority(false);
-      setFixedWoIsAllWo(false);
       setFixedWoCodesText('');
       refetchFixedWo();
       queryClient.invalidateQueries({ queryKey: ['admin-fixed-wo-reports'] });
@@ -152,8 +149,8 @@ export default function AdminFixedWoSection() {
             alert('Vui lòng nhập tên bảng báo cáo cố định!');
             return;
           }
-          if (!fixedWoIsAllWo && codes.length === 0) {
-            alert('Vui lòng nhập hoặc dán ít nhất 1 mã WO vào ô import (hoặc tick Báo Cáo All-WO)!');
+          if (codes.length === 0) {
+            alert('Vui lòng nhập hoặc dán ít nhất 1 mã WO vào ô import!');
             return;
           }
           createFixedWoMutation.mutate({
@@ -162,7 +159,7 @@ export default function AdminFixedWoSection() {
             dashboard_view: fixedWoDashboardView,
             sort_order: Number(fixedWoSortOrder) || 0,
             is_priority: fixedWoIsPriority,
-            is_all_wo: fixedWoIsAllWo,
+            is_all_wo: false,
             wo_codes: codes,
           });
         }}
@@ -205,8 +202,6 @@ export default function AdminFixedWoSection() {
             >
               <option value="nhatram">🏢 3. Báo Cáo Nhà Trạm (Mặc định)</option>
               <option value="codien">⚡ 2. Báo Cáo Cơ Điện</option>
-              <option value="overview">📊 1. Tổng Quan</option>
-              <option value="all">🌐 Tất Cả Các Trang (Cả 3 trang)</option>
             </select>
           </div>
 
@@ -239,7 +234,7 @@ export default function AdminFixedWoSection() {
           </div>
         </div>
 
-        {/* Checkbox Ưu Tiên & All-WO */}
+        {/* Checkbox Ưu Tiên */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>
             <input
@@ -249,16 +244,6 @@ export default function AdminFixedWoSection() {
               style={{ width: '16px', height: '16px', accentColor: '#f59e0b', cursor: 'pointer' }}
             />
             <span>⭐ Báo Cáo Ưu Tiên (Hiển thị ngay trên Dashboard, tải trước)</span>
-          </label>
-
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: '#8b5cf6' }}>
-            <input
-              type="checkbox"
-              checked={fixedWoIsAllWo}
-              onChange={(e) => setFixedWoIsAllWo(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: '#8b5cf6', cursor: 'pointer' }}
-            />
-            <span>🌐 Báo Cáo Nguồn All-WO (Tự động hiển thị ở cả 1. Tổng Quan & 3. Nhà Trạm)</span>
           </label>
         </div>
 
@@ -373,14 +358,16 @@ export default function AdminFixedWoSection() {
                   Đang tải danh sách báo cáo cố định...
                 </td>
               </tr>
-            ) : !fixedWoReports || fixedWoReports.length === 0 ? (
+            ) : !(fixedWoReports || []).filter(rep => rep.report_type !== 'all_wo_hth' && rep.name !== 'All-Wo-HTH').length ? (
               <tr>
                 <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                   Chưa có danh mục báo cáo cố định WO nào. Hãy nhập thông tin và danh sách mã WO ở trên để tạo mới.
                 </td>
               </tr>
             ) : (
-              fixedWoReports.map((rep, idx) => {
+              (fixedWoReports || [])
+                .filter(rep => rep.report_type !== 'all_wo_hth' && rep.name !== 'All-Wo-HTH')
+                .map((rep, idx) => {
                 const matched = rep.matched_wos || 0;
                 const totalWos = rep.total_wos || 0;
                 const unmatched = Math.max(0, totalWos - matched);
@@ -400,11 +387,6 @@ export default function AdminFixedWoSection() {
                               ⭐
                             </span>
                           )}
-                          {rep.is_all_wo && (
-                            <span className="badge" style={{ fontSize: '0.68rem', padding: '1px 6px', fontWeight: 800, background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
-                              🌐 All-WO
-                            </span>
-                          )}
                         </div>
                         {rep.description && (
                           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -416,10 +398,6 @@ export default function AdminFixedWoSection() {
                     <td style={{ textAlign: 'center' }}>
                       {rep.dashboard_view === 'codien' ? (
                         <span className="badge badge-info" style={{ fontSize: '0.74rem', fontWeight: 700 }}>⚡ Cơ Điện</span>
-                      ) : rep.dashboard_view === 'overview' ? (
-                        <span className="badge badge-primary" style={{ fontSize: '0.74rem', fontWeight: 700 }}>📊 Tổng Quan</span>
-                      ) : rep.dashboard_view === 'all' ? (
-                        <span className="badge badge-neutral" style={{ fontSize: '0.74rem', fontWeight: 700 }}>🌐 Tất Cả</span>
                       ) : (
                         <span className="badge badge-warning" style={{ fontSize: '0.74rem', fontWeight: 700 }}>🏢 Nhà Trạm</span>
                       )}
@@ -493,7 +471,6 @@ export default function AdminFixedWoSection() {
                             setEditFixedWoDashboardView(rep.dashboard_view || 'nhatram');
                             setEditFixedWoSortOrder(rep.sort_order ?? 0);
                             setEditFixedWoIsPriority(Boolean(rep.is_priority));
-                            setEditFixedWoIsAllWo(Boolean(rep.is_all_wo));
                             setEditFixedWoMode('keep');
                             setEditFixedWoCodesText('');
                           }}
@@ -784,7 +761,7 @@ export default function AdminFixedWoSection() {
                     dashboard_view: editFixedWoDashboardView || 'nhatram',
                     sort_order: Number(editFixedWoSortOrder) || 0,
                     is_priority: editFixedWoIsPriority,
-                    is_all_wo: editFixedWoIsAllWo,
+                    is_all_wo: false,
                     mode: editFixedWoMode,
                     wo_codes: extraCodes,
                   }
@@ -818,8 +795,6 @@ export default function AdminFixedWoSection() {
                   >
                     <option value="nhatram">🏢 3. Báo Cáo Nhà Trạm (Mặc định)</option>
                     <option value="codien">⚡ 2. Báo Cáo Cơ Điện</option>
-                    <option value="overview">📊 1. Tổng Quan</option>
-                    <option value="all">🌐 Tất Cả Các Trang (Cả 3 trang)</option>
                   </select>
                 </div>
 
@@ -847,16 +822,6 @@ export default function AdminFixedWoSection() {
                     style={{ width: '15px', height: '15px', accentColor: '#f59e0b', cursor: 'pointer' }}
                   />
                   <span>⭐ Báo Cáo Ưu Tiên (Hiển thị đầu trang Dashboard, tải trước)</span>
-                </label>
-
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: '#8b5cf6' }}>
-                  <input
-                    type="checkbox"
-                    checked={editFixedWoIsAllWo}
-                    onChange={(e) => setEditFixedWoIsAllWo(e.target.checked)}
-                    style={{ width: '15px', height: '15px', accentColor: '#8b5cf6', cursor: 'pointer' }}
-                  />
-                  <span>🌐 Báo Cáo Nguồn All-WO (Hiển thị ở cả 1. Tổng Quan & 3. Nhà Trạm)</span>
                 </label>
               </div>
 

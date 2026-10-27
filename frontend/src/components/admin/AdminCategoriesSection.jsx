@@ -23,7 +23,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
   const [newCatDashboardView, setNewCatDashboardView] = useState('codien');
   const [newCatSortOrder, setNewCatSortOrder] = useState(0);
   const [newCatIsPriority, setNewCatIsPriority] = useState(false);
-  const [newCatIsAllWo, setNewCatIsAllWo] = useState(false);
   const [newCatExcludeClosedPrior, setNewCatExcludeClosedPrior] = useState(true);
   const [newCatFilterMode, setNewCatFilterMode] = useState('by_loai'); // 'by_loai' | 'by_system'
   const [newCatFilterValues, setNewCatFilterValues] = useState([]);
@@ -80,7 +79,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
       setNewCatDashboardView('codien');
       setNewCatSortOrder(0);
       setNewCatIsPriority(false);
-      setNewCatIsAllWo(false);
       setNewCatExcludeClosedPrior(true);
       setNewCatFilterMode('by_loai');
       setNewCatFilterValues([]);
@@ -278,7 +276,7 @@ export default function AdminCategoriesSection({ selectedMonth }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!newCatName.trim() || (!newCatIsAllWo && newCatFilterValues.length === 0)) return;
+          if (!newCatName.trim() || newCatFilterValues.length === 0) return;
           createCategoryMutation.mutate({
             name: newCatName.trim(),
             loai_cong_viec: '',
@@ -286,7 +284,7 @@ export default function AdminCategoriesSection({ selectedMonth }) {
             dashboard_view: newCatDashboardView,
             sort_order: Number(newCatSortOrder) || 0,
             is_priority: newCatIsPriority,
-            is_all_wo: newCatIsAllWo,
+            is_all_wo: false,
             exclude_closed_prior_months: newCatExcludeClosedPrior,
             filter_mode: newCatFilterMode,
             filter_values: newCatFilterValues,
@@ -488,8 +486,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
             >
               <option value="codien">⚡ 2. Báo Cáo Cơ Điện (Mặc định)</option>
               <option value="nhatram">🏢 3. Báo Cáo Nhà Trạm</option>
-              <option value="overview">📊 1. Tổng Quan</option>
-              <option value="all">🌐 Tất Cả Các Trang (Cả 3 trang)</option>
             </select>
           </div>
 
@@ -522,7 +518,7 @@ export default function AdminCategoriesSection({ selectedMonth }) {
           </div>
         </div>
 
-        {/* Checkbox Ưu Tiên & All-WO */}
+        {/* Checkbox Ưu Tiên */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>
             <input
@@ -532,16 +528,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
               style={{ width: '16px', height: '16px', accentColor: '#f59e0b', cursor: 'pointer' }}
             />
             <span>⭐ Báo Cáo Ưu Tiên (Hiển thị đầu trang Dashboard, tải trước)</span>
-          </label>
-
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: '#8b5cf6' }}>
-            <input
-              type="checkbox"
-              checked={newCatIsAllWo}
-              onChange={(e) => setNewCatIsAllWo(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: '#8b5cf6', cursor: 'pointer' }}
-            />
-            <span>🌐 Báo Cáo All-WO (Tự động hiển thị ở cả 1. Tổng Quan & 3. Nhà Trạm)</span>
           </label>
         </div>
 
@@ -632,11 +618,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
                               ⭐
                             </span>
                           )}
-                          {c.is_all_wo && (
-                            <span className="badge" style={{ fontSize: '0.68rem', padding: '1px 6px', fontWeight: 800, background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
-                              🌐 All-WO
-                            </span>
-                          )}
                         </div>
                         {c.description && (
                           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -648,10 +629,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
                     <td style={{ textAlign: 'center' }}>
                       {c.dashboard_view === 'nhatram' ? (
                         <span className="badge badge-warning" style={{ fontSize: '0.74rem', fontWeight: 700 }}>🏢 Nhà Trạm</span>
-                      ) : c.dashboard_view === 'overview' ? (
-                        <span className="badge badge-primary" style={{ fontSize: '0.74rem', fontWeight: 700 }}>📊 Tổng Quan</span>
-                      ) : c.dashboard_view === 'all' ? (
-                        <span className="badge badge-neutral" style={{ fontSize: '0.74rem', fontWeight: 700 }}>🌐 Tất Cả</span>
                       ) : (
                         <span className="badge badge-info" style={{ fontSize: '0.74rem', fontWeight: 700 }}>⚡ Cơ Điện</span>
                       )}
@@ -742,7 +719,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
                               ...c,
                               sort_order: c.sort_order ?? 0,
                               is_priority: Boolean(c.is_priority),
-                              is_all_wo: Boolean(c.is_all_wo)
                             });
                             setEditCatFilterMode(c.filter_mode || 'by_loai');
                             try {
@@ -1247,7 +1223,7 @@ export default function AdminCategoriesSection({ selectedMonth }) {
                     dashboard_view: editingCategory.dashboard_view || 'codien',
                     sort_order: Number(editingCategory.sort_order) || 0,
                     is_priority: Boolean(editingCategory.is_priority),
-                    is_all_wo: Boolean(editingCategory.is_all_wo),
+                    is_all_wo: false,
                     exclude_closed_prior_months: editingCategory.exclude_closed_prior_months !== false,
                     filter_mode: editCatFilterMode,
                     filter_values: editCatFilterValues,
@@ -1283,8 +1259,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
                   >
                     <option value="codien">⚡ 2. Báo Cáo Cơ Điện</option>
                     <option value="nhatram">🏢 3. Báo Cáo Nhà Trạm</option>
-                    <option value="overview">📊 1. Tổng Quan</option>
-                    <option value="all">🌐 Tất Cả Các Trang (Cả 3 trang)</option>
                   </select>
                 </div>
 
@@ -1312,16 +1286,6 @@ export default function AdminCategoriesSection({ selectedMonth }) {
                     style={{ width: '15px', height: '15px', accentColor: '#f59e0b', cursor: 'pointer' }}
                   />
                   <span>⭐ Báo Cáo Ưu Tiên (Hiển thị đầu trang Dashboard, tải trước)</span>
-                </label>
-
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: '#8b5cf6' }}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editingCategory.is_all_wo)}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, is_all_wo: e.target.checked })}
-                    style={{ width: '15px', height: '15px', accentColor: '#8b5cf6', cursor: 'pointer' }}
-                  />
-                  <span>🌐 Báo Cáo Nguồn All-WO (Tự động hiển thị ở cả 1. Tổng Quan & 3. Nhà Trạm)</span>
                 </label>
               </div>
 

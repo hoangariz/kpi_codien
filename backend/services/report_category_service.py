@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, or_, and_
@@ -76,7 +76,7 @@ def get_report_categories(
         ReportCategory.created_at.asc()
     ).all()
 
-    now = datetime.utcnow()
+    now = datetime.utcnow() + timedelta(hours=7)
     active_month = target_month or get_current_month_setting(db)
     try:
         y_str, m_str = active_month.split("-")
