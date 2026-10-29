@@ -357,6 +357,9 @@ def auto_migrate_db():
                         clear_qlctkt_stats_cache()
                 finally:
                     db_repair.close()
+        except Exception:
+            pass
+
         # Auto-heal qlctkt data to restore 'Công việc chờ kết thúc' from Excel file into Tồn TK
         try:
             from backend.database import SessionLocal
