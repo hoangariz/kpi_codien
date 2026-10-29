@@ -58,6 +58,10 @@ def auto_migrate_db():
             "ALTER TABLE fixed_wo_items ADD COLUMN tag VARCHAR(100)",
             "CREATE INDEX IF NOT EXISTS ix_fixed_wo_items_tag ON fixed_wo_items (tag)",
             "CREATE INDEX IF NOT EXISTS idx_fixed_wo_item_tag ON fixed_wo_items (report_id, tag)",
+            "ALTER TABLE device_recalls ADD COLUMN sl_thiet_bi_da_thu INTEGER DEFAULT 0",
+            "ALTER TABLE device_recalls ADD COLUMN dien_thoai_lh VARCHAR(50)",
+            "ALTER TABLE device_recalls ADD COLUMN user_thanh_ly VARCHAR(50)",
+            "ALTER TABLE device_recalls ADD COLUMN tinh VARCHAR(50)",
         ]:
             try:
                 conn.execute(text(col_def))
@@ -267,6 +271,8 @@ def auto_migrate_db():
             "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_tam_dung ON codinh_tasks (is_tam_dung)",
             "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_open ON codinh_tasks (is_open)",
             "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_closed_time ON codinh_tasks (closed_time)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_soc_mat_tin_hieu ON codinh_tasks (is_soc_mat_tin_hieu)",
+            "CREATE INDEX IF NOT EXISTS ix_codinh_tasks_is_ho_tro_dich_vu ON codinh_tasks (is_ho_tro_dich_vu)",
         ]
         for idx_sql in cdbr_indexes:
             try:
@@ -276,10 +282,39 @@ def auto_migrate_db():
                 pass
 
         try:
+            conn.execute(text("ALTER TABLE codinh_tasks ADD COLUMN is_soc_mat_tin_hieu INTEGER DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE codinh_tasks ADD COLUMN is_ho_tro_dich_vu INTEGER DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
             conn.execute(text("UPDATE codinh_tasks SET is_open = CASE WHEN trang_thai = 'Đóng' THEN 0 ELSE 1 END WHERE is_open IS NULL"))
             conn.execute(text("UPDATE codinh_tasks SET is_tam_dung = CASE WHEN LOWER(TRIM(trang_thai)) = 'tạm dừng' THEN 1 ELSE 0 END WHERE is_tam_dung IS NULL"))
             conn.execute(text("UPDATE codinh_tasks SET closed_time = COALESCE(thoi_diem_ft_hoan_thanh, thoi_diem_cd_dong) WHERE closed_time IS NULL"))
             conn.execute(text("UPDATE codinh_tasks SET thoi_gian_con_lai_num = thoi_gian_con_lai WHERE thoi_gian_con_lai_num IS NULL"))
+            conn.execute(text("""
+                UPDATE codinh_tasks 
+                SET is_soc_mat_tin_hieu = CASE 
+                    WHEN LOWER(noi_dung_cong_viec) LIKE '%hiện tượng: mất dịch vụ%' 
+                      OR LOWER(noi_dung_cong_viec) LIKE '%hiện tượng:mất dịch vụ%' 
+                      OR LOWER(noi_dung_cong_viec) LIKE '%hiện tượng : mất dịch vụ%' 
+                    THEN 1 ELSE 0 END
+                WHERE is_soc_mat_tin_hieu IS NULL OR is_soc_mat_tin_hieu = 0
+            """))
+            conn.execute(text("""
+                UPDATE codinh_tasks 
+                SET is_ho_tro_dich_vu = CASE 
+                    WHEN LOWER(noi_dung_cong_viec) LIKE '%báo hỏng dv cố định%' 
+                     AND LOWER(noi_dung_cong_viec) LIKE '%hỗ trợ dịch vụ%' 
+                    THEN 1 ELSE 0 END
+                WHERE is_ho_tro_dich_vu IS NULL OR is_ho_tro_dich_vu = 0
+            """))
             conn.commit()
         except Exception:
             pass
@@ -322,8 +357,49 @@ def auto_migrate_db():
                         clear_qlctkt_stats_cache()
                 finally:
                     db_repair.close()
-        except Exception:
-            pass
+        # Auto-heal qlctkt data to restore 'Công việc chờ kết thúc' from Excel file into Tồn TK
+        try:
+            from backend.database import SessionLocal
+            from backend.services.codinh.importer_qlctkt import import_qlctkt_from_excel, bump_qlctkt_version
+            from backend.services.codinh.base import clear_codinh_stats_cache
+            from backend.models.import_log import ImportLog
+            from backend.services.codinh.importer_qlctkt import _get_setting, _set_setting
+
+            db_repair = SessionLocal()
+            try:
+                healed = _get_setting(db_repair, "qlctkt_cho_ket_thuc_healed_v1", "0")
+                if healed != "1":
+                    log = db_repair.query(ImportLog).filter(ImportLog.domain == 'qlctkt', ImportLog.status == 'COMPLETED').order_by(ImportLog.id.desc()).first()
+                    target_file = None
+                    log_fname = None
+                    log_id = None
+                    if log:
+                        f_candidates = [
+                            getattr(log, 'file_path', None),
+                            os.path.join("uploads", log.stored_filename) if getattr(log, 'stored_filename', None) else None,
+                            os.path.join("uploads", log.file_name) if getattr(log, 'file_name', None) else None,
+                        ]
+                        for fc in f_candidates:
+                            if fc and Path(fc).exists():
+                                target_file = str(fc)
+                                log_fname = getattr(log, 'file_name', None) or Path(fc).name
+                                log_id = log.id
+                                break
+                    if not target_file:
+                        files = sorted(Path('uploads').glob('codinh_*.xlsx'), key=lambda p: p.stat().st_mtime, reverse=True)
+                        if files:
+                            target_file = str(files[0])
+                            log_fname = files[0].name
+
+                    if target_file:
+                        import_qlctkt_from_excel(db_repair, target_file, log_fname, import_id=log_id)
+                        bump_qlctkt_version()
+                        clear_codinh_stats_cache()
+                    _set_setting(db_repair, "qlctkt_cho_ket_thuc_healed_v1", "1", commit=True)
+            finally:
+                db_repair.close()
+        except Exception as ex:
+            print(f"QLCTKT repair cho_ket_thuc notice: {ex}")
 
 
 auto_migrate_db()

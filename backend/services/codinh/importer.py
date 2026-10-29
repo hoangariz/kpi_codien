@@ -36,6 +36,8 @@ from backend.services.codinh.normalize import (
     normalize_key,
     SU_CO_TASK_TYPE_NORM,
     SU_CO_KEYWORD_NORM,
+    is_soc_mat_tin_hieu_content,
+    is_ho_tro_dich_vu_content,
 )
 
 CLOSED_STATUSES = ["Đóng", "FT hoàn thành", "FT Hoàn thành", "FT Hoàn Thành"]
@@ -332,6 +334,10 @@ def import_codinh_wos_from_excel(
             nd_norm = normalize_key(c_noidung[k])
             c_is_su_co.append(1 if SU_CO_KEYWORD_NORM in nd_norm else 0)
 
+    # Vectorize flags for special content types
+    c_is_soc_mat_tin_hieu = [is_soc_mat_tin_hieu_content(nd) for nd in c_noidung]
+    c_is_ho_tro_dich_vu = [is_ho_tro_dich_vu_content(nd) for nd in c_noidung]
+
     c_closed_time = [c_fthoanthanh[k] or c_cddong[k] for k in range(n)]
 
     if import_record:
@@ -376,6 +382,8 @@ def import_codinh_wos_from_excel(
                 "is_hot": c_is_hot[idx],
                 "is_tam_dung": c_is_tam_dung[idx],
                 "is_open": c_is_open[idx],
+                "is_soc_mat_tin_hieu": c_is_soc_mat_tin_hieu[idx],
+                "is_ho_tro_dich_vu": c_is_ho_tro_dich_vu[idx],
                 "closed_time": c_closed_time[idx],
                 "nguon_goc": c_nguongoc[idx],
                 "tien_trinh_thuc_hien": c_tientrinh[idx],

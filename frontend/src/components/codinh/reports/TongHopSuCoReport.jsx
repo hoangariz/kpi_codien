@@ -133,104 +133,6 @@ export function buildTongHopSuCoColumns(selectedDate) {
       },
     },
 
-    // Nhóm "Phát triển mới" (2 cột)
-    {
-      key: 'nghiem_thu_n',
-      label: `Nghiệm thu trong ngày ${dayStr}`,
-      align: 'right',
-      width: '62px',
-      variant: 'success',
-      drilldownMetric: 'nghiem_thu_n',
-      sortable: true,
-      tooltip: `Tiến độ = Kết thúc và Ngày kết thúc thực tế trong ngày ${dayStr} (từ QLCTKT, trừ CSKH_2022)`,
-      headerStyle: {
-        ...baseThStyle,
-        width: '62px',
-        minWidth: '55px',
-        maxWidth: '68px',
-        background: 'rgba(16, 185, 129, 0.1)',
-        color: 'var(--success-dark)',
-      },
-    },
-    {
-      key: 'ton_tk',
-      label: 'Tồn TK',
-      align: 'right',
-      width: '50px',
-      variant: 'warning',
-      drilldownMetric: 'ton_tk',
-      sortable: true,
-      tooltip: 'Tiến độ chưa kết thúc/cập nhật hồ sơ, không bị hủy (từ QLCTKT, trừ CSKH_2022)',
-      headerStyle: {
-        ...baseThStyle,
-        width: '50px',
-        minWidth: '46px',
-        maxWidth: '56px',
-        background: 'rgba(245, 158, 11, 0.1)',
-        color: 'var(--warning-dark)',
-      },
-    },
-
-    // Cột Tồn Sự cố + TK
-    {
-      key: 'ton_su_co_tk',
-      label: 'Tồn sự cố+TK',
-      align: 'right',
-      width: '58px',
-      variant: 'purple',
-      drilldownMetric: 'ton_su_co_tk',
-      sortable: true,
-      tooltip: 'Tổng Tồn Sự cố (GNOC) + Tồn TK (QLCTKT)',
-      headerStyle: {
-        ...baseThStyle,
-        width: '58px',
-        minWidth: '52px',
-        maxWidth: '64px',
-        background: 'rgba(139, 92, 246, 0.12)',
-        color: '#8b5cf6',
-        fontWeight: 800,
-      },
-    },
-
-    // Cột Tác vụ đã đóng ngày n
-    {
-      key: 'tac_vu_dong_n',
-      label: `Tác vụ đã đóng ngày ${dayStr}`,
-      align: 'right',
-      width: '62px',
-      variant: 'success',
-      drilldownMetric: 'tac_vu_dong_n',
-      sortable: true,
-      tooltip: `Mọi loại công việc GNOC đã đóng trong ngày ${dayStr} (cùng tháng)`,
-      headerStyle: {
-        ...baseThStyle,
-        width: '62px',
-        minWidth: '55px',
-        maxWidth: '68px',
-        background: 'rgba(16, 185, 129, 0.08)',
-        color: 'var(--success-dark)',
-      },
-    },
-
-    // Cột NSLĐ
-    {
-      key: 'nsld',
-      label: 'NSLĐ',
-      align: 'right',
-      width: '50px',
-      sortable: true,
-      tooltip: `Năng suất lao động: (Tác vụ đã đóng ngày ${dayStr} + Nghiệm thu ngày ${dayStr}) / Số NV`,
-      headerStyle: {
-        ...baseThStyle,
-        width: '50px',
-        minWidth: '46px',
-        maxWidth: '56px',
-        background: 'rgba(16, 185, 129, 0.06)',
-        color: 'var(--success-dark)',
-        fontWeight: 800,
-      },
-    },
-
     // Nhóm "Tồn Sự cố" (9 cột)
     {
       key: 'lte_3h',
@@ -366,7 +268,7 @@ export function buildTongHopSuCoColumns(selectedDate) {
       variant: 'danger',
       drilldownMetric: 'qua_han',
       sortable: true,
-      tooltip: 'Sự cố đang mở có thời gian còn lại < 0',
+      tooltip: 'Sự cố đang mở có thời gian còn lại < 0 và thời gian thực hiện > 24h',
       headerStyle: {
         ...baseThStyle,
         width: '48px',
@@ -374,6 +276,103 @@ export function buildTongHopSuCoColumns(selectedDate) {
         maxWidth: '54px',
         background: 'rgba(239, 68, 68, 0.12)',
         color: 'var(--danger-dark)',
+        fontWeight: 800,
+      },
+    },
+
+    // Nhóm "Soc_mất tín hiệu" (2 cột)
+    {
+      key: 'soc_tong',
+      label: 'Tổng',
+      align: 'right',
+      width: '48px',
+      drilldownMetric: 'soc_tong',
+      sortable: true,
+      tooltip: 'Sự cố đang mở có nội dung chứa "Hiện tượng: Mất dịch vụ"',
+      headerStyle: {
+        ...baseThStyle,
+        width: '48px',
+        minWidth: '44px',
+        maxWidth: '54px',
+        background: 'rgba(244, 63, 94, 0.08)',
+        color: '#e11d48',
+        fontWeight: 700,
+      },
+    },
+    {
+      key: 'soc_gt_72h',
+      label: '>72h',
+      align: 'right',
+      width: '48px',
+      variant: 'danger',
+      drilldownMetric: 'soc_gt_72h',
+      sortable: true,
+      tooltip: 'Soc mất tín hiệu đang mở có thời gian xử lý > 72h',
+      headerStyle: {
+        ...baseThStyle,
+        width: '48px',
+        minWidth: '44px',
+        maxWidth: '54px',
+        background: 'rgba(244, 63, 94, 0.12)',
+        color: 'var(--danger-dark)',
+        fontWeight: 800,
+      },
+    },
+
+    // Nhóm "Hỗ trợ dịch vụ" (3 cột)
+    {
+      key: 'htdv_tong',
+      label: 'Tổng',
+      align: 'right',
+      width: '48px',
+      drilldownMetric: 'htdv_tong',
+      sortable: true,
+      tooltip: 'Sự cố đang mở có nội dung chứa "Báo hỏng DV cố định" và "Hỗ trợ dịch vụ"',
+      headerStyle: {
+        ...baseThStyle,
+        width: '48px',
+        minWidth: '44px',
+        maxWidth: '54px',
+        background: 'rgba(6, 182, 212, 0.08)',
+        color: '#0891b2',
+        fontWeight: 700,
+      },
+    },
+    {
+      key: 'htdv_qua_han',
+      label: 'Quá hạn',
+      align: 'right',
+      width: '48px',
+      variant: 'danger',
+      drilldownMetric: 'htdv_qua_han',
+      sortable: true,
+      tooltip: 'Hỗ trợ dịch vụ đang mở có thời gian còn lại < 0',
+      headerStyle: {
+        ...baseThStyle,
+        width: '48px',
+        minWidth: '44px',
+        maxWidth: '54px',
+        background: 'rgba(239, 68, 68, 0.1)',
+        color: 'var(--danger-dark)',
+        fontWeight: 800,
+      },
+    },
+    {
+      key: 'htdv_gt_72h',
+      label: '>72h',
+      align: 'right',
+      width: '48px',
+      variant: 'danger',
+      drilldownMetric: 'htdv_gt_72h',
+      sortable: true,
+      tooltip: 'Hỗ trợ dịch vụ đang mở có thời gian xử lý > 72h',
+      headerStyle: {
+        ...baseThStyle,
+        width: '48px',
+        minWidth: '44px',
+        maxWidth: '54px',
+        background: 'rgba(6, 182, 212, 0.12)',
+        color: '#0e7490',
         fontWeight: 800,
       },
     },
@@ -401,19 +400,6 @@ export default function TongHopSuCoReport({
   const groupedColumnsConfig = useMemo(() => {
     return [
       {
-        groupName: 'Phát triển mới',
-        groupColumns: ['nghiem_thu_n', 'ton_tk'],
-        groupStyle: {
-          background: 'rgba(59, 130, 246, 0.12)',
-          color: 'var(--brand-primary)',
-          fontWeight: 800,
-          textAlign: 'center',
-          fontSize: '0.70rem',
-          padding: '3px 4px',
-          lineHeight: '1.2',
-        },
-      },
-      {
         groupName: 'Tồn Sự cố',
         groupColumns: [
           'lte_3h',
@@ -429,6 +415,32 @@ export default function TongHopSuCoReport({
         groupStyle: {
           background: 'rgba(245, 158, 11, 0.15)',
           color: 'var(--warning-dark)',
+          fontWeight: 800,
+          textAlign: 'center',
+          fontSize: '0.70rem',
+          padding: '3px 4px',
+          lineHeight: '1.2',
+        },
+      },
+      {
+        groupName: 'Soc_mất tín hiệu',
+        groupColumns: ['soc_tong', 'soc_gt_72h'],
+        groupStyle: {
+          background: 'rgba(244, 63, 94, 0.15)',
+          color: '#e11d48',
+          fontWeight: 800,
+          textAlign: 'center',
+          fontSize: '0.70rem',
+          padding: '3px 4px',
+          lineHeight: '1.2',
+        },
+      },
+      {
+        groupName: 'Hỗ trợ dịch vụ',
+        groupColumns: ['htdv_tong', 'htdv_qua_han', 'htdv_gt_72h'],
+        groupStyle: {
+          background: 'rgba(6, 182, 212, 0.15)',
+          color: '#0891b2',
           fontWeight: 800,
           textAlign: 'center',
           fontSize: '0.70rem',
@@ -542,20 +554,6 @@ export default function TongHopSuCoReport({
               title="Thời điểm file GNOC được nạp gần nhất"
             >
               <Clock size={12} /> GNOC: {statsData.gnoc_updated_at}
-            </span>
-          )}
-          {statsData?.qlctkt_updated_at && (
-            <span
-              style={{
-                fontSize: '0.72rem',
-                color: 'var(--text-muted)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-              title="Thời điểm file QLCTKT được nạp gần nhất"
-            >
-              <Clock size={12} /> QLCTKT: {statsData.qlctkt_updated_at}
             </span>
           )}
         </div>

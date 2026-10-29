@@ -31,6 +31,8 @@ class TaskCodinh(Base):
     is_open = Column(Integer, default=1, nullable=False, index=True)
     closed_time = Column(DateTime, nullable=True, index=True)
     thoi_gian_con_lai_num = Column(Float, nullable=True)
+    is_soc_mat_tin_hieu = Column(Integer, default=0, nullable=False, index=True)
+    is_ho_tro_dich_vu = Column(Integer, default=0, nullable=False, index=True)
     import_filename = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -46,4 +48,6 @@ class TaskCodinh(Base):
         Index("idx_codinh_tasks_is_tam_dung", "is_tam_dung"),
         Index("idx_codinh_tasks_is_open", "is_open"),
         Index("idx_codinh_tasks_closed_time", "closed_time"),
+        Index("idx_codinh_tasks_is_soc_mat_tin_hieu", "is_soc_mat_tin_hieu"),
+        Index("idx_codinh_tasks_is_ho_tro_dich_vu", "is_ho_tro_dich_vu"),
     )

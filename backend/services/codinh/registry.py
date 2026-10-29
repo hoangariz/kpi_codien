@@ -6,12 +6,14 @@ from backend.services.codinh.reports.thc import ThcReport
 from backend.services.codinh.reports.port_kem import PortKemReport
 from backend.services.codinh.reports.qlctkt_trien_khai import QlctktTrienKhaiReport
 from backend.services.codinh.reports.tong_hop_su_co import TongHopSuCoReport
+from backend.services.codinh.reports.ton_tk_theo_ngay import TonTkTheoNgayReport
 
 REPORTS: Dict[str, BaseReport] = {
     "thc": ThcReport(),
     "port_kem": PortKemReport(),
     "qlctkt_trien_khai": QlctktTrienKhaiReport(),
     "tong_hop_su_co": TongHopSuCoReport(),
+    "ton_tk_theo_ngay": TonTkTheoNgayReport(),
 }
 
 # Legacy category id map for backward compatibility
@@ -52,6 +54,8 @@ def get_report(key_or_id: Optional[Union[str, int]] = None) -> BaseReport:
         if "thc" in lower_key and k == "thc":
             return rep
         if "su_co" in lower_key and k == "tong_hop_su_co":
+            return rep
+        if ("ton_tk" in lower_key or "theo_ngay" in lower_key) and k == "ton_tk_theo_ngay":
             return rep
 
     # Default to THC
@@ -103,6 +107,7 @@ def get_reports_summary_cards(db: Session, target_month: Optional[str] = None) -
                 "home_kem_count": summ.get("home_kem_count", 0),
                 "port_kem_count": summ.get("port_kem_count", 0),
                 "tong_ton": summ.get("tong_ton", 0),
+                "gt_30d": summ.get("gt_30d", 0),
                 "ton_su_co": summ.get("ton_su_co", 0),
                 "hot": summ.get("hot", 0),
                 "qua_han": summ.get("qua_han", 0),

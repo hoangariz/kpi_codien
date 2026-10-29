@@ -217,8 +217,6 @@ export default function LevelTable({
     setIsFlatView,
     expandedGroups,
     toggleGroup,
-    expandAllGroups,
-    collapseAllGroups,
     groupedData,
   } = state;
 
@@ -281,6 +279,11 @@ export default function LevelTable({
       tam_dung: 0,
       tong: 0,
       hot: 0,
+      soc_tong: 0,
+      soc_gt_72h: 0,
+      htdv_tong: 0,
+      htdv_qua_han: 0,
+      htdv_gt_72h: 0,
     };
 
     filteredByPills.forEach((r) => {
@@ -336,6 +339,18 @@ export default function LevelTable({
       if (typeof r.tam_dung === 'number') sum.tam_dung += r.tam_dung;
       if (typeof r.tong === 'number') sum.tong += r.tong;
       if (typeof r.hot === 'number') sum.hot += r.hot;
+      if (typeof r.soc_tong === 'number') sum.soc_tong += r.soc_tong;
+      if (typeof r.soc_gt_72h === 'number') sum.soc_gt_72h += r.soc_gt_72h;
+      if (typeof r.htdv_tong === 'number') sum.htdv_tong += r.htdv_tong;
+      if (typeof r.htdv_qua_han === 'number') sum.htdv_qua_han += r.htdv_qua_han;
+      if (typeof r.htdv_gt_72h === 'number') sum.htdv_gt_72h += r.htdv_gt_72h;
+
+      // Dynamic accumulation for any report metric columns (e.g. date columns in TonTkTheoNgay)
+      metricColumns.forEach((col) => {
+        if (typeof r[col.key] === 'number') {
+          sum[col.key] = (sum[col.key] || 0) + r[col.key];
+        }
+      });
     });
 
     sum.wo_rate = sum.total_wos > 0 ? Math.round((sum.closed_wos / sum.total_wos) * 1000) / 10 : 0;
@@ -1035,29 +1050,6 @@ export default function LevelTable({
               <ListFilter size={13} />
               <span>{isFlatView ? 'Danh sách phẳng' : 'Gom nhóm'}</span>
             </button>
-          )}
-
-          {groupedData.isGrouped && !isFlatView && (
-            <>
-              <button
-                type="button"
-                onClick={expandAllGroups}
-                className="btn btn-outline"
-                style={{ padding: '4px 8px', fontSize: '0.74rem' }}
-                title="Mở tất cả các nhóm"
-              >
-                Mở tất cả
-              </button>
-              <button
-                type="button"
-                onClick={collapseAllGroups}
-                className="btn btn-outline"
-                style={{ padding: '4px 8px', fontSize: '0.74rem' }}
-                title="Thu gọn tất cả các nhóm"
-              >
-                Thu tất cả
-              </button>
-            </>
           )}
         </div>
 

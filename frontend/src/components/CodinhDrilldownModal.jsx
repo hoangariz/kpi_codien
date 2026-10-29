@@ -46,7 +46,15 @@ function getStatusBadgeClass(status) {
 }
 
 function getMetricLabel(metric) {
+  if (metric && metric.startsWith('d_')) {
+    const parts = metric.substring(2).split('_');
+    if (parts.length === 3) {
+      return `Tồn Tạo Ngày ${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
   switch ((metric || '').toLowerCase()) {
+    case 'gt_30d':
+      return 'Tồn Tạo > 30 Ngày';
     case 'closed':
     case 'da_dong':
     case 'dong':
@@ -170,6 +178,16 @@ function getMetricLabel(metric) {
       return 'Sự Cố HOT';
     case 'qua_han':
       return 'Sự Cố Quá Hạn';
+    case 'soc_tong':
+      return 'Soc Mất Tín Hiệu (Tổng)';
+    case 'soc_gt_72h':
+      return 'Soc Mất Tín Hiệu (>72h)';
+    case 'htdv_tong':
+      return 'Hỗ Trợ Dịch Vụ (Tổng)';
+    case 'htdv_qua_han':
+      return 'Hỗ Trợ Dịch Vụ (Quá Hạn)';
+    case 'htdv_gt_72h':
+      return 'Hỗ Trợ Dịch Vụ (>72h)';
     default:
       return 'Tất Cả Công Việc (Tổng WO)';
   }
@@ -255,6 +273,7 @@ export default function CodinhDrilldownModal({ isOpen, onClose, filterInfo, onSe
   const isQlctkt = Boolean(
     data?.source === 'qlctkt' ||
     filterInfo?.report === 'qlctkt_trien_khai' ||
+    filterInfo?.report === 'ton_tk_theo_ngay' ||
     effectiveMetric === 'ton_tk' ||
     effectiveMetric === 'nghiem_thu_n'
   );

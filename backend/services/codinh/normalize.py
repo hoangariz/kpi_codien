@@ -56,3 +56,24 @@ def is_open_status(trang_thai: Optional[str]) -> int:
     - trang_thai != 'Đóng'
     """
     return 0 if str(trang_thai or "").strip() == "Đóng" else 1
+
+
+def is_soc_mat_tin_hieu_content(noi_dung_cong_viec: Optional[str]) -> int:
+    """Kiểm tra nội dung công việc có chứa 'Hiện tượng: Mất dịch vụ' hay không."""
+    if not noi_dung_cong_viec:
+        return 0
+    nd_norm = normalize_key(noi_dung_cong_viec)
+    if "hiện tượng: mất dịch vụ" in nd_norm or "hiện tượng:mất dịch vụ" in nd_norm:
+        return 1
+    return 1 if bool(re.search(r"hiện\s*tượng\s*:\s*mất\s*dịch\s*vụ", nd_norm)) else 0
+
+
+def is_ho_tro_dich_vu_content(noi_dung_cong_viec: Optional[str]) -> int:
+    """Kiểm tra nội dung công việc có chứa đồng thời 'Báo hỏng DV cố định' và 'Hỗ trợ dịch vụ' hay không."""
+    if not noi_dung_cong_viec:
+        return 0
+    nd_norm = normalize_key(noi_dung_cong_viec)
+    has_bao_hong = ("báo hỏng dv cố định" in nd_norm) or bool(re.search(r"báo\s*hỏng\s*dv\s*cố\s*định", nd_norm))
+    has_ho_tro = ("hỗ trợ dịch vụ" in nd_norm) or bool(re.search(r"hỗ\s*trợ\s*dịch\s*vụ", nd_norm))
+    return 1 if (has_bao_hong and has_ho_tro) else 0
+

@@ -32,6 +32,21 @@ def clear_codinh_stats_cache():
     global _stats_cache
     with _cache_lock:
         _stats_cache.clear()
+    try:
+        from backend.services.codinh.reports.tong_hop_su_co import clear_tong_hop_su_co_cache
+        clear_tong_hop_su_co_cache()
+    except Exception:
+        pass
+    try:
+        from backend.services.codinh.reports.qlctkt_trien_khai import clear_qlctkt_stats_cache
+        clear_qlctkt_stats_cache()
+    except Exception:
+        pass
+    try:
+        from backend.services.codinh.reports.ton_tk_theo_ngay import clear_ton_tk_theo_ngay_cache
+        clear_ton_tk_theo_ngay_cache()
+    except Exception:
+        pass
 
 
 def _sql_duration_hours(start_col, finish_col):

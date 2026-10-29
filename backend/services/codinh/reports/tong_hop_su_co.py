@@ -85,6 +85,11 @@ def _init_su_co_entry(key_name: str, extra: Optional[Dict[str, Any]] = None) -> 
         "tong": 0,
         "hot": 0,
         "qua_han": 0,
+        "soc_tong": 0,
+        "soc_gt_72h": 0,
+        "htdv_tong": 0,
+        "htdv_qua_han": 0,
+        "htdv_gt_72h": 0,
     }
     if extra:
         entry.update(extra)
@@ -109,6 +114,11 @@ def _bump_su_co_entry(target: Dict[str, Any], source: Dict[str, Any]):
         "tong",
         "hot",
         "qua_han",
+        "soc_tong",
+        "soc_gt_72h",
+        "htdv_tong",
+        "htdv_qua_han",
+        "htdv_gt_72h",
     ):
         target[k] += source.get(k, 0)
 
@@ -236,7 +246,39 @@ def get_gnoc_metric_condition(
         return and_(
             cond_su_co,
             cond_open,
+            func.coalesce(TaskCodinh.thoi_gian_con_lai_num, TaskCodinh.thoi_gian_con_lai) < 0,
+            start_col.isnot(None),
+            aging_h_expr > 24.0,
+        )
+    elif m == "soc_tong":
+        return and_(
+            cond_open,
+            TaskCodinh.is_soc_mat_tin_hieu == 1
+        )
+    elif m == "soc_gt_72h":
+        return and_(
+            cond_open,
+            TaskCodinh.is_soc_mat_tin_hieu == 1,
+            start_col.isnot(None),
+            aging_h_expr > 72.0
+        )
+    elif m == "htdv_tong":
+        return and_(
+            cond_open,
+            TaskCodinh.is_ho_tro_dich_vu == 1
+        )
+    elif m == "htdv_qua_han":
+        return and_(
+            cond_open,
+            TaskCodinh.is_ho_tro_dich_vu == 1,
             func.coalesce(TaskCodinh.thoi_gian_con_lai_num, TaskCodinh.thoi_gian_con_lai) < 0
+        )
+    elif m == "htdv_gt_72h":
+        return and_(
+            cond_open,
+            TaskCodinh.is_ho_tro_dich_vu == 1,
+            start_col.isnot(None),
+            aging_h_expr > 72.0
         )
     return None
 
@@ -356,6 +398,11 @@ class TongHopSuCoReport(BaseReport):
         c_tam_dung = get_gnoc_metric_condition("tam_dung", selected_date, now)
         c_hot = get_gnoc_metric_condition("hot", selected_date, now)
         c_qua_han = get_gnoc_metric_condition("qua_han", selected_date, now)
+        c_soc_tong = get_gnoc_metric_condition("soc_tong", selected_date, now)
+        c_soc_gt_72h = get_gnoc_metric_condition("soc_gt_72h", selected_date, now)
+        c_htdv_tong = get_gnoc_metric_condition("htdv_tong", selected_date, now)
+        c_htdv_qua_han = get_gnoc_metric_condition("htdv_qua_han", selected_date, now)
+        c_htdv_gt_72h = get_gnoc_metric_condition("htdv_gt_72h", selected_date, now)
 
         gnoc_query = db.query(
             emp_username_expr.label("username_key"),
@@ -372,6 +419,11 @@ class TongHopSuCoReport(BaseReport):
             func.sum(case((c_tam_dung, 1), else_=0)).label("tam_dung"),
             func.sum(case((c_hot, 1), else_=0)).label("hot"),
             func.sum(case((c_qua_han, 1), else_=0)).label("qua_han"),
+            func.sum(case((c_soc_tong, 1), else_=0)).label("soc_tong"),
+            func.sum(case((c_soc_gt_72h, 1), else_=0)).label("soc_gt_72h"),
+            func.sum(case((c_htdv_tong, 1), else_=0)).label("htdv_tong"),
+            func.sum(case((c_htdv_qua_han, 1), else_=0)).label("htdv_qua_han"),
+            func.sum(case((c_htdv_gt_72h, 1), else_=0)).label("htdv_gt_72h"),
         ).group_by(emp_username_expr)
 
         gnoc_rows = gnoc_query.all() if "gnoc" not in missing_sources else []
@@ -495,6 +547,11 @@ class TongHopSuCoReport(BaseReport):
                 "tong": int(row.ton_su_co or 0),
                 "hot": int(row.hot or 0),
                 "qua_han": int(row.qua_han or 0),
+                "soc_tong": int(row.soc_tong or 0),
+                "soc_gt_72h": int(row.soc_gt_72h or 0),
+                "htdv_tong": int(row.htdv_tong or 0),
+                "htdv_qua_han": int(row.htdv_qua_han or 0),
+                "htdv_gt_72h": int(row.htdv_gt_72h or 0),
             }
 
             if ukey in emp_map:
@@ -625,7 +682,7 @@ class TongHopSuCoReport(BaseReport):
         # Set nulls if any source is completely missing
         if "gnoc" in missing_sources:
             for d in [summary] + list_clusters + list_teams + list_employees:
-                for k in ("ton_truoc", "phat_sinh", "xu_ly", "ton_su_co", "tac_vu_dong_n", "lte_3h", "h3_24", "h24_48", "h48_72", "gt_72h", "tam_dung", "tong", "hot", "qua_han", "ton_su_co_tk", "nsld"):
+                for k in ("ton_truoc", "phat_sinh", "xu_ly", "ton_su_co", "tac_vu_dong_n", "lte_3h", "h3_24", "h24_48", "h48_72", "gt_72h", "tam_dung", "tong", "hot", "qua_han", "soc_tong", "soc_gt_72h", "htdv_tong", "htdv_qua_han", "htdv_gt_72h", "ton_su_co_tk", "nsld"):
                     d[k] = None
         if "qlctkt" in missing_sources:
             for d in [summary] + list_clusters + list_teams + list_employees:
@@ -853,6 +910,8 @@ class TongHopSuCoReport(BaseReport):
                 "thoi_gian_con_lai": t.thoi_gian_con_lai_num if t.thoi_gian_con_lai_num is not None else t.thoi_gian_con_lai,
                 "thoi_diem_ft_hoan_thanh": t.thoi_diem_ft_hoan_thanh.strftime("%d/%m/%Y %H:%M:%S") if t.thoi_diem_ft_hoan_thanh else None,
                 "thoi_diem_cd_dong": t.thoi_diem_cd_dong.strftime("%d/%m/%Y %H:%M:%S") if t.thoi_diem_cd_dong else None,
+                "is_soc_mat_tin_hieu": getattr(t, "is_soc_mat_tin_hieu", 0),
+                "is_ho_tro_dich_vu": getattr(t, "is_ho_tro_dich_vu", 0),
                 "cabinets": [],
             })
 

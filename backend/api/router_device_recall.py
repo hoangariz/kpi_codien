@@ -110,19 +110,26 @@ async def upload_device_recall_file(
 
 @router.post("/reload-default")
 def reload_default_file(db: Session = Depends(get_db)):
-    """Nạp lại từ file mẫu thuhoithietbi.txt có sẵn trên máy chủ."""
-    file_path = BASE_DIR / "thuhoithietbi.txt"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Không tìm thấy file thuhoithietbi.txt trên máy chủ!")
+    """Nạp lại từ file mẫu thuhoithietbi_update.txt hoặc thuhoithietbi.txt có sẵn trên máy chủ."""
+    seed_file = None
+    for fn in ("thuhoithietbi_update.txt", "thuhoithietbi.txt"):
+        fp = BASE_DIR / fn
+        if fp.exists():
+            seed_file = fp
+            break
+
+    if not seed_file:
+        raise HTTPException(status_code=404, detail="Không tìm thấy file thuhoithietbi_update.txt hoặc thuhoithietbi.txt trên máy chủ!")
 
     try:
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(seed_file, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
-        result = device_recall_service.import_device_recall_content(db, content, "thuhoithietbi.txt")
+        result = device_recall_service.import_device_recall_content(db, content, seed_file.name)
         return {
             "success": True,
-            "message": f"Đã đồng bộ {result['valid_rows']} dòng từ thuhoithietbi.txt!",
+            "message": f"Đã đồng bộ {result['valid_rows']} dòng từ {seed_file.name}!",
             "data": result
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+

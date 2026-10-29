@@ -23,6 +23,7 @@ export default function ReportCards({
           const isThc = rep.key === 'thc';
           const isQlctkt = rep.key === 'qlctkt_trien_khai';
           const isTongHopSuCo = rep.key === 'tong_hop_su_co';
+          const isTonTkTheoNgay = rep.key === 'ton_tk_theo_ngay';
 
           return (
             <div
@@ -55,7 +56,7 @@ export default function ReportCards({
                     {isSelected ? 'Đang Xem' : 'Chọn Báo Cáo'}
                   </span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {isQlctkt || isTongHopSuCo ? 'Theo Ngày' : 'Theo Đầu Việc'}
+                    {isQlctkt || isTongHopSuCo || isTonTkTheoNgay ? 'Theo Ngày' : 'Theo Đầu Việc'}
                   </span>
                 </div>
 
@@ -72,7 +73,51 @@ export default function ReportCards({
                 </h4>
               </div>
 
-              {isTongHopSuCo ? (
+              {isTonTkTheoNgay ? (
+                /* MINI KPI CHO TỒN TK THEO NGÀY (3 CHỈ SỐ: TỔNG TỒN, ≤30 NGÀY, >30 NGÀY) */
+                <div
+                  className="card-kpi-summary-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '4px',
+                    padding: '8px 4px',
+                    borderRadius: 'var(--radius-md)',
+                    background: isSelected ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-tertiary)',
+                    border: '1px solid',
+                    borderColor: isSelected ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
+                    textAlign: 'center',
+                    marginTop: '8px',
+                  }}
+                >
+                  <div title="Tổng số task triển khai đang tồn">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      TỔNG TỒN
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {(Number(rep.tong_ton) || 0).toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số task tồn tạo trong 30 ngày gần nhất">
+                    <span style={{ fontSize: '0.62rem', color: '#3b82f6', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      ≤ 30 NGÀY
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: '#3b82f6', fontFamily: 'var(--font-mono)' }}>
+                      {Math.max(0, (Number(rep.tong_ton) || 0) - (Number(rep.gt_30d) || 0)).toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số task tồn tạo cách đây hơn 30 ngày">
+                    <span style={{ fontSize: '0.62rem', color: (Number(rep.gt_30d) || 0) > 0 ? '#ef4444' : 'var(--text-muted)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      &gt; 30 NGÀY
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: (Number(rep.gt_30d) || 0) > 0 ? '#ef4444' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      {(Number(rep.gt_30d) || 0).toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+              ) : isTongHopSuCo ? (
                 /* MINI KPI CHO TỔNG HỢP SỰ CỐ (3 CHỈ SỐ: TỒN SỰ CỐ, QUÁ HẠN, HOT) */
                 <div
                   className="card-kpi-summary-row"

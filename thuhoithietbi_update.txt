@@ -1,0 +1,226 @@
+STT	Số Thuê Bao	Dịch vụ	Địa chỉ khách hàng	Điện thoại liên hệ	User thanh lý	"Thường-0
+Mesh-Mesh"	Mức thiết bị	Tổng tbi phải thu	SL thiết bị đã thu	Tỉnh mới	Tên trung tâm Cụm xã	Tên FT	MNV
+1	vt0329291625	TV360_BoxTV trả sau	Thanh Văn Thôn 10-Xuân Thành Xã Tiên Điền Tỉnh Hà Tĩnh	0329291625	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Cao Trọng Tuấn Anh	485974
+2	vt0394395186	TV360_BoxTV trả sau	Minh Quang TT Tiên Điền Nghi Xuân Hà Tĩnh	0983898733	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Cao Trọng Tuấn Anh	485974
+3	C916704095	Camera	. . Sơn Quang Đức Lạng Đức Thọ Hà Tĩnh	0916704095	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	LÊ TÙNG DƯƠNG	493780
+4	vt09778230361	TV360_BoxTV trả sau	Tân Thượng Cương Gián Nghi Xuân Hà Tĩnh	0977823036	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Lê Duy Công	218963
+5	h039_gftth_baont2	FTTH	Đức Thọ Đức Thọ Hà Tĩnh	0983438346	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thanh Tuấn	188173
+6	h039_gftth_ngatt181	FTTH	Phòng 1, số 6, ngõ 83 nguyễn thị minh khai Tổ dân phố 2 TT Đức Thọ Đức Thọ Hà Tĩnh	0972738266	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thanh Tuấn	188173
+7	h039_gftth_linhbchpnh0	FTTH	Đường 2/9 006 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	971521999	0	MESH	2	4	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+8	h039_gftth_linhbchpnh1	FTTH	Đường 2/9 Nam Hồng Lĩnh 006 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	971521999	0	MESH	2	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+9	h039_gftth_thanhnt688	FTTH	Số nhà 49 Quang trung Khối 3 Nam Hồng Hồng Lĩnh Hà Tĩnh	0967974268	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+10	h039_gftth_thuyttt35	FTTH	35 Nguyễn Đổng Chi Khối 5 Nam Hồng Hồng Lĩnh Hà Tĩnh	0869933313	0	MESH	1	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+11	vt0363075354	TV360_BoxTV trả sau	17C Nguyễn Đổng Chi 001 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	0363075354	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+12	vt0971521999	TV360_BoxTV trả sau	Đường 2/9 006 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	971521999	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+13	vt09715219991	TV360_BoxTV trả sau	Đường 2/9 Nam Hồng Lĩnh 006 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	971521999	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+14	vt09715219992	TV360_BoxTV trả sau	Đường 2/9 006 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	971521999	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+15	vt09715219993	TV360_BoxTV trả sau	Đường 2/9 Nam Hồng Lĩnh 006 Phường Nam Hồng Lĩnh Tỉnh Hà Tĩnh	971521999	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Thế Huấn	413570
+16	C368047083	Camera	Ngọc Lâm, Đức Lâm Đức Thọ Hà Tĩnh	0989112843	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Trọng Tới	225154
+17	C974512163	Camera	trục thôn Hoa ích Lâm Lâm Trung Thủy Đức Thọ Hà Tĩnh	0974512163	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Trọng Tới	225154
+18	h039_gftth_tamnt252	FTTH	nhà văn hóa Đức Hương Quang Lâm Trung Thủy Đức Thọ Hà Tĩnh	0363718484	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Trọng Tới	225154
+19	vt0344610635	TV360_BoxTV trả sau	Đức Lâm Đức Thọ Hà Tĩnh	0912579119	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Trọng Tới	225154
+20	vt09776502635	TV360_BoxTV trả sau	sát quán nghé Trung Đại Lâm-Lâm Trung Thủy Xã Đức Thịnh Tỉnh Hà Tĩnh	0982172123	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Trọng Tới	225154
+21	C359036965	Camera	. Lam Thủy 1 Xuân Giang Nghi Xuân Hà Tĩnh	0359036965	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Viết Thiện	211362
+22	h039_gftth_chuongtt14	FTTH	SN 524 Nguyễn Nghiễm Tổ dân Phố 6A Xuân An Nghi Xuân Hà Tĩnh	0365474148	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Viết Thiện	211362
+23	h039_gftth_huyenctt2	FTTH	100...TRUNG TÂM LUYỆN CHỮ NÉT NGỌC Nguyễn Du Tổ dân phố 3 TT Tiên Điền Nghi Xuân Hà Tĩnh	0914745777	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Viết Thiện	211362
+24	hth_gftth_haint1	FTTH	161B nguyễn du Tổ dân phố 2-TT Tiên Điền Xã Tiên Điền  Tỉnh Hà Tĩnh	0984229229	0	MESH	2	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Viết Thiện	211362
+25	hth_gftth_kiennt1	FTTH	Xuân An Nghi xuân hà tĩnh Tổ dân Phố 11-Xuân An Xã Nghi Xuân Tỉnh Hà Tĩnh	0982234135	0	MESH	1	4	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Viết Thiện	211362
+26	h039_gftth_ngocpt42	FTTH	Nhà gì ngọc mạnh Thôn 3 Xuân Phổ Nghi Xuân Hà Tĩnh	0838269267	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Văn Minh	006377
+27	hth_gftth_thietdn0	FTTH	Thôn trường lam gần cầu Trường Lam-Xuân Hải Xã Đan Hải Tỉnh Hà Tĩnh	0397103569	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Văn Minh	006377
+28	h039_gftth_minhnt35	FTTH	Thôn Phú Quý Đức Nhân Đức Thọ Hà Tĩnh	338459325	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Xuân Tĩnh	413575
+29	hth_gftth_nongnv1	FTTH	Ông Nông Bà Hoà Khang Ninh-Bùi La Nhân Xã Đức Quang  Tỉnh Hà Tĩnh	0345231039	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Nguyễn Xuân Tĩnh	413575
+30	vt0977735601	TV360_BoxTV trả sau	Thôn Bình Tiến B Thái Yên Đức Thọ Hà Tĩnh	0977735601	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Trần Mạnh Quỳnh	844558
+31	h039_gftth_athd0	FTTH	Bắc Hồng, Hồng Lĩnh, Ha Tinh, Vietnam	916688538	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	nguyễn cao cường	413571
+32	h039_gftth_chauhv1	FTTH	327 Trần Phú Xóm 6-Đức Thuận Phường Bắc Hồng Lĩnh Tỉnh Hà Tĩnh	0368712423	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	nguyễn cao cường	413571
+33	h039_gftth_hangnt49	FTTH	Thôn 4 Xuân Hồng Nghi Xuân Hà Tĩnh	0961167113	0	MESH	3	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	nguyễn cao cường	413571
+34	h039_gftth_hoanvht0	FTTH	Hội quán TDP Thuận Hòa Phan Huy Ích Xóm 2 Đức Thuận Hồng Lĩnh Hà Tĩnh	0917081269	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	nguyễn cao cường	413571
+35	hth_gftth_dunglm1	FTTH	Trần phú 190 Khối 8-Bắc Hồng Phường Bắc Hồng Lĩnh Tỉnh Hà Tĩnh	0983696887	0	0	1	2	1	HTH	Trung tâm Bắc Hồng Lĩnh	nguyễn cao cường	413571
+36	h039_gftth_dongctxtt0	FTTH	cty tnhh xd tmdv trần đông Thôn 5 Xuân Lĩnh Nghi Xuân Hà Tĩnh	0963716977	0	MESH	1	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần huy thắng	413568
+37	h039_gftth_thaodt19	FTTH	Thôn 8 Xuân Viên Nghi Xuân Hà Tĩnh	0976978531	0	MESH	1	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần huy thắng	413568
+38	vt03538553211	TV360_BoxTV trả sau	Thôn 11 Xuân Mỹ Nghi Xuân Hà Tĩnh	0353855321	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần huy thắng	413568
+39	h039_gftth_lypt74	FTTH	ông niên canh trường Thôn 5 Cổ Đạm Nghi Xuân Hà Tĩnh	0388403629	0	MESH	1	2	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần thanh tuấn	413579
+40	h039_gftth_thaohv7	FTTH	nhà anh Thắng Liễu phía ngoài quán Hoa Sửu Ngư Tịnh-Cương Gián Xã Cổ Đạm Tỉnh Hà Tĩnh	0879120008	0	MESH	3	3	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần thanh tuấn	413579
+41	h039_gftth_truongtn8	FTTH	kem mixue Thôn 8 Cổ Đạm Nghi Xuân Hà Tĩnh	0902089349	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần thanh tuấn	413579
+42	hth_gftth_nghiaht1	FTTH	. . Thôn 10-Cổ Đạm Xã Cổ Đạm  Tỉnh Hà Tĩnh	0326421529	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần thanh tuấn	413579
+43	vt0393449985	TV360_BoxTV trả sau	Nhà nhung hải con ông nhân bà mẫu Xã Cổ Đạm Tỉnh Hà Tĩnh	0393449985	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	trần thanh tuấn	413579
+44	h039_gftth_hanhpt47	FTTH	nhà Tăng Hạnh Hội Thành 1 Xuân Hội Nghi Xuân Hà Tĩnh	0866678068	0	MESH	2	3	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+45	h039_gftth_haovtm0	FTTH	Hội Minh Hội Minh Xuân Hội Nghi Xuân Hà Tĩnh	0396484679	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+46	h039_gftth_hoatt325	FTTH	nhà hoa khâm Trường Thanh Đan Trường Nghi Xuân Hà Tĩnh	983759897	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+47	h039_gftth_namng8	FTTH	Xã Đan Hải Tỉnh Hà Tĩnh	0987121001	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+48	h039_gftth_phucpm0	FTTH	ac tú xì đường quan Trường Vịnh Đan Trường Nghi Xuân Hà Tĩnh	0813770022	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+49	h039_gftth_thutv13	FTTH	Trường Vịnh Trường Vịnh Đan Trường Nghi Xuân Hà Tĩnh	0977335772	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+50	hth_gftth_muitt0	FTTH	Nhà Chương mùi Trường Châu-Đan Trường Xã Đan Hải  Tỉnh Hà Tĩnh	0976484854	0	0	1	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+51	vt0342710559	TV360_BoxTV trả sau	Nhà Bác Mai Lĩnh Hội Minh Xuân Hội Nghi Xuân Hà Tĩnh	0342710559	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+52	vt0843218992	TV360_BoxTV trả sau	1 Lĩnh Thành Đan Trường Nghi Xuân Hà Tĩnh	0354996678	0	0	3	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+53	vt09889193931	TV360_BoxTV trả sau	nhà e vân con bà được thôn dương phòng Hải Phòng Xuân Hải Nghi Xuân Hà Tĩnh	0372084743	0	0	2	1	0	HTH	Trung tâm Bắc Hồng Lĩnh	Đậu Quốc Bảo	839742
+54	vt0366876880	TV360_BoxTV trả sau	O 002 Xã Gia Hanh Tỉnh Hà Tĩnh	0366876880	0	0	1	1	0	HTH	Trung tâm Can Lộc	Lê Văn Thăng	434733
+55	h039_gftth_hadt98	FTTH	Xóm 1 Trung Lộc Can Lộc Hà Tĩnh	0987472079	0	0	1	1	0	HTH	Trung tâm Can Lộc	NGUYỄN HUY TÙNG	869512
+56	h039_gftth_phuongl2	FTTH	Nhà Văn Hoá xóm Trung Thành Xóm Trung Thành Đồng Lộc Can Lộc Hà Tĩnh	0388674364	0	0	3	1	0	HTH	Trung tâm Can Lộc	NGUYỄN HUY TÙNG	869512
+57	h039_gftth_chiennq	FTTH	Sau vật tư NN Khối 7, TT Nghèn Can Lộc Hà Tĩnh	0913371717	0	0	3	1	0	HTH	Trung tâm Can Lộc	Nguyễn Duy Trường	413481
+58	hth_gftth_tuanpa0	FTTH	tdp Tổ dân phố  6-Thị trấn Nghèn Xã Can Lộc Tỉnh Hà Tĩnh	0971887989	0	0	2	1	0	HTH	Trung tâm Can Lộc	Nguyễn Duy Trường	413481
+59	h039_gftth_thanglv14	FTTH	Xóm 2 Thịnh Lộc Lộc Hà Hà Tĩnh	0911084237	0	MESH	3	1	0	HTH	Trung tâm Can Lộc	Nguyễn Khắc Hoàng	833152
+60	vt0333551084	TV360_BoxTV trả sau	aGiao chị Phượng Xóm 2 Thịnh Lộc Lộc Hà Hà Tĩnh	0972786120	0	0	3	1	0	HTH	Trung tâm Can Lộc	Nguyễn Khắc Hoàng	833152
+61	vt0345320052	TV360_BoxTV trả sau	đối diện cafe hồng anh Xóm 10 Thịnh Lộc Lộc Hà Hà Tĩnh	0395814187	0	0	2	1	1	HTH	Trung tâm Can Lộc	Nguyễn Khắc Hoàng	833152
+62	h039_gftth_loantt130	FTTH	Quỳnh son Quỳnh Sơn Kim Song Trường Can Lộc Hà Tĩnh	0973714786	0	0	2	1	0	HTH	Trung tâm Can Lộc	Nguyễn Trọng Dũng	113558
+63	h039_gftth_minhpt32	FTTH	Phương Sơn Trường Lộc Can Lộc Hà Tĩnh	0962578861	0	MESH	1	2	0	HTH	Trung tâm Can Lộc	Nguyễn Trọng Dũng	113558
+64	h039_gftth_tuongvq0	FTTH	Xóm 4 Yên Lộc Can Lộc Hà Tĩnh	0948307775	0	0	3	1	0	HTH	Trung tâm Can Lộc	Nguyễn Trọng Dũng	113558
+65	hth_gftth_thunt17	FTTH	Quốc lộ 15 A Cống 19-Phú Lộc Xã Trường Lưu  Tỉnh Hà Tĩnh	0869907135	0	0	1	1	1	HTH	Trung tâm Can Lộc	Nguyễn Văn Tình	810463
+66	vt0328181667	TV360_BoxTV trả sau	Nhà chị Nga bán hàng mã Quốc lộ 15A Cống 19-Phú Lộc Xã Trường Lưu Tỉnh Hà Tĩnh	0328181667	0	0	1	1	0	HTH	Trung tâm Can Lộc	Nguyễn Văn Tình	810463
+67	h039_gftth_thonglb0	FTTH	0 0 Đông Châu 1 Phù Lưu Lộc Hà Hà Tĩnh	0354776498	0	0	3	1	0	HTH	Trung tâm Can Lộc	Phan Văn Định	845929
+68	h039_gftth_binhnt210	FTTH	Xuân Hải TT Lộc Hà, Xã Lộc Hà Tỉnh Hà Tĩnh	0849675832	1	0	1	1	0	HTH	Trung tâm Can Lộc	Trần Danh Nhật	413502
+69	h039_gftth_chuongpv10	FTTH	Thôn Phú Mỹ, Tây Đình, Thạch Mỹ Thạch Hà Hà Tĩnh	0914877567	0	0	2	1	0	HTH	Trung tâm Can Lộc	Trần Danh Nhật	413502
+70	vt0342957406	TV360_BoxTV trả sau	đường trục chính lên thạch châu Hợp Tiến Mai Phụ Lộc Hà Hà Tĩnh	0354868515	0	0	1	1	0	HTH	Trung tâm Can Lộc	Trần Danh Nhật	413502
+71	vt0368310036	TV360_BoxTV trả sau	Thôn phú mỹ Tây Đình-Thạch Mỹ Xã Mai Phụ Tỉnh Hà Tĩnh	0368310036	0	0	1	1	0	HTH	Trung tâm Can Lộc	Trần Danh Nhật	413502
+72	vt0369095740	TV360_BoxTV trả sau	106 Xã Lộc Hà Tỉnh Hà Tĩnh	0369095740	0	0	1	1	0	HTH	Trung tâm Can Lộc	Trần Danh Nhật	413502
+73	hth_gftth_giaplx0	FTTH	gần hội quán xóm Lương Trung 1-Ích Hậu Xã Đông Kinh Tỉnh Hà Tĩnh	0907882752	0	0	1	1	0	HTH	Trung tâm Can Lộc	Trần Xuân Cường	857655
+74	h039_gftth_lienlt73	FTTH	thôn tân quý Tân Qúy Hộ Độ Lộc Hà Hà Tĩnh	0389664798	0	0	3	1	0	HTH	Trung tâm Can Lộc	nguyễn đình nam	413501
+75	hth_gftth_yenpt9	FTTH	( bên cổng chợ) Long Hải Thạch Kim Xã Lộc Hà Tỉnh Hà Tĩnh	0941128235	0	0	1	1	0	HTH	Trung tâm Can Lộc	nguyễn đình nam	413501
+76	h039_gftth_dinhht7	FTTH	xóm 6 Xóm Phúc Sơn Sơn Lộc Can Lộc Hà Tĩnh	0386411374	0	0	3	1	0	HTH	Trung tâm Can Lộc	phan văn thọ	413483
+77	h039_gftth_hongnt304	FTTH	. Xóm Chi Lệ Sơn Lộc Can Lộc Hà Tĩnh	0979249657	0	0	3	1	0	HTH	Trung tâm Can Lộc	phan văn thọ	413483
+78	vt0348841770	TV360_BoxTV trả sau	nhà chị Châu nhuần sát nhà ông tứ 027 Xã Can Lộc Tỉnh Hà Tĩnh	0348841770	1	0	1	1	1	HTH	Trung tâm Can Lộc	đặng anh tuấn	413503
+79	vt0927868268	TV360_BoxTV trả sau	0 Trung Trinh Việt Tiến Thạch Hà Hà Tĩnh	0927868268	0	0	2	1	0	HTH	Trung tâm Thạch Hà	Hoàng Xuân Quốc	413553
+80	C396678141	Camera	thôn Đông Tiến-Lưu Vĩnh Sơn Xã Toàn Lưu Tỉnh Hà Tĩnh	0396678141	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Lãi Thế Ngoãn	067831
+81	hth_gftth_hapt14	FTTH	gin 1 bên hội quán thôn đông tiến Đông Tiến-Lưu Vĩnh Sơn Xã Toàn Lưu Tỉnh Hà Tĩnh	0965650987	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Lãi Thế Ngoãn	067831
+82	vt0886896189	TV360_BoxTV trả sau	xóm Vĩnh An-Lưu Vĩnh Sơn Xã Toàn Lưu Tỉnh Hà Tĩnh	385798784	0	0	3	1	0	HTH	Trung tâm Thạch Hà	Lãi Thế Ngoãn	067831
+83	h039_gftth_locnta0		Khối 2 Thạch Hà Thạch Hà Hà Tĩnh			HAGOI	1	1	0	HTH	Trung tâm Thạch Hà	Nguyễn Văn Bình	832423
+84	C948190956	Camera	sn 16b ngõ 199 Nguyễn Trung thiên Trung Qúy-Thạch Quý Phường Thành Sen Tỉnh Hà Tĩnh	0948190956	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Nguyễn Văn Hòa	193715
+85	vt0948190956	TV360_BoxTV trả sau	sn 16b ngõ 199 Nguyễn Trung thiên Trung Qúy-Thạch Quý Phường Thành Sen Tỉnh Hà Tĩnh	0948190956	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Nguyễn Văn Hòa	193715
+86	vt0968107029	TV360_BoxTV trả sau	Căn 0605 C1 Vinhomes Đường Hàm Nghi, Khối phố 7-Trần Phú, Phường Thành Sen Tỉnh Hà Tĩnh	0968107029	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Nguyễn Văn Hòa	193715
+87	vt0983487588	TV360_BoxTV trả sau	Số 10 ngõ 338 Đường Vũ Quang Khối phố Đại Đồng Thạch Linh Hà Tĩnh Hà Tĩnh	0983487588	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Nguyễn Văn Hòa	193715
+88	vt0986672639	TV360_BoxTV trả sau	CĂN HỘ C11018 VINHOMES NEW CENTER Hàm Nghi Khối phố Linh Tân Thạch Linh Hà Tĩnh Hà Tĩnh	0986672639	0	0	2	1	0	HTH	Trung tâm Thạch Hà	Nguyễn Văn Hòa	193715
+89	h039_ftth_doitctgpdnvcntd1	FTTH	SCH Bộ ChQS Tỉnh Hà Tĩnh Nguyễn Du Hà Tĩnh Hà Tĩnh	0979065065	0	0	3	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+90	h039_gftth_anhnv117	FTTH	SN 33 ngõ 37 Ngô Đức kế Khối phố 4 Nam Hà Hà Tĩnh Hà Tĩnh	0911097936	0	0	2	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+91	h039_gftth_quynd2	FTTH	SN 13A Ngõ 41 Hàm Nghi Khối phố 2 Hà Huy Tập Hà Tĩnh Hà Tĩnh	0966476083	0	MESH	3	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+92	h039_gftth_thuonglv10	FTTH	SN 18 Đường Đặng Dung, Nam Hà Hà Tĩnh Hà Tĩnh	0888481990	0	0	3	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+93	hth_gftth_sonnh4	FTTH	Số nhà 02 ngõ 19 Đường Hải Thượng Lãn Ông Hậu Thượng-Thạch Quý Phường Thành Sen Tỉnh Hà Tĩnh	0966760888	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+94	vt0903231117	TV360_BoxTV trả sau	SN 36 Phan Đình Phùng, Khối phố 6-Nam Hà, Phường Thành Sen Tỉnh Hà Tĩnh	0975132934	0	0	1	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+95	vt0982207796	TV360_BoxTV trả sau	SN 40, đường nguyễn xí, Hà Huy Tập Hà Tĩnh Hà Tĩnh	0982207796	0	0	3	1	0	HTH	Trung tâm Thạch Hà	Trương Hữu Ninh	413595
+96	h039_gftth_thamdt32	FTTH	Quán ĐT Trường Đạt Mỹ Lạc Thạch Lạc Hà Tĩnh Hà Tĩnh	0337399470	0	0	2	1	0	HTH	Trung tâm Thạch Hà	Trần Đức Sơn	446135
+97	h039_gftth_hiennt673	FTTH	156 Đặng Văn Bá Thôn Bình Yên Thạch Bình Hà Tĩnh Hà Tĩnh	0971308820	0	0	2	1	0	HTH	Trung tâm Thạch Hà	Võ Quốc Hải	471571
+98	h039_gftth_hoatt430	FTTH	thach văn Lạc Long Thạch Văn Hà Tĩnh Hà Tĩnh	0855162596	0	0	2	1	0	HTH	Trung tâm Thạch Hà	bùi tuấn anh	413581
+99	hth_gftth_luannh0	FTTH	thach hội Liên Qúy-Thạch Hội Xã Đồng Tiến Tỉnh Hà Tĩnh	0986266417	0	0	2	1	0	HTH	Trung tâm Thạch Hà	bùi tuấn anh	413581
+100	hth_gftth_vinhnv9	FTTH	1 Bình Dương-Thạch Hội Xã Đồng Tiến Tỉnh Hà Tĩnh	0965134998	0	0	1	1	0	HTH	Trung tâm Thạch Hà	bùi tuấn anh	413581
+101	vt0347676433	TV360_BoxTV trả sau	thach tri Đại Tiến Thạch Trị Hà Tĩnh Hà Tĩnh	0347676433	0	0	2	1	0	HTH	Trung tâm Thạch Hà	bùi tuấn anh	413581
+102	h039_gftth_hoannt113	FTTH	Nhà Giáo Lý Đường Bùi Cẩm Hổ Khối phố 10 Đại Nài Hà Tĩnh Hà Tĩnh	0862622707	0	0	3	1	0	HTH	Trung tâm Thạch Hà	hoàng xuân thái	413584
+103	hth_gftth_hangvb0	FTTH	Dãy trọ đối diện Số nhà 50 ngõ 5 Hải Thượng Lãn Ông Khối phố 1-Nam Hà Phường Thành Sen  Tỉnh Hà Tĩnh	0325722352	0	0	2	1	0	HTH	Trung tâm Thạch Hà	hoàng xuân thái	413584
+104	h039_gftth_giangptt11	FTTH	Đối diện nhà 06A, ngách 38 ngõ 64 Nguyễn Xí Khối phố 1 Hà Huy Tập Hà Tĩnh Hà Tĩnh	0946646518	0	0	3	1	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+105	h039_gftth_hoangvv10	FTTH	09/38 phan huy chú Khối phố 8 Trần Phú Hà Tĩnh Hà Tĩnh	0905826695	0	0	3	1	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+106	h039_gftth_sangln7	FTTH	SN 02 Ngõ 430 Hà Huy Tập Khối phố 3 Hà Huy Tập Hà Tĩnh Hà Tĩnh	0911100997	0	0	3	1	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+107	h039_gftth_tuantq78	FTTH	SN 33 Đường Sông Cày Tổ dân phố 3 TT Thạch Hà Thạch Hà Hà Tĩnh	0985836979	0	0	2	1	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+108	hth_gftth_dungln0	FTTH	279 Đường Trần Phú Liên Phú-Thạch Trung Phường Trần Phú Tỉnh Hà Tĩnh	0378222261	0	MESH	2	2	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+109	hth_gftth_tunt21	FTTH	05 19.8 Tổ dân phố 7-TT Thạch Hà Xã Thạch Hà Tỉnh Hà Tĩnh	0941358385	0	0	1	1	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+110	vt0843381228	TV360_BoxTV trả sau	23 Dương Chí Uyển Xã Thạch Hà Tỉnh Hà Tĩnh	0364105753	0	0	1	1	0	HTH	Trung tâm Thạch Hà	vũ xuân sơn	016828
+111	h039_gftth_mailt44	FTTH	Thôn 6, Cẩm Lộc Cẩm Xuyên Hà Tĩnh	0385138771	0	0	3	1	0	HTH	Trung tâm Cẩm Xuyên	Lê Anh Tuấn	838214
+112	h039_gftth_anhbq2	FTTH	02 Ngõ 47 Phạm Lê Đức Tổ Dân Phố 11 Cẩm Xuyên Cẩm Xuyên Hà Tĩnh	0867791968	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Lê Quang Vũ	225025
+113	hth_gftth_thunth6	FTTH	25 Hà huy tập Tổ dân phố 10-TT Cẩm Xuyên Xã Cẩm Xuyên Tỉnh Hà Tĩnh	0973825452	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Lê Quang Vũ	225025
+114	vt08626572343	TV360_BoxTV trả sau	Nhà Bà Niêm Thôn 1-TT Cẩm Xuyên Xã Cẩm Xuyên Tỉnh Hà Tĩnh	0968574816	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Lê Quang Vũ	225025
+115	vt0912120886	TV360_BoxTV trả sau	Tổ dân phố 9-TT Cẩm Xuyên, Xã Cẩm Xuyên Tỉnh Hà Tĩnh	0889230837	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Lê Quang Vũ	225025
+116	vt03578433971	TV360_BoxTV trả sau	thôn tiến Thắng Thôn 2-Cẩm Thịnh Xã Cẩm Hưng Tỉnh Hà Tĩnh	0357843397	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Lê Xuân Sơn	238788
+117	h039_gftth_nhungbt13	FTTH	nhà Gì nhung tường Thôn 3 TT Cẩm Xuyên Cẩm Xuyên Hà Tĩnh	0979037318	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Hữu Phùng	225138
+118	hth_gftth_phint0	FTTH	Nhà Phi Thúy Thôn 7A-Nam Phúc Thăng Xã Thiên Cầm Tỉnh Hà Tĩnh	0964994566	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Hữu Phùng	225138
+119	h039_gftth_hantn27	FTTH	Gần nhà thờ họ Nguyễn hữu Thôn Vĩnh Lợi Cẩm Bình Hà Tĩnh Hà Tĩnh	0343523559	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Nhân Đức	826199
+120	vt0384100197	TV360_BoxTV trả sau	Thôn Nam Lý-Cẩm Bình, Xã Cẩm Bình Tỉnh Hà Tĩnh	384100197	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Nhân Đức	826199
+121	vt0973302437	TV360_BoxTV trả sau	chị Tỷ Thục gần nhà c Thư hùng thôn Nam Bắc thành Thôn Nam Thành Cẩm Thành Cẩm Xuyên Hà Tĩnh	0372084415	0	0	3	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Nhân Đức	826199
+122	vt03927803682	TV360_BoxTV trả sau	Thôn 4 Cẩm Lĩnh Cẩm Xuyên Hà Tĩnh	0399586667	0	0	3	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Tống Ngọ	818400
+123	h039_gftth_lienvt29	FTTH	Nhà Liên Ba (thôn phúc Sơn) Thôn 7 Cẩm Sơn Cẩm Xuyên Hà Tĩnh	0392446439	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Văn Hưng	483674
+124	h039_gftth_sutd2	FTTH	Thôn Lạc Thọ Thôn Lạc Thọ Cẩm Lạc Cẩm Xuyên Hà Tĩnh	0972414683	0	0	3	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Văn Hưng	483674
+125	vt0363595043	TV360_BoxTV trả sau	Nhà ông huệ đối diện cổng trường c1 001 Xã Thiên Cầm Tỉnh Hà Tĩnh	0914721729	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+126	vt091320192610	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+127	vt091320192611	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+128	vt091320192612	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+129	vt091320192613	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+130	vt091320192614	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+131	vt091320192615	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+132	vt091320192616	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+133	vt091320192617	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+134	vt091320192618	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+135	vt091320192619	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+136	vt091320192620	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+137	vt091320192621	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+138	vt091320192622	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+139	vt091320192623	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+140	vt091320192625	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+141	vt091320192626	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+142	vt091320192627	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+143	vt091320192636	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+144	vt091320192638	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+145	vt091320192639	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+146	vt091320192640	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+147	vt091320192641	TV360_BoxTV trả sau	006 Xã Thiên Cầm Tỉnh Hà Tĩnh	0978110793	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+148	vt0965906300	TV360_BoxTV trả sau	quán View xanh Thôn Trần Phú-Thiên Cầm Xã Thiên Cầm Tỉnh Hà Tĩnh	0965906300	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+149	vt09798667882	TV360_BoxTV trả sau	Thôn Xóm Chùa-Cẩm Nhượng, Xã Thiên Cầm Tỉnh Hà Tĩnh	0979866788	0	0	2	1	0	HTH	Trung tâm Cẩm Xuyên	Nguyễn Đức Anh	154273
+150	C973292102	Camera	xóm chùa Thôn Xóm Chùa-Cẩm Nhượng Xã Thiên Cầm Tỉnh Hà Tĩnh	0973292102	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Phạm Đình Mại	413463
+151	vt0392001087	TV360_BoxTV trả sau	thôn xuân nam Thôn Hoàng Độ-Cẩm Nhượng Xã Thiên Cầm Tỉnh Hà Tĩnh	0824152189	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Phạm Đình Mại	413463
+152	vt0394287157	TV360_BoxTV trả sau	Cẩm Lĩnh, Cẩm Xuyên, Ha Tinh, Vietnam	0394287157	0	0	3	1	0	HTH	Trung tâm Cẩm Xuyên	Phạm Đình Mại	413463
+153	hth_gftth_khanhnv10	FTTH	Nhà Khánh Hồng sau lối ông Tuấn thuốc Thôn Đại Tăng-Cẩm Thạch Xã Cẩm Duệ Tỉnh Hà Tĩnh	0973727208	0	0	1	1	0	HTH	Trung tâm Cẩm Xuyên	Trương Quang Thuận	061161
+154	h039_gftth_dattv18	FTTH	Nhà Em Đạt Trung Xuân Kỳ Tây Kỳ Anh Hà Tĩnh	0369001197	0	0	2	1	0	HTH	Trung tâm Sông Trí	Lê Đức Hiệp	829926
+155	h039_gftth_tunt143	FTTH	Nhà Em Tự (Chiến) Trường Xuân Kỳ Tây Kỳ Anh Hà Tĩnh	0984544335	0	0	2	1	0	HTH	Trung tâm Sông Trí	Lê Đức Hiệp	829926
+156	h039_gftth_tamcx0	FTTH	Nhà Tâm Kỳ Phương Giai Kỳ Bắc Kỳ Anh Hà Tĩnh	0977161562	0	0	2	1	0	HTH	Trung tâm Sông Trí	Nguyễn Chí Công	210379
+157	hth_gftth_khuanct0	FTTH	bà khuân kim Sơn Kim Tiến-Kỳ Bắc Xã Kỳ Xuân Tỉnh Hà Tĩnh	0385929565	0	0	1	1	0	HTH	Trung tâm Sông Trí	Nguyễn Chí Công	210379
+158	vt0979368605	TV360_BoxTV trả sau	lạc tiến Hợp Tiến Kỳ Bắc Kỳ Anh Hà Tĩnh	0979368605	0	0	2	1	0	HTH	Trung tâm Sông Trí	Nguyễn Chí Công	210379
+159	vt0979377167	TV360_BoxTV trả sau	Gần đèn Xanh đèn đỏ Bắc Sơn Kỳ Phong Kỳ Anh Hà Tĩnh	0979377167	0	0	2	1	0	HTH	Trung tâm Sông Trí	Nguyễn Chí Công	210379
+160	vt0377303068	TV360_BoxTV trả sau	Tây Hà Kỳ Hà Thị xã Kỳ Anh Hà Tĩnh	0377303068	0	0	3	1	0	HTH	Trung tâm Sông Trí	Nguyễn Sỹ Hiền	294134
+161	C386401044	Camera	huế dũng Hòa Lộc Phường Kỳ Trinh Thị xã Kỳ Anh Hà Tĩnh	0386401044	0	0	2	1	0	HTH	Trung tâm Sông Trí	Nguyễn Văn Anh	440929
+162	h039_gftth_duyendt18	FTTH	chị duyên sỹ 007 Phường Vũng Áng Tỉnh Hà Tĩnh	0364149513	0	0	3	1	0	HTH	Trung tâm Sông Trí	Nguyễn Văn Anh	440929
+163	h039_gftth_luanld7	FTTH	nhà Hiền luân Hải phong 2 Kỳ Lợi Thị xã Kỳ Anh Hà Tĩnh	0862345369	0	0	3	1	0	HTH	Trung tâm Sông Trí	Nguyễn Văn Anh	440929
+164	vt0354118320	TV360_BoxTV trả sau	chi nghiệm Hải phong 2-Kỳ Lợi Phường Vũng Áng Tỉnh Hà Tĩnh	0354118320	0	0	1	1	0	HTH	Trung tâm Sông Trí	Nguyễn Văn Anh	440929
+165	h039_gftth_quydt20	FTTH	Nhà Nội Mạo Thôn Lê Lợi Bắc Thắng Kỳ Xuân Kỳ Anh Hà Tĩnh	0354366021	1	0	2	1	0	HTH	Trung tâm Sông Trí	Nguyễn Văn Tư	225141
+166	h039_gftth_chinhnd	FTTH	Ba Đồng, Phường Kỳ Phương Thị xã Kỳ Anh Hà Tĩnh	0985117139	0	0	3	1	0	HTH	Trung tâm Sông Trí	Trần Anh Sơn	275504
+167	h039_gftth_hongdt98	FTTH	sn 189 đường Quang Trung Liên Sơn Phường Kỳ Liên Thị xã Kỳ Anh Hà Tĩnh	0909993551	0	0	2	1	0	HTH	Trung tâm Sông Trí	Trần Anh Sơn	275504
+168	h039_gftth_mienmt2	FTTH	gì miến dung khu tượng Ba Đồng Phường Kỳ Phương Thị xã Kỳ Anh Hà Tĩnh	0984874972	0	0	2	1	0	HTH	Trung tâm Sông Trí	Trần Anh Sơn	275504
+169	h039_gftth_thaond1	FTTH	phòng số 66 ktx formosa Hà Tĩnh Liên Sơn Phường Kỳ Liên Thị xã Kỳ Anh Hà Tĩnh	0946502305	0	0	2	1	0	HTH	Trung tâm Sông Trí	Trần Anh Sơn	275504
+170	h039_gftth_trinhhtt4	FTTH	con bà thơ Ba Đồng Phường Kỳ Phương Thị xã Kỳ Anh Hà Tĩnh	0383922917	0	0	2	1	0	HTH	Trung tâm Sông Trí	Trần Anh Sơn	275504
+171	h039_gftth_vult12	FTTH	Số 10 - Ngõ 165 lê đại hành Khu phố 3 Hưng Trí Thị xã Kỳ Anh Hà Tĩnh	0389327656	0	0	2	1	0	HTH	Trung tâm Sông Trí	Trần Văn Hồng Nguyên	446149
+172	h039_gftth_gianglt33	FTTH	Nhà vh thôn Lạc Thanh 007 Xã Kỳ Lạc Tỉnh Hà Tĩnh	0973546982	1	MESH	1	2	0	HTH	Trung tâm Sông Trí	nguyễn văn hiền	413551
+173	h039_gftth_quangbv11	FTTH	nvh thôn Lạc Trung-Kỳ Lạc Xã Kỳ Lạc Tỉnh Hà Tĩnh	0344843001	0	MESH	2	3	0	HTH	Trung tâm Sông Trí	nguyễn văn hiền	413551
+174	vt0343766620	TV360_BoxTV trả sau	(cạnh kara Hải Hương) Tiến Quang Kỳ Thượng Kỳ Anh Hà Tĩnh	0343766620	0	0	2	1	0	HTH	Trung tâm Sông Trí	nguyễn văn hiền	413551
+175	h039_gftth_hoangdv27	FTTH	xóm Xóm 6 Hương Đô Hương Khê Hà Tĩnh	0987202283	0	0	2	1	0	HTH	Trung tâm Hương Khê	Hoàng Quang Huy	849803
+176	h039_gftth_khaint9	FTTH	Nhà dì Khai Xóm 6 Hương Đô Hương Khê Hà Tĩnh	0356242195	0	0	2	1	0	HTH	Trung tâm Hương Khê	Hoàng Quang Huy	849803
+177	h039_gftth_thinhpa0	FTTH	đối diện nhà dung ân tháp lô Xóm 3 Hương Long Hương Khê Hà Tĩnh	0982103942	1	0	2	1	1	HTH	Trung tâm Hương Khê	Mai Hồng Quân	833714
+178	vt0369286777	TV360_BoxTV trả sau	Xóm 3 Phương Điền Hương Khê Hà Tĩnh	369286777	0	0	3	1	0	HTH	Trung tâm Hương Khê	Mai Hồng Quân	833714
+179	C986805144	Camera	Gần nhà thờ Thịnh Lạc Trung Hải Gia Phố Hương Khê Hà Tĩnh	0986805144	0	0	2	1	0	HTH	Trung tâm Hương Khê	Nguyễn Thanh Sơn	413476
+180	h039_gftth_hiendt36	FTTH	06 ngõ4 phan đình phùng Khối 1 Hương Khê Hương Khê Hà Tĩnh	0942584624	0	0	2	1	0	HTH	Trung tâm Hương Khê	Nguyễn Thanh Sơn	413476
+181	vt09164717772	TV360_BoxTV trả sau	Sn 39 Xuân Diệu Xã Hương Khê Tỉnh Hà Tĩnh	0916471777	0	0	2	1	0	HTH	Trung tâm Hương Khê	Nguyễn Thanh Sơn	413476
+182	C972779937	Camera	xóm 5 Xóm 5 Phú Phong Hương Khê Hà Tĩnh	0972779937	0	0	3	1	0	HTH	Trung tâm Hương Khê	Phan Mạnh Tường	432650
+183	h039_gftth_anhnlv4	FTTH	Khối 09, Khối 9 Hương Khê Hương Khê Hà Tĩnh	0976432924	0	MESH	3	2	0	HTH	Trung tâm Hương Khê	Phan Mạnh Tường	432650
+184	h039_gftth_vietnv1	FTTH	Khối 15 Hương Khê Hương Khê Hà Tĩnh	0986562365	0	MESH	2	2	0	HTH	Trung tâm Hương Khê	Phan Mạnh Tường	432650
+185	vt03568789591	TV360_BoxTV trả sau	Xóm 5-Hương Khê, Xã Hương Khê Tỉnh Hà Tĩnh	0356878959	0	0	1	1	0	HTH	Trung tâm Hương Khê	Phan Mạnh Tường	432650
+186	vt09654862746	TV360_BoxTV trả sau	nhà mự sâm Lưu xóm 4 phú Phong cũ 001 Xã Hương Khê Tỉnh Hà Tĩnh	0342280451	0	0	2	1	0	HTH	Trung tâm Hương Khê	Phan Mạnh Tường	432650
+187	C865035204	Camera	0865035204 Xã Hương Khê Tỉnh Hà Tĩnh	0865035204	0	0	2	2	0	HTH	Trung tâm Hương Khê	Phan Xuân Kim	845062
+188	h039_gftth_baolk1	FTTH	bảo thi Xóm 5 Hương Long Hương Khê Hà Tĩnh	0965820940	0	0	2	1	0	HTH	Trung tâm Hương Khê	Phan Xuân Kim	845062
+189	h039_gftth_hoanvt16	FTTH	thúy hoan Phú Thành Phú Gia Hương Khê Hà Tĩnh	0373616650	0	0	2	1	0	HTH	Trung tâm Hương Khê	Phan Xuân Kim	845062
+190	h039_gftth_hantm5	FTTH	.. trạm cân thu mua gỗ keo giấy Xóm 6 Hà Linh Hương Khê Hà Tĩnh	0974818119	0	MESH	3	1	0	HTH	Trung tâm Hương Khê	Trần Văn Định	221873
+191	vt0386477260	TV360_BoxTV trả sau	. gần nhà thờ giáo họ thôn 008 Xã Hà Linh Tỉnh Hà Tĩnh	0386477260	0	0	2	1	0	HTH	Trung tâm Hương Khê	Trần Văn Định	221873
+192	vt0989803090	TV360_BoxTV trả sau	Xóm 5 Hà Linh Hương Khê Hà Tĩnh	0989803090	0	0	2	1	0	HTH	Trung tâm Hương Khê	Trần Văn Định	221873
+193	vt0367298636	TV360_BoxTV trả sau	Gần cầu khe mơ Xã Phúc Trạch Tỉnh Hà Tĩnh	0367298636	0	0	1	1	0	HTH	Trung tâm Hương Khê	cao phương nam	413478
+194	vt0367546006	TV360_BoxTV trả sau	đường HCM Xã Phúc Trạch Tỉnh Hà Tĩnh	0394901678	0	0	2	1	0	HTH	Trung tâm Hương Khê	cao phương nam	413478
+195	vt0375465575	TV360_BoxTV trả sau	Cuối Làng Tân Thành-Hương Trạch Xã Phúc Trạch Tỉnh Hà Tĩnh	0375465575	0	0	1	1	0	HTH	Trung tâm Hương Khê	cao phương nam	413478
+196	vt0395205430	TV360_BoxTV trả sau	Xóm 10, Phúc Trạch Hương Khê Hà Tĩnh	0395205430	0	0	2	1	0	HTH	Trung tâm Hương Khê	cao phương nam	413478
+197	vt0866957334	TV360_BoxTV trả sau	Xóm 10 Phúc Trạch Hương Khê Hà Tĩnh	0866957334	0	0	2	1	0	HTH	Trung tâm Hương Khê	cao phương nam	413478
+198	h039_gftth_canhlx1	FTTH	số 264 thôn 5 Xóm 5 Sơn Lĩnh Hương Sơn Hà Tĩnh	0365069297	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Hồ Minh Đức	486990
+199	h039_gftth_huongnx28	FTTH	đường tay lĩnh hồng Xóm 6 Sơn Hồng Hương Sơn Hà Tĩnh	0355740460	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Hồ Minh Đức	486990
+200	h039_gftth_thuytt341	FTTH	Quán mai thuỳ gần công chào xóm 4 Xóm 3-Sơn Lĩnh Xã Sơn Hồng  Tỉnh Hà Tĩnh	0975650797	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Hồ Minh Đức	486990
+201	hth_gftth_ngavt4	FTTH	. Thôn 4-Quang Diệm Xã Sơn Giang  Tỉnh Hà Tĩnh	0971876225	0	0	1	1	0	HTH	Trung tâm Sơn Giang	Hồ Minh Đức	486990
+202	h039_gftth_hoaitt104	FTTH	Hội Quán Thôn 5 Xóm Bình Tân Sơn Bình Hương Sơn Hà Tĩnh	0397505960	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Nguyễn Đình Đạt	849881
+203	vt0392827366	TV360_BoxTV trả sau	Tân Thủy Tân Mỹ Hà Hương Sơn Hà Tĩnh	0392827366	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Nguyễn Đình Đạt	849881
+204	vt03346325631	TV360_BoxTV trả sau	Hà Tiến 001 Xã Hương Sơn Tỉnh Hà Tĩnh	0334632563	0	0	1	1	0	HTH	Trung tâm Sơn Giang	Phan Thái Sơn	810137
+205	h039_gftth_phuongnt108	FTTH	Xóm 3 Sơn Giang Hương Sơn Hà Tĩnh	979537602	0	0	2	1	0	HTH	Trung tâm Sơn Giang	Phạm Mạnh Nho	413574
+206	h039_gftth_tuanpv29	FTTH	Xóm 2 Sơn Giang Hương Sơn Hà Tĩnh	0387079039	0	0	2	1	0	HTH	Trung tâm Sơn Giang	Phạm Mạnh Nho	413574
+207	hth_gftth_lamdp0	FTTH	Quán Bắp Nè Lê Minh Hương Khối 8-Phố Châu Xã Hương Sơn  Tỉnh Hà Tĩnh	0912142813	1	0	1	1	0	HTH	Trung tâm Sơn Giang	Phạm Mạnh Nho	413574
+208	hth_gftth_sonnt22	FTTH	Nhà bà ngoại của mẹ Hằng Xóm 1-Sơn Giang Xã Sơn Giang Tỉnh Hà Tĩnh	0352330078	0	0	1	1	0	HTH	Trung tâm Sơn Giang	Phạm Mạnh Nho	413574
+209	vt0393297442	TV360_BoxTV trả sau	Thôn 2, Xóm 3-Sơn Giang, Xã Sơn Giang Tỉnh Hà Tĩnh	0961943351	0	0	1	1	0	HTH	Trung tâm Sơn Giang	Phạm Mạnh Nho	413574
+210	vt0334841209	TV360_BoxTV trả sau	Thôn 4-Thọ Điền, Xã Vũ Quang Tỉnh Hà Tĩnh	0352095183	0	0	2	1	0	HTH	Trung tâm Sơn Giang	Trần Hồng Quân	524676
+211	h039_gftth_hoandv8	FTTH	Hội quán thôn Hồng Hà Hồng Hà Tân Mỹ Hà Hương Sơn Hà Tĩnh	0326296201	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Trần Ngọc Giảng	529402
+212	h039_gftth_minhd0	FTTH	chân cầu công trình đường 8c Hồng Mỹ Tân Mỹ Hà Hương Sơn Hà Tĩnh	0913385598	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Trần Ngọc Giảng	529402
+213	h039_gftth_thelm3	FTTH	. 01 Xã Tứ Mỹ Tỉnh Hà Tĩnh	0961504459	0	0	3	1	0	HTH	Trung tâm Sơn Giang	Trần Ngọc Giảng	529402
+214	h039_gftth_duccv5	FTTH	phòng chủ tịch ubnd xã sơn tây Xóm Hoàng Nam Sơn Tây Hương Sơn Hà Tĩnh	0966077775	0	0	3	1	0	HTH	Trung tâm Sơn Giang	nguyễn mạnh hùng	413520
+215	vt0349076571	TV360_BoxTV trả sau	Bà Huệ Tịnh Khối 3 Tây Sơn Hương Sơn Hà Tĩnh	0326970937	0	0	3	1	0	HTH	Trung tâm Sơn Giang	nguyễn mạnh hùng	413520
+216	vt0971759574	TV360_BoxTV trả sau	Nhà chị mỹ tp Thôn Tiên Phong-Sơn Kim 2 Xã Sơn Kim 2  Tỉnh Hà Tĩnh	0971759574	0	0	2	1	1	HTH	Trung tâm Sơn Giang	nguyễn mạnh hùng	413520
+217	vt0976736869	TV360_BoxTV trả sau	Xóm Khe Sú Sơn Kim 1 Hương Sơn Hà Tĩnh	0962602333	0	0	3	1	0	HTH	Trung tâm Sơn Giang	nguyễn mạnh hùng	413520
+218	vt0978967889	TV360_BoxTV trả sau	đối diện cơ sở ô tô hàng thành, Xóm Hà Chua-Sơn Tây, Xã Sơn Tây Tỉnh Hà Tĩnh	0978967889	0	0	2	1	0	HTH	Trung tâm Sơn Giang	nguyễn mạnh hùng	413520
+219	h039_gftth_huongdt91	FTTH	Khối 4 Vũ Quang Vũ Quang Hà Tĩnh	0397108991	0	0	1	1	0	HTH	Trung tâm Sơn Giang	nguyễn văn hợp	413538
+220	vt0915869678	TV360_BoxTV trả sau	Đức Lĩnh Vũ Quang Hà Tĩnh	0915869678	0	0	2	1	0	HTH	Trung tâm Sơn Giang	nguyễn văn hợp	413538
+221	vt0983172194	TV360_BoxTV trả sau	Thôn Hương Phùng Hương Phùng-Đức Hương Xã Thượng Đức Tỉnh Hà Tĩnh	0983172194	0	0	1	1	0	HTH	Trung tâm Sơn Giang	nguyễn văn hợp	413538
+222	h039_gftth_haipt94	FTTH	thôn sơ thủy Xóm 1 Sơn Lễ Hương Sơn Hà Tĩnh	0941254775	1	0	2	1	1	HTH	Trung tâm Sơn Giang	Đoàn Vĩnh Hào	413519
+223	h039_gftth_phuocpd3	FTTH	xưởng chế biến lá dong (qua đại lý Thông Thúy 1 ốt Xóm Đại Vường Sơn Phú Hương Sơn Hà Tĩnh	0868626411	0	0	2	1	0	HTH	Trung tâm Sơn Giang	Đoàn Vĩnh Hào	413519
+224	vt0947182585	TV360_BoxTV trả sau	Khối 11 Phố Châu Hương Sơn Hà Tĩnh	0364613441	1	0	2	1	0	HTH	Trung tâm Sơn Giang	Đoàn Vĩnh Hào	413519

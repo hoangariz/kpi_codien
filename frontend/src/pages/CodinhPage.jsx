@@ -22,7 +22,10 @@ export default function CodinhPage() {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
 
-  const isDateReport = selectedReportKey === 'qlctkt_trien_khai' || selectedReportKey === 'tong_hop_su_co';
+  const isDateReport =
+    selectedReportKey === 'qlctkt_trien_khai' ||
+    selectedReportKey === 'tong_hop_su_co' ||
+    selectedReportKey === 'ton_tk_theo_ngay';
 
   // Drilldown & Detail modals
   const [drilldownFilter, setDrilldownFilter] = useState(null);

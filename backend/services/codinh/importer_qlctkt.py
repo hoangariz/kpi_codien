@@ -291,19 +291,25 @@ def import_qlctkt_from_excel(
             if s_nth and s_nth.lower() not in ("nan", "none", "null", "nat", "0", "-", "false"):
                 raw_ngay_tich_huy = s_nth
 
-        # Standardize tien_do
+        # Standardize tien_do:
+        # Lưu ý: "Công việc chờ kết thúc" hoặc "Chờ kết thúc" là trạng thái đang chờ xử lý (thuộc TỒN TK),
+        # tuyệt đối KHÔNG được chuyển thành "Kết thúc"!
         raw_tien_do = str(row[col_tien_do]).strip() if col_tien_do and pd.notna(row[col_tien_do]) else ""
         tien_do_un = strip_accents(raw_tien_do)
-        if "ket thuc" in tien_do_un:
-            standard_tien_do = "Kết thúc"
+        if "cho ket thuc" in tien_do_un:
+            standard_tien_do = "Công việc chờ kết thúc"
+        elif "cho" in tien_do_un:
+            standard_tien_do = raw_tien_do if raw_tien_do else "Chờ tiếp nhận"
         elif "cap nhat ho so" in tien_do_un:
             standard_tien_do = "Cập nhật hồ sơ"
-        elif "huy" in tien_do_un:
+        elif "huy" in tien_do_un and "khong" not in tien_do_un:
             standard_tien_do = "Hủy"
+        elif "ket thuc" in tien_do_un:
+            standard_tien_do = "Kết thúc"
         else:
             standard_tien_do = raw_tien_do if raw_tien_do else None
 
-        is_tien_do_huy = bool("huy" in tien_do_un)
+        is_tien_do_huy = bool("huy" in tien_do_un and "khong" not in tien_do_un)
 
         is_huy = bool(has_word_huy or raw_ly_do_huy or raw_ngay_tich_huy or is_tien_do_huy)
 

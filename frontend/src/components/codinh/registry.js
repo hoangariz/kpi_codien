@@ -2,6 +2,7 @@ import ThcReport, { getThcCardKpis, THC_COLUMNS } from './reports/ThcReport';
 import PortKemReport, { getPortKemCardKpis, PORT_KEM_COLUMNS } from './reports/PortKemReport';
 import QlctktTrienKhaiReport, { getQlctktCardKpis, buildQlctktColumns } from './reports/QlctktTrienKhaiReport';
 import TongHopSuCoReport, { getTongHopSuCoCardKpis, buildTongHopSuCoColumns } from './reports/TongHopSuCoReport';
+import TonTkTheoNgayReport, { getTonTkTheoNgayCardKpis, buildTonTkTheoNgayColumns } from './reports/TonTkTheoNgayReport';
 
 /**
  * Registry ánh xạ giữa mã báo cáo (report key) và Component giao diện tương ứng.
@@ -39,6 +40,14 @@ export const REPORT_REGISTRY = {
     columns: buildTongHopSuCoColumns(),
     timeType: 'date',
   },
+  ton_tk_theo_ngay: {
+    key: 'ton_tk_theo_ngay',
+    title: 'Tồn TK theo ngày',
+    component: TonTkTheoNgayReport,
+    getCardKpis: getTonTkTheoNgayCardKpis,
+    columns: buildTonTkTheoNgayColumns(),
+    timeType: 'date',
+  },
 };
 
 /**
@@ -56,6 +65,9 @@ export function getReportConfig(keyOrId) {
   }
   if (str === '14' || str.includes('port')) {
     return REPORT_REGISTRY.port_kem;
+  }
+  if (str.includes('ton_tk') || str.includes('theo_ngay')) {
+    return REPORT_REGISTRY.ton_tk_theo_ngay;
   }
   if (str.includes('qlctkt') || str.includes('trien_khai')) {
     return REPORT_REGISTRY.qlctkt_trien_khai;

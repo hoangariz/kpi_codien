@@ -57,6 +57,15 @@ KpiCoDien/
 │   │   ├── task_schema.py
 │   │   └── tracking_schema.py
 │   ├── services/                      # Nghiệp vụ xử lý (Business Logic)
+│   │   ├── codinh/                    # Kiến trúc báo cáo CĐBR module hóa:
+│   │   │   ├── base.py                # BaseReport trừu tượng, quản lý cache CĐBR
+│   │   │   ├── registry.py            # Đăng ký danh sách báo cáo & cards KPI
+│   │   │   └── reports/               # Các module báo cáo CĐBR:
+│   │   │       ├── thc.py             # Bảo dưỡng Tủ Hộp Cáp (THC)
+│   │   │       ├── dh_port_kem.py     # Điều hòa / Port kém GPON
+│   │   │       ├── qlctkt_trien_khai.py # Báo cáo Triển khai (QLCTKT)
+│   │   │       ├── tong_hop_su_co.py  # Báo cáo Tổng hợp Sự Cố (GNOC)
+│   │   │       └── ton_tk_theo_ngay.py# Báo cáo Tồn TK theo ngày tạo (30 ngày gần nhất)
 │   │   ├── codinh_service.py          # Xử lý CĐBR, nạp WO CĐBR, nạp tủ THC, tính stats CĐBR
 │   │   ├── device_recall_service.py   # Xử lý file thu hồi thiết bị .txt, lọc cụm, xuất CSV
 │   │   ├── etl_service.py             # ETL Excel Cơ điện, vectorization, nạp batch, diff log
@@ -155,7 +164,7 @@ Bảng công việc riêng biệt dành cho **Cố Định Băng Rộng (CĐBR)*
 - `nhan_vien`: Username FT thực hiện.
 - `nhom`: Tên Cụm / Nhóm phụ trách.
 - `ma_tram`: Mã trạm phát sinh WO.
-- `thoi_diem_tao`, `thoi_diem_bat_dau_thuc_hien`, `thoi_diem_yeu_cau_ket_thuc`, `thoi_gian_con_lai`, `thoi_diem_ft_hoan_thanh`, `thoi_diem_cd_dong`.
+- `is_su_co`, `is_hot`, `is_tam_dung`, `is_open`, `is_soc_mat_tin_hieu`, `is_ho_tro_dich_vu`: Các cờ phân loại nghiệp vụ (trong đó `is_soc_mat_tin_hieu` nhận diện nội dung chứa "Hiện tượng: Mất dịch vụ", `is_ho_tro_dich_vu` nhận diện nội dung chứa đồng thời "Báo hỏng DV cố định" và "Hỗ trợ dịch vụ").
 - `import_filename`: Tên file Excel import nạp WO này.
 
 ### 3.3. `Cabinet` (`backend/models/cabinet.py`) - Bảng `cabinets`
@@ -192,7 +201,7 @@ Bảng theo dõi tiến độ công việc tuỳ chỉnh:
 
 ### 3.7. `DeviceRecall` (`backend/models/device_recall.py`) - Bảng `device_recalls`
 Dữ liệu thu hồi thiết bị khách hàng (Modem / Thiết bị Mesh):
-- `so_thue_bao`, `dich_vu`, `dia_chi_khach_hang`, `tong_tbi_phai_thu`, `loai_thiet_bi`, `tuoi_tho_mesh`, `so_tbi_mesh_phai_thu`, `cum_xa`, `ten_ft`, `ma_nv`.
+- `so_thue_bao`, `dich_vu`, `dia_chi_khach_hang`, `dien_thoai_lh`, `user_thanh_ly`, `muc_thiet_bi`, `tong_tbi_phai_thu`, `sl_thiet_bi_da_thu`, `loai_thiet_bi`, `tinh`, `cum_xa`, `ten_ft`, `ma_nv`.
 
 ### 3.8. Các model phụ trợ khác:
 - `ImportLog` (`backend/models/import_log.py`): Ghi nhận file tải lên, dung lượng, số dòng, trạng thái nạp, tiến độ %, domain (`main` / `codinh`).
