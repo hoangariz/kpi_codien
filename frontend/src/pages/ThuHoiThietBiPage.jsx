@@ -6,6 +6,7 @@ import {
   Copy,
   Check,
   MapPin,
+  Phone,
   Wifi,
   Tv,
   User,
@@ -24,11 +25,14 @@ import { exportSingleSheetXlsx } from '../utils/excelExport';
 function getClusterShortCode(cumXa) {
   if (!cumXa) return '';
   const str = String(cumXa).trim();
+  if (str.toLowerCase().startsWith('trung tâm ')) {
+    return str.slice(10).trim();
+  }
   const parts = str.split('-');
   if (parts.length >= 2) {
     return parts[parts.length - 1].trim().toUpperCase();
   }
-  return str.slice(-3).toUpperCase();
+  return str;
 }
 
 export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
@@ -107,6 +111,8 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
   const summary = itemsData?.summary || {
     total_subscribers: 0,
     total_devices: 0,
+    total_collected: 0,
+    remaining_devices: 0,
     mesh_devices: 0,
     regular_devices: 0,
   };
@@ -122,7 +128,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
     );
   }, [fts, ftSearch]);
 
-  // Handle 1-click copy subscriber ID
+  // Handle 1-click copy subscriber ID or phone
   const handleCopy = (text, id) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -144,14 +150,13 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
       'Họ và tên',
       'Cụm xã',
       'Số Thuê Bao',
+      'Điện Thoại LH',
       'Dịch Vụ',
       'Địa Chỉ Khách Hàng',
-      'Mức Thuê Bao',
       'Mức Thiết Bị',
       'Tổng Tbi Phải Thu',
+      'SL Thiết Bị Đã Thu',
       'Loại Thiết Bị',
-      'Tuổi Thọ Mesh',
-      'Số Tbi Mesh Phải Thu',
     ];
     const rows = items.map((it, idx) => [
       idx + 1,
@@ -159,14 +164,13 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
       it.ten_ft || selectedFt || '',
       it.cum_xa || selectedCluster || '',
       it.so_thue_bao || '',
+      it.dien_thoai_lh || '',
       it.dich_vu || '',
       it.dia_chi_khach_hang || '',
-      it.muc_thue_bao || '',
       it.muc_thiet_bi || '',
       it.tong_tbi_phai_thu || 0,
+      it.sl_thiet_bi_da_thu || 0,
       it.loai_thiet_bi || '',
-      it.tuoi_tho_mesh || '',
-      it.so_tbi_mesh_phai_thu || '',
     ]);
 
     const cleanFt = selectedFt ? `_${selectedFt.replace(/\s+/g, '_')}` : '_TatCa';
@@ -535,6 +539,21 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                     >
                       {ft.total_devices} TB
                     </span>
+                    {ft.total_collected > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: '5px',
+                          background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(16, 185, 129, 0.12)',
+                          color: isSelected ? '#fff' : '#10b981',
+                        }}
+                        title={`Đã thu: ${ft.total_collected} thiết bị`}
+                      >
+                        ✓ {ft.total_collected}
+                      </span>
+                    )}
                   </button>
                 );
               })
@@ -572,6 +591,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                 color: 'var(--text-primary)',
                 display: 'flex',
                 alignItems: 'center',
+                flexWrap: 'wrap',
                 gap: '8px',
               }}
             >
@@ -590,8 +610,23 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                   borderRadius: '6px',
                 }}
               >
-                {summary.total_devices} Thiết bị ({items.length} thuê bao)
+                Phải thu: {summary.total_devices} TB ({items.length} thuê bao)
               </span>
+              {summary.total_collected > 0 && (
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    color: '#10b981',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                  }}
+                >
+                  ✓ Đã thu: {summary.total_collected} TB
+                </span>
+              )}
             </div>
             {selectedFtObj && (
               <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
@@ -604,7 +639,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
           <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
             <input
               type="text"
-              placeholder="Tìm số thuê bao, địa chỉ, dịch vụ..."
+              placeholder="Tìm số thuê bao, SĐT, địa chỉ, dịch vụ..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -786,7 +821,48 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                         </div>
                       </div>
 
-                      {/* Card Body: Địa chỉ khách hàng */}
+                      {/* Card Body: Điện thoại liên hệ & Địa chỉ khách hàng */}
+                      {item.dien_thoai_lh && (
+                        <div
+                          style={{
+                            fontSize: '0.78rem',
+                            color: 'var(--text-secondary)',
+                            marginBottom: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <Phone size={13} style={{ flexShrink: 0, color: 'var(--brand-primary)' }} />
+                          <a
+                            href={`tel:${item.dien_thoai_lh}`}
+                            style={{
+                              color: 'var(--brand-primary)',
+                              textDecoration: 'none',
+                              fontWeight: 700,
+                              fontFamily: 'monospace',
+                            }}
+                          >
+                            {item.dien_thoai_lh}
+                          </a>
+                          <button
+                            onClick={() => handleCopy(item.dien_thoai_lh, `card_dt_${item.id || idx}`)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              padding: '1px 3px',
+                              cursor: 'pointer',
+                              color: copiedId === `card_dt_${item.id || idx}` ? '#10b981' : 'var(--text-muted)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                            }}
+                            title="Copy số điện thoại"
+                          >
+                            {copiedId === `card_dt_${item.id || idx}` ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        </div>
+                      )}
+
                       <div
                         style={{
                           fontSize: '0.78rem',
@@ -814,16 +890,9 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                         }}
                       >
                         <div style={{ background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
-                          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>Mức TB</div>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {item.muc_thue_bao}
-                          </div>
-                        </div>
-
-                        <div style={{ background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
                           <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>Mức Tbi</div>
                           <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {item.muc_thiet_bi}
+                            {item.muc_thiet_bi || '-'}
                           </div>
                         </div>
 
@@ -836,17 +905,33 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                           }}
                         >
                           <div style={{ fontSize: '0.66rem', color: item.tong_tbi_phai_thu > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}>
-                            Thu hồi
+                            Phải thu
                           </div>
                           <div style={{ fontSize: '0.85rem', fontWeight: 800, color: item.tong_tbi_phai_thu > 0 ? '#ef4444' : 'var(--text-primary)' }}>
                             {item.tong_tbi_phai_thu}
                           </div>
                         </div>
 
+                        <div
+                          style={{
+                            background: item.sl_thiet_bi_da_thu > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-secondary)',
+                            padding: '4px',
+                            borderRadius: '6px',
+                            border: item.sl_thiet_bi_da_thu > 0 ? '1px solid rgba(16, 185, 129, 0.25)' : 'none',
+                          }}
+                        >
+                          <div style={{ fontSize: '0.66rem', color: item.sl_thiet_bi_da_thu > 0 ? '#10b981' : 'var(--text-muted)', fontWeight: 700 }}>
+                            Đã thu
+                          </div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: item.sl_thiet_bi_da_thu > 0 ? '#10b981' : 'var(--text-primary)' }}>
+                            {item.sl_thiet_bi_da_thu}
+                          </div>
+                        </div>
+
                         <div style={{ background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
-                          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>Tuổi Mesh</div>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {item.tuoi_tho_mesh && item.tuoi_tho_mesh !== '-' ? `${item.tuoi_tho_mesh}th` : '-'}
+                          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>Còn lại</div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: (item.tong_tbi_phai_thu - (item.sl_thiet_bi_da_thu || 0)) > 0 ? '#f59e0b' : 'var(--text-muted)' }}>
+                            {Math.max(0, (item.tong_tbi_phai_thu || 0) - (item.sl_thiet_bi_da_thu || 0))}
                           </div>
                         </div>
                       </div>
@@ -867,13 +952,13 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                     {!selectedFt && <th style={{ minWidth: '95px', textAlign: 'center' }}>Mã NV</th>}
                     {!selectedFt && <th style={{ minWidth: '140px' }}>Họ và tên</th>}
                     <th style={{ minWidth: '150px' }}>Số Thuê Bao</th>
+                    <th style={{ minWidth: '125px' }}>Điện Thoại LH</th>
                     <th style={{ minWidth: '130px' }}>Dịch Vụ</th>
                     <th style={{ minWidth: '240px' }}>Địa Chỉ Khách Hàng</th>
-                    <th style={{ width: '75px', textAlign: 'center' }}>Mức TB</th>
                     <th style={{ width: '75px', textAlign: 'center' }}>Mức Tbi</th>
                     <th
                       style={{
-                        width: '100px',
+                        width: '95px',
                         textAlign: 'center',
                         background: 'rgba(239, 68, 68, 0.12)',
                         color: '#ef4444',
@@ -882,9 +967,18 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                     >
                       Tổng Tbi Thu
                     </th>
-                    <th style={{ width: '110px', textAlign: 'center' }}>Loại Thiết Bị</th>
-                    <th style={{ width: '90px', textAlign: 'center' }}>Tuổi Thọ Mesh</th>
-                    <th style={{ width: '110px', textAlign: 'center' }}>Mesh Phải Thu</th>
+                    <th
+                      style={{
+                        width: '85px',
+                        textAlign: 'center',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        color: '#10b981',
+                        fontWeight: 800,
+                      }}
+                    >
+                      SL Đã Thu
+                    </th>
+                    <th style={{ width: '105px', textAlign: 'center' }}>Loại Thiết Bị</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -892,6 +986,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                     const isMesh = item.loai_thiet_bi === 'MESH';
                     const isTv = item.dich_vu && item.dich_vu.toLowerCase().includes('tv');
                     const isFtth = item.dich_vu && item.dich_vu.toLowerCase().includes('ftth');
+                    const isCam = item.dich_vu && item.dich_vu.toLowerCase().includes('camera');
 
                     return (
                       <tr key={item.id || idx}>
@@ -937,6 +1032,41 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                           </div>
                         </td>
                         <td>
+                          {item.dien_thoai_lh ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <a
+                                href={`tel:${item.dien_thoai_lh}`}
+                                style={{
+                                  color: 'var(--brand-primary)',
+                                  textDecoration: 'none',
+                                  fontWeight: 600,
+                                  fontFamily: 'monospace',
+                                  fontSize: '0.8rem',
+                                }}
+                              >
+                                {item.dien_thoai_lh}
+                              </a>
+                              <button
+                                onClick={() => handleCopy(item.dien_thoai_lh, `dt_${item.id || idx}`)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  padding: '1px 3px',
+                                  cursor: 'pointer',
+                                  color: copiedId === `dt_${item.id || idx}` ? '#10b981' : 'var(--text-muted)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                }}
+                                title="Copy số điện thoại"
+                              >
+                                {copiedId === `dt_${item.id || idx}` ? <Check size={12} /> : <Copy size={12} />}
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>-</span>
+                          )}
+                        </td>
+                        <td>
                           <span
                             style={{
                               display: 'inline-flex',
@@ -950,8 +1080,16 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                                 ? 'rgba(139, 92, 246, 0.1)'
                                 : isFtth
                                 ? 'rgba(59, 130, 246, 0.1)'
+                                : isCam
+                                ? 'rgba(16, 185, 129, 0.1)'
                                 : 'var(--bg-tertiary)',
-                              color: isTv ? '#8b5cf6' : isFtth ? '#3b82f6' : 'var(--text-secondary)',
+                              color: isTv
+                                ? '#8b5cf6'
+                                : isFtth
+                                ? '#3b82f6'
+                                : isCam
+                                ? '#10b981'
+                                : 'var(--text-secondary)',
                             }}
                           >
                             {isTv ? <Tv size={12} /> : isFtth ? <Wifi size={12} /> : null}
@@ -961,8 +1099,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                         <td style={{ fontSize: '0.78rem', lineHeight: '1.3' }}>
                           <span title={item.dia_chi_khach_hang}>{item.dia_chi_khach_hang}</span>
                         </td>
-                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.muc_thue_bao}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.muc_thiet_bi}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.muc_thiet_bi || '-'}</td>
                         <td
                           style={{
                             textAlign: 'center',
@@ -973,6 +1110,17 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                           }}
                         >
                           {item.tong_tbi_phai_thu}
+                        </td>
+                        <td
+                          style={{
+                            textAlign: 'center',
+                            fontWeight: 800,
+                            fontSize: '0.9rem',
+                            color: item.sl_thiet_bi_da_thu > 0 ? '#10b981' : 'var(--text-muted)',
+                            background: item.sl_thiet_bi_da_thu > 0 ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                          }}
+                        >
+                          {item.sl_thiet_bi_da_thu}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <span
@@ -987,12 +1135,6 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                           >
                             {item.loai_thiet_bi}
                           </span>
-                        </td>
-                        <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          {item.tuoi_tho_mesh && item.tuoi_tho_mesh !== '-' ? `${item.tuoi_tho_mesh} tháng` : '-'}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 600 }}>
-                          {item.so_tbi_mesh_phai_thu !== '-' ? item.so_tbi_mesh_phai_thu : '-'}
                         </td>
                       </tr>
                     );
@@ -1017,7 +1159,7 @@ export default function ThuHoiThietBiPage({ onNavigateToCodinh }) {
                 {selectedFt
                   ? `Đang xem thiết bị của: ${selectedFt} (Mã NV: ${selectedFtObj?.ma_nv || '--'}). `
                   : `Đang xem toàn bộ nhân viên trong cụm ${selectedCluster}. `}
-                Khi xuất file Excel / CSV sẽ luôn bao gồm đầy đủ cột Mã nhân viên, Họ và tên và Cụm xã.
+                Khi xuất file Excel / CSV sẽ luôn bao gồm đầy đủ cột: Mã nhân viên, Họ và tên, Cụm xã, Số thuê bao, Điện thoại LH, Mức thiết bị, Tổng Tbi phải thu, SL thiết bị đã thu và Loại thiết bị.
               </span>
             </div>
           </>

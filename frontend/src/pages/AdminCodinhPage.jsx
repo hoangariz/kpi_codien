@@ -84,7 +84,7 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
   };
 
   const handleReloadDefaultRecall = async () => {
-    if (!window.confirm('Nạp lại dữ liệu từ file thuhoithietbi.txt có sẵn trên máy chủ?')) return;
+    if (!window.confirm('Nạp lại dữ liệu từ file thuhoithietbi_update.txt / thuhoithietbi.txt có sẵn trên máy chủ?')) return;
     setIsUploadingDeviceRecall(true);
     setDeviceRecallError(null);
     try {
@@ -1040,6 +1040,10 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                     <strong style={{ color: '#ef4444' }}>{recallMeta.total_devices || 0} TB</strong>
                   </div>
                   <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Đã thu: </span>
+                    <strong style={{ color: '#10b981' }}>{recallMeta.total_collected || 0} TB</strong>
+                  </div>
+                  <div>
                     <span style={{ color: 'var(--text-muted)' }}>Số thuê bao: </span>
                     <strong>{recallMeta.total_count || 0} TB</strong>
                   </div>
@@ -1104,7 +1108,7 @@ export default function AdminCodinhPage({ onNavigateToCodinh }) {
                   className="btn btn-outline"
                   style={{ fontSize: '0.82rem', padding: '8px 14px', gap: '6px' }}
                 >
-                  <RefreshCw size={14} /> Nạp Lại File Mẫu thuhoithietbi.txt
+                  <RefreshCw size={14} /> Nạp Lại File Mẫu (thuhoithietbi_update.txt)
                 </button>
 
                 <button
