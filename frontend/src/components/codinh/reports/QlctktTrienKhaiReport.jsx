@@ -95,7 +95,7 @@ export function buildQlctktColumns(selectedDate) {
         background: 'rgba(16, 185, 129, 0.1)',
         color: 'var(--success-dark)',
       },
-      tooltip: `Tiến độ = Kết thúc và Ngày kết thúc thực tế trong ngày ${dayStr}`,
+      tooltip: `Tiến độ = Kết thúc hoặc Cập nhật hồ sơ và Ngày kết thúc thực tế trong ngày ${dayStr}`,
     },
     {
       key: 'dd_nghiem_thu_n',
@@ -110,7 +110,7 @@ export function buildQlctktColumns(selectedDate) {
         minWidth: '52px',
         maxWidth: '64px',
       },
-      tooltip: `Số lượng đường dây mới nghiệm thu trong ngày ${dayStr}`,
+      tooltip: `Số lượng đường dây mới nghiệm thu trong ngày ${dayStr} (Tiến độ = Kết thúc hoặc Cập nhật hồ sơ)`,
     },
     {
       key: 'dau_noi_n',

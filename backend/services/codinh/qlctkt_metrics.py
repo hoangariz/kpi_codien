@@ -20,7 +20,6 @@ def get_qlctkt_ton_tk_condition():
 
 def get_qlctkt_nghiem_thu_condition(selected_date: str):
     """Điều kiện Nghiệm thu trong ngày n dùng chung:
-    - tien_do == 'Kết thúc'
     - date(ngay_ket_thuc_thuc_te) == selected_date
     - NOT is_cskh (is_cskh_2022 == False)
     """
@@ -30,7 +29,9 @@ def get_qlctkt_nghiem_thu_condition(selected_date: str):
         date_expr = func.date_format(TaskQlctkt.ngay_ket_thuc_thuc_te, "%Y-%m-%d")
 
     return and_(
-        func.trim(func.coalesce(TaskQlctkt.tien_do, "")).in_(["Kết thúc", "kết thúc"]),
+        func.trim(func.coalesce(TaskQlctkt.tien_do, "")).in_([
+            "Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"
+        ]),
         date_expr == selected_date,
         TaskQlctkt.is_cskh_2022 == False,
     )

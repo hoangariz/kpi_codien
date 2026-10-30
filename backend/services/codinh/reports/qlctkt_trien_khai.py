@@ -210,8 +210,8 @@ class QlctktTrienKhaiReport(BaseReport):
         query = db.query(
             TaskQlctkt.nv_key,
             func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Cập nhật hồ sơ", "cập nhật hồ sơ"]), TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("cap_nhat_ho_so"),
-            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("nghiem_thu_n"),
-            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("dd_nghiem_thu_n"),
+            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("nghiem_thu_n"),
+            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("dd_nghiem_thu_n"),
             func.sum(case((and_(date_tao_expr == selected_date, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("dau_noi_n"),
             func.sum(case((and_(cond_ton, TaskQlctkt.is_duong_day_moi == True), 1), else_=0)).label("ton_duong_day"),
             func.sum(case((and_(cond_ton, TaskQlctkt.is_duong_day_moi == True, TaskQlctkt.is_tich_hen_ok == True), 1), else_=0)).label("ton_duong_day_th"),
@@ -475,9 +475,9 @@ class QlctktTrienKhaiReport(BaseReport):
         if m_low == "cap_nhat_ho_so":
             q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Cập nhật hồ sơ", "cập nhật hồ sơ"]))
         elif m_low == "nghiem_thu_n":
-            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc"]), date_kt_tt_expr == selected_date)
+            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date)
         elif m_low == "dd_nghiem_thu_n":
-            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True)
+            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True)
         elif m_low == "dau_noi_n":
             q = q.filter(date_tao_expr == selected_date)
         elif m_low == "ton_duong_day":
