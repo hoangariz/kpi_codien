@@ -47,6 +47,11 @@ def clear_codinh_stats_cache():
         clear_ton_tk_theo_ngay_cache()
     except Exception:
         pass
+    try:
+        from backend.services.codinh.registry import clear_reports_cards_cache
+        clear_reports_cards_cache()
+    except Exception:
+        pass
 
 
 def _sql_duration_hours(start_col, finish_col):

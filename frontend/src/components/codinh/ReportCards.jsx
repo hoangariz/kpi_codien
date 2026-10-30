@@ -1,12 +1,21 @@
 import React from 'react';
 import { CheckCircle2, FileSpreadsheet } from 'lucide-react';
 
+const DEFAULT_REPORTS = [
+  { key: 'thc', title: 'Bảo Dưỡng Tủ Hộp Cáp (THC)' },
+  { key: 'port_kem', title: 'ĐH Port Kém' },
+  { key: 'qlctkt_trien_khai', title: 'Tổng Hợp TK' },
+  { key: 'tong_hop_su_co', title: 'Tổng Hợp Sự Cố' },
+  { key: 'ton_tk_theo_ngay', title: 'Tồn TK theo ngày' },
+];
+
 export default function ReportCards({
   reportsList = [],
+  isLoading = false,
   selectedReportKey,
   onSelectReport,
 }) {
-  if (!reportsList.length) return null;
+  const displayReports = reportsList.length > 0 ? reportsList : DEFAULT_REPORTS;
 
   return (
     <div style={{ marginBottom: '22px' }}>
@@ -18,7 +27,7 @@ export default function ReportCards({
           gap: '14px',
         }}
       >
-        {reportsList.map((rep) => {
+        {displayReports.map((rep) => {
           const isSelected = selectedReportKey === rep.key;
           const isThc = rep.key === 'thc';
           const isQlctkt = rep.key === 'qlctkt_trien_khai';

@@ -31,11 +31,13 @@ export default function CodinhPage() {
   const [drilldownFilter, setDrilldownFilter] = useState(null);
   const [selectedDetailTask, setSelectedDetailTask] = useState(null);
 
-  // 1. Fetch reports list with mini KPI summary cards
-  const { data: reportsList = [], refetch: refetchReports } = useQuery({
+  // 1. Fetch reports list with mini KPI summary cards (cached 5m, keeps placeholder to prevent card blinking)
+  const { data: reportsList = [], isLoading: loadingReports, refetch: refetchReports } = useQuery({
     queryKey: ['codinh-reports', selectedMonth],
     queryFn: () => codinhApi.getReports(selectedMonth),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 
   // 2. Fetch stats for the active report (chỉ fetch khi đã chọn bảng)
@@ -48,7 +50,7 @@ export default function CodinhPage() {
     queryFn: () => codinhApi.getStats(
       selectedReportKey,
       isDateReport ? null : (selectedMonth === 'all' ? null : selectedMonth),
-      isDateReport ? selectedDate : null
+      isDateReport ? (selectedDate || undefined) : null
     ),
     enabled: Boolean(selectedReportKey),
     staleTime: 60 * 1000,
@@ -134,8 +136,20 @@ export default function CodinhPage() {
   };
 
   const handleSelectReport = (repKey) => {
+    const isDateRep =
+      repKey === 'qlctkt_trien_khai' ||
+      repKey === 'tong_hop_su_co' ||
+      repKey === 'ton_tk_theo_ngay';
+
     if (repKey !== selectedReportKey) {
-      setSelectedDate('');
+      if (isDateRep) {
+        // Pre-fill selectedDate from the card's already fetched date so useQuery fires only ONE request
+        const repObj = reportsList.find((r) => r.key === repKey);
+        const prefilledDate = repObj?.selected_date || (new Date()).toISOString().split('T')[0];
+        setSelectedDate(prefilledDate);
+      } else {
+        setSelectedDate('');
+      }
     }
     setSelectedReportKey(repKey);
     setTimeout(() => {
@@ -372,6 +386,7 @@ export default function CodinhPage() {
       {/* 1. Category Selector Cards */}
       <ReportCards
         reportsList={reportsList}
+        isLoading={loadingReports}
         selectedReportKey={selectedReportKey}
         onSelectReport={handleSelectReport}
       />
