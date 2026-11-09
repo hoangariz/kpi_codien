@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
 @router.get("", response_model=PaginatedTasksResponse)
 def list_tasks(
     page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=200),
+    page_size: int = Query(25, ge=1, le=5000),
     search: Optional[str] = None,
     group_id: Optional[int] = None,
     assigned_to_id: Optional[int] = None,

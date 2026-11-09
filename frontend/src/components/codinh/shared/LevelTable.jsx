@@ -228,127 +228,64 @@ export default function LevelTable({
 
     const sum = {
       ...(summary || {}),
-      total_wos: 0,
-      closed_wos: 0,
-      pending_wos: 0,
-      overdue_wos: 0,
+      so_nv: 0,
       closed_today: 0,
       closed_yesterday: 0,
       closed_week: 0,
-      total_cabinets: 0,
-      completed_cabinets: 0,
-      pending_cabinets: 0,
-      overdue_cabinets: 0,
-      home_kem_count: 0,
-      port_kem_count: 0,
       pending_under_24h: 0,
       pending_under_72h: 0,
       closed_within_24h: 0,
       closed_within_72h: 0,
-      // QLCTKT fields
-      so_nv: 0,
-      cap_nhat_ho_so: 0,
-      nghiem_thu_n: 0,
-      dd_nghiem_thu_n: 0,
-      dau_noi_n: 0,
       nsld: null,
-      ton_duong_day: 0,
-      ton_duong_day_th: 0,
-      ton_ldtb: 0,
-      ton_ldtb_th: 0,
-      ton_lt1: 0,
-      ton_lt2: 0,
-      ton_lt3: 0,
-      ton_gt3: 0,
-      tong_ton: 0,
-      qua_han: 0,
-      huy: 0,
-      // Tong hop su co fields
-      ton_truoc: 0,
-      phat_sinh: 0,
-      xu_ly: 0,
-      ton_su_co: 0,
-      ton_tk: 0,
-      ton_su_co_tk: 0,
-      tac_vu_dong_n: 0,
-      lte_3h: 0,
-      h3_24: 0,
-      h24_48: 0,
-      h48_72: 0,
-      gt_72h: 0,
-      tam_dung: 0,
-      tong: 0,
-      hot: 0,
-      soc_tong: 0,
-      soc_gt_72h: 0,
-      htdv_tong: 0,
-      htdv_qua_han: 0,
-      htdv_gt_72h: 0,
     };
 
+    // Initialize all metric columns to 0 (except rate columns)
+    metricColumns.forEach((col) => {
+      if (!col.isRate) {
+        sum[col.key] = 0;
+      }
+    });
+
+    // Core fields needed for rates and mini-strips across different reports
+    const coreFields = [
+      'total_wos', 'closed_wos', 'pending_wos', 'overdue_wos',
+      'total_cabinets', 'completed_cabinets', 'pending_cabinets', 'overdue_cabinets',
+      'home_kem_count', 'port_kem_count',
+      'tong_ton', 'gt_30d', 'nghiem_thu_n', 'dd_nghiem_thu_n', 'dau_noi_n', 'cap_nhat_ho_so', 'qua_han', 'huy',
+      'ton_duong_day', 'ton_duong_day_th', 'ton_ldtb', 'ton_ldtb_th', 'ton_lt1', 'ton_lt2', 'ton_lt3', 'ton_gt3',
+      'ton_truoc', 'phat_sinh', 'xu_ly', 'ton_su_co', 'ton_tk', 'ton_su_co_tk',
+      'tac_vu_dong_n', 'lte_3h', 'h3_24', 'h24_48', 'h48_72', 'gt_72h', 'tam_dung', 'tong', 'hot',
+      'soc_tong', 'soc_gt_72h', 'htdv_tong', 'htdv_qua_han', 'htdv_gt_72h',
+    ];
+    coreFields.forEach((k) => {
+      if (sum[k] === undefined) {
+        sum[k] = 0;
+      }
+    });
+
+    const metricColKeys = new Set(metricColumns.map((c) => c.key));
+
     filteredByPills.forEach((r) => {
-      sum.total_wos += r.total_wos || 0;
-      sum.closed_wos += r.closed_wos || 0;
-      sum.pending_wos += r.pending_wos || 0;
-      sum.overdue_wos += r.overdue_wos || 0;
-      sum.closed_today += r.closed_today || 0;
-      sum.closed_yesterday += r.closed_yesterday || 0;
-      sum.closed_week += r.closed_week || 0;
-      sum.total_cabinets += r.total_cabinets || 0;
-      sum.completed_cabinets += r.completed_cabinets || 0;
-      sum.pending_cabinets += r.pending_cabinets || 0;
-      sum.overdue_cabinets += r.overdue_cabinets || 0;
-      sum.home_kem_count += r.home_kem_count || 0;
-      sum.port_kem_count += r.port_kem_count || 0;
-      sum.pending_under_24h += r.pending_under_24h || 0;
-      sum.pending_under_72h += r.pending_under_72h || 0;
-      sum.closed_within_24h += r.closed_within_24h || 0;
-      sum.closed_within_72h += r.closed_within_72h || 0;
-
-      // Sum QLCTKT fields
-      if (typeof r.so_nv === 'number') sum.so_nv += r.so_nv;
-      if (typeof r.cap_nhat_ho_so === 'number') sum.cap_nhat_ho_so += r.cap_nhat_ho_so;
-      if (typeof r.nghiem_thu_n === 'number') sum.nghiem_thu_n += r.nghiem_thu_n;
-      if (typeof r.dd_nghiem_thu_n === 'number') sum.dd_nghiem_thu_n += r.dd_nghiem_thu_n;
-      if (typeof r.dau_noi_n === 'number') sum.dau_noi_n += r.dau_noi_n;
-      if (typeof r.ton_duong_day === 'number') sum.ton_duong_day += r.ton_duong_day;
-      if (typeof r.ton_duong_day_th === 'number') sum.ton_duong_day_th += r.ton_duong_day_th;
-      if (typeof r.ton_ldtb === 'number') sum.ton_ldtb += r.ton_ldtb;
-      if (typeof r.ton_ldtb_th === 'number') sum.ton_ldtb_th += r.ton_ldtb_th;
-      if (typeof r.ton_lt1 === 'number') sum.ton_lt1 += r.ton_lt1;
-      if (typeof r.ton_lt2 === 'number') sum.ton_lt2 += r.ton_lt2;
-      if (typeof r.ton_lt3 === 'number') sum.ton_lt3 += r.ton_lt3;
-      if (typeof r.ton_gt3 === 'number') sum.ton_gt3 += r.ton_gt3;
-      if (typeof r.tong_ton === 'number') sum.tong_ton += r.tong_ton;
-      if (typeof r.qua_han === 'number') sum.qua_han += r.qua_han;
-      if (typeof r.huy === 'number') sum.huy += r.huy;
-
-      // Sum Tong Hop Su Co fields
-      if (typeof r.ton_truoc === 'number') sum.ton_truoc += r.ton_truoc;
-      if (typeof r.phat_sinh === 'number') sum.phat_sinh += r.phat_sinh;
-      if (typeof r.xu_ly === 'number') sum.xu_ly += r.xu_ly;
-      if (typeof r.ton_su_co === 'number') sum.ton_su_co += r.ton_su_co;
-      if (typeof r.ton_tk === 'number') sum.ton_tk += r.ton_tk;
-      if (typeof r.ton_su_co_tk === 'number') sum.ton_su_co_tk += r.ton_su_co_tk;
-      if (typeof r.tac_vu_dong_n === 'number') sum.tac_vu_dong_n += r.tac_vu_dong_n;
-      if (typeof r.lte_3h === 'number') sum.lte_3h += r.lte_3h;
-      if (typeof r.h3_24 === 'number') sum.h3_24 += r.h3_24;
-      if (typeof r.h24_48 === 'number') sum.h24_48 += r.h24_48;
-      if (typeof r.h48_72 === 'number') sum.h48_72 += r.h48_72;
-      if (typeof r.gt_72h === 'number') sum.gt_72h += r.gt_72h;
-      if (typeof r.tam_dung === 'number') sum.tam_dung += r.tam_dung;
-      if (typeof r.tong === 'number') sum.tong += r.tong;
-      if (typeof r.hot === 'number') sum.hot += r.hot;
-      if (typeof r.soc_tong === 'number') sum.soc_tong += r.soc_tong;
-      if (typeof r.soc_gt_72h === 'number') sum.soc_gt_72h += r.soc_gt_72h;
-      if (typeof r.htdv_tong === 'number') sum.htdv_tong += r.htdv_tong;
-      if (typeof r.htdv_qua_han === 'number') sum.htdv_qua_han += r.htdv_qua_han;
-      if (typeof r.htdv_gt_72h === 'number') sum.htdv_gt_72h += r.htdv_gt_72h;
-
-      // Dynamic accumulation for any report metric columns (e.g. date columns in TonTkTheoNgay)
+      // 1. Accumulate all non-rate metricColumns exactly once
       metricColumns.forEach((col) => {
-        if (typeof r[col.key] === 'number') {
+        if (!col.isRate && typeof r[col.key] === 'number') {
           sum[col.key] = (sum[col.key] || 0) + r[col.key];
+        }
+      });
+
+      // 2. Accumulate so_nv
+      if (typeof r.so_nv === 'number') sum.so_nv += r.so_nv;
+
+      // 3. Accumulate extra fields for rates / strips that are NOT in metricColumns
+      const extraFields = [
+        'closed_today', 'closed_yesterday', 'closed_week',
+        'pending_under_24h', 'pending_under_72h',
+        'closed_within_24h', 'closed_within_72h',
+        ...coreFields,
+      ];
+      extraFields.forEach((k) => {
+        if (!metricColKeys.has(k) && typeof r[k] === 'number') {
+          sum[k] = (sum[k] || 0) + r[k];
         }
       });
     });

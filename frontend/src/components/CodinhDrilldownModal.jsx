@@ -189,7 +189,11 @@ function getMetricLabel(metric) {
     case 'htdv_gt_72h':
       return 'Hỗ Trợ Dịch Vụ (>72h)';
     default:
-      return 'Tất Cả Công Việc (Tổng WO)';
+      if (metric && metric.startsWith('d_')) {
+        const parts = metric.substring(2).split('_');
+        if (parts.length === 3) return `Tồn Tạo Ngày ${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return 'Tất Cả Công Việc';
   }
 }
 

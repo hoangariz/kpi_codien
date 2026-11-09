@@ -24,7 +24,8 @@ import {
   Building2,
   XCircle,
   UserCheck,
-  Database
+  Database,
+  Download
 } from 'lucide-react';
 
 import { tasksApi } from '../api/tasksApi';
@@ -33,6 +34,7 @@ import { metaApi } from '../api/metaApi';
 import { importsApi } from '../api/importsApi';
 import TaskDetailModal from '../components/TaskDetailModal';
 import { formatDataTimestamp } from '../utils/dateFormat';
+import { exportSingleSheetXlsx } from '../utils/excelExport';
 
 // FT accounts list requested by user for smart auto-suggestions
 export const FT_SUGGESTION_LIST = [
@@ -81,6 +83,7 @@ export default function SearchPage({ onNavigateToDashboard }) {
   // Pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Auto-suggest state for FT / Employees
   const [showFtSuggestions, setShowFtSuggestions] = useState(false);
@@ -130,9 +133,9 @@ export default function SearchPage({ onNavigateToDashboard }) {
     queryFn: metaApi.getFilters,
   });
 
-  // Parse multiple WO codes from input
+  // Parse multiple WO codes or multi-line terms from input
   const parseWoCodes = (input) => {
-    if (!input.trim()) return [];
+    if (!input || !input.trim()) return [];
     // Split by comma, semicolon, newline, tab, or multiple spaces
     return input
       .split(/[,;\n\t]+|\s{2,}/)
@@ -143,8 +146,8 @@ export default function SearchPage({ onNavigateToDashboard }) {
   // Handle WO input change – detect multiple codes
   const handleSearchInputChange = (value) => {
     setSearchQuery(value);
-    if (searchMode === 'wo') {
-      const codes = parseWoCodes(value);
+    const codes = parseWoCodes(value);
+    if (searchMode === 'wo' || codes.length > 1) {
       setWoTags(codes.length > 1 ? codes : []);
     } else {
       setWoTags([]);
@@ -154,12 +157,11 @@ export default function SearchPage({ onNavigateToDashboard }) {
   // Remove a single WO tag
   const removeWoTag = (codeToRemove) => {
     const updated = woTags.filter(c => c !== codeToRemove);
-    setWoTags(updated);
-    setSearchQuery(updated.join(', '));
+    setWoTags(updated.length > 1 ? updated : []);
+    setSearchQuery(updated.join('\n'));
   };
 
   // Build query params for tasksApi
-  // When multiple WO codes detected, send them all as comma-separated
   const queryParams = {
     page,
     page_size: pageSize,
@@ -172,19 +174,15 @@ export default function SearchPage({ onNavigateToDashboard }) {
 
   // Dispatch search query to exact backend field depending on searchMode
   if (searchQuery.trim()) {
-    if (searchMode === 'wo') {
-      // If multiple WO tags, send all as comma-separated for backend IN() query
-      if (woTags.length > 1) {
-        queryParams.search = woTags.join(',');
-      } else {
-        queryParams.search = searchQuery.trim();
-      }
+    if (woTags.length > 1) {
+      // Multiple items pasted: send all separated by newline for backend ordered search
+      queryParams.search = woTags.join('\n');
     } else if (searchMode === 'station_ft') {
       // Search both station code and FT username simultaneously
       queryParams.station_code = searchQuery.trim();
       queryParams.ft_username = searchQuery.trim();
     } else {
-      // 'all' mode
+      // 'wo' or 'all' mode
       queryParams.search = searchQuery.trim();
     }
   }
@@ -334,6 +332,62 @@ export default function SearchPage({ onNavigateToDashboard }) {
     if (isNaN(dt.getTime())) return d;
     const pad = (n) => String(n).padStart(2, '0');
     return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  };
+
+  // Export ALL search results to Excel
+  const handleExportAllToExcel = async () => {
+    if (!totalTasks) return;
+    try {
+      setIsExporting(true);
+      const exportParams = {
+        ...queryParams,
+        page: 1,
+        page_size: Math.min(5000, Math.max(totalTasks, 1)),
+      };
+      const res = await tasksApi.getTasks(exportParams);
+      const allTasks = res?.items || tasksList;
+
+      const headers = [
+        'STT',
+        'Mã WO',
+        'Mã Trạm',
+        'Trạng Thái',
+        'Loại Đầu Việc',
+        'Nội Dung Chi Tiết',
+        'Người Thực Hiện (FT)',
+        'Nhóm Điều Phối',
+        'Thuê Bao',
+        'Thời Điểm Tạo',
+        'Thời Hạn Kết Thúc',
+        'Thời Gian Còn Lại (Giờ)',
+        'Ghi Chú Điều Hành'
+      ];
+
+      const rows = allTasks.map((t, idx) => [
+        idx + 1,
+        t.ma_cong_viec || '',
+        t.station_code || '',
+        t.trang_thai || '',
+        t.loai_cong_viec || '',
+        t.noi_dung_cong_viec || '',
+        t.assigned_to_name || '',
+        t.group_name || '',
+        t.thue_bao || '',
+        formatDate(t.thoi_diem_tao),
+        formatDate(t.thoi_diem_yeu_cau_ket_thuc),
+        t.thoi_gian_con_lai ?? '',
+        t.latest_note || ''
+      ]);
+
+      const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const filename = `TraCuu_CongViec_${nowStr}`;
+      await exportSingleSheetXlsx(filename, 'Danh sách công việc', headers, rows);
+    } catch (err) {
+      console.error('Lỗi xuất Excel:', err);
+      alert('Không thể xuất file Excel: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -1012,23 +1066,51 @@ export default function SearchPage({ onNavigateToDashboard }) {
           )}
         </div>
 
-        {/* Page size selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Hiển thị:</span>
-          <select
-            className="select-filter"
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
+        {/* Controls: Page size & Full Excel Export */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Hiển thị:</span>
+            <select
+              className="select-filter"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+              style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+            >
+              <option value="15">15 dòng</option>
+              <option value="25">25 dòng</option>
+              <option value="50">50 dòng</option>
+              <option value="100">100 dòng</option>
+              <option value="300">300 dòng</option>
+              <option value="500">500 dòng</option>
+              <option value="1000">1,000 dòng</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={totalTasks === 0 || isExporting}
+            onClick={handleExportAllToExcel}
+            style={{
+              padding: '4px 12px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--brand-primary)',
+              borderColor: 'rgba(2, 132, 199, 0.4)',
+              background: 'rgba(2, 132, 199, 0.05)',
+              cursor: totalTasks === 0 || isExporting ? 'not-allowed' : 'pointer'
             }}
-            style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+            title="Xuất toàn bộ kết quả tra cứu ra file Excel (không giới hạn trang)"
           >
-            <option value="15">15 dòng</option>
-            <option value="25">25 dòng</option>
-            <option value="50">50 dòng</option>
-            <option value="100">100 dòng</option>
-          </select>
+            <Download size={14} />
+            <span>{isExporting ? 'Đang xuất...' : `Xuất Excel (${totalTasks.toLocaleString()})`}</span>
+          </button>
         </div>
       </div>
 

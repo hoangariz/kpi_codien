@@ -365,12 +365,15 @@ def get_special_maintenance_stats(
     # 1. Calculate count of excluded records (Đã đóng của tháng trước)
     # Xác định tháng công việc theo Thời điểm bắt đầu (thoi_diem_bat_dau_thuc_hien), fallback thoi_diem_tao, fallback thoi_diem_yeu_cau_ket_thuc
     task_start_expr = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao, Task.thoi_diem_yeu_cau_ket_thuc)
+    task_close_expr = func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)
     if exclude_closed:
         excluded_query = db.query(func.count(Task.ma_cong_viec)).filter(
             *type_condition,
             Task.trang_thai.in_(CLOSED_STATUSES),
-            task_start_expr != None,
-            task_start_expr < month_start
+            or_(
+                and_(task_close_expr != None, task_close_expr < month_start, task_close_expr < seven_days_ago),
+                and_(task_close_expr == None, task_start_expr != None, task_start_expr < month_start)
+            )
         )
         if board_id:
             from backend.models.tracking import TrackingBoardTask
@@ -380,12 +383,14 @@ def get_special_maintenance_stats(
         excluded_count = excluded_query.scalar() or 0
 
         # 2. Filter condition for valid records
+        # Chỉ loại trừ WO đã đóng trước tháng này (và trước 7 ngày qua).
+        # Không phân biệt trong hạn hay quá hạn, miễn hoàn thành trong tháng này / hôm nay / hôm qua / 7 ngày qua thì đều được tính vào cột đóng hôm nay / đóng hôm qua / đóng tuần qua.
         base_conditions = [
             *type_condition,
             or_(
-                task_start_expr == None,
-                task_start_expr >= month_start,
-                ~Task.trang_thai.in_(CLOSED_STATUSES)
+                ~Task.trang_thai.in_(CLOSED_STATUSES),
+                and_(task_close_expr != None, or_(task_close_expr >= month_start, task_close_expr >= seven_days_ago)),
+                and_(task_close_expr == None, or_(task_start_expr == None, task_start_expr >= month_start))
             )
         ]
     else:
@@ -1061,11 +1066,12 @@ def get_special_maintenance_tasks(
     filters = [*type_condition]
     if exclude_closed:
         task_start_expr = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao, Task.thoi_diem_yeu_cau_ket_thuc)
+        task_close_expr = func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)
         filters.append(
             or_(
-                task_start_expr == None,
-                task_start_expr >= month_start,
-                ~Task.trang_thai.in_(CLOSED_STATUSES)
+                ~Task.trang_thai.in_(CLOSED_STATUSES),
+                and_(task_close_expr != None, or_(task_close_expr >= month_start, task_close_expr >= seven_days_ago)),
+                and_(task_close_expr == None, or_(task_start_expr == None, task_start_expr >= month_start))
             )
         )
 

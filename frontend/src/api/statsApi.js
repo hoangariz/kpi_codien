@@ -84,11 +84,21 @@ async function loadAllValidMaintenanceTasks(targetType, activeMonth, excludeClos
         monthStart = new Date(n.getFullYear(), n.getMonth(), 1, 0, 0, 0);
       }
 
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
       const validItems = items.filter(t => {
         if (t.loai_cong_viec !== targetType) return false;
-        if (excludeClosedPriorMonths !== false && isClosedStatus(t.trang_thai) && t.thoi_diem_yeu_cau_ket_thuc) {
-          const endDt = new Date(t.thoi_diem_yeu_cau_ket_thuc);
-          if (endDt < monthStart) return false;
+        if (excludeClosedPriorMonths !== false && isClosedStatus(t.trang_thai)) {
+          const closeDtStr = t.thoi_diem_ft_hoan_thanh || t.thoi_diem_cd_dong;
+          const endDtStr = t.thoi_diem_yeu_cau_ket_thuc || t.thoi_diem_bat_dau_thuc_hien || t.thoi_diem_tao;
+          if (closeDtStr) {
+            const closeDt = new Date(closeDtStr);
+            if (closeDt < monthStart && closeDt < sevenDaysAgo) return false;
+          } else if (endDtStr) {
+            const endDt = new Date(endDtStr);
+            if (endDt < monthStart) return false;
+          }
         }
         if (excludeTuChoi && (t.trang_thai || '').toLowerCase().includes('từ chối')) {
           return false;
@@ -237,8 +247,8 @@ export const statsApi = {
 
     // 1.5 Sub-category keyword filter (Hỗ trợ Bảng con từ khóa & Bảng con Khác)
     const isOtherSub = Boolean(
-      params.is_sub_other || 
-      params.sub_category_id === 0 || 
+      params.is_sub_other ||
+      params.sub_category_id === 0 ||
       (params.sub_keyword && (params.sub_keyword.toUpperCase() === 'KHÁC' || params.sub_keyword.toLowerCase() === 'khác'))
     );
 
@@ -355,7 +365,7 @@ export const statsApi = {
     // 3. Search filter
     if (params.search && params.search.trim()) {
       const q = params.search.trim().toLowerCase();
-      items = items.filter(t => 
+      items = items.filter(t =>
         (t.ma_cong_viec && t.ma_cong_viec.toLowerCase().includes(q)) ||
         (t.noi_dung_cong_viec && t.noi_dung_cong_viec.toLowerCase().includes(q)) ||
         (t.ghi_chu && t.ghi_chu.toLowerCase().includes(q)) ||

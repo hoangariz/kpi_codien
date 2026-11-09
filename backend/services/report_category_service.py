@@ -167,11 +167,13 @@ def get_report_categories(
             exclude_closed = cat.exclude_closed_prior_months if cat.exclude_closed_prior_months is not None else True
             if exclude_closed:
                 task_start_expr = func.coalesce(Task.thoi_diem_bat_dau_thuc_hien, Task.thoi_diem_tao, Task.thoi_diem_yeu_cau_ket_thuc)
+                task_close_expr = func.coalesce(Task.thoi_diem_ft_hoan_thanh, Task.thoi_diem_cd_dong)
+                seven_days_ago = now - timedelta(days=7)
                 base_conds.append(
                     or_(
-                        task_start_expr == None,
-                        task_start_expr >= month_start,
-                        ~Task.trang_thai.in_(CLOSED_STATUSES)
+                        ~Task.trang_thai.in_(CLOSED_STATUSES),
+                        and_(task_close_expr != None, or_(task_close_expr >= month_start, task_close_expr >= seven_days_ago)),
+                        and_(task_close_expr == None, or_(task_start_expr == None, task_start_expr >= month_start))
                     )
                 )
 

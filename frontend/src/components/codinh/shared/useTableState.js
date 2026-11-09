@@ -179,32 +179,25 @@ export function useTableState({
             subtitle: r.ma_cum || '',
             rows: [],
             isOther: false,
-            // Metric aggregates initialized to 0
-            total_wos: 0,
-            closed_wos: 0,
-            pending_wos: 0,
-            overdue_wos: 0,
-            home_kem_count: 0,
-            port_kem_count: 0,
-            total_cabinets: 0,
-            completed_cabinets: 0,
-            pending_cabinets: 0,
-            overdue_cabinets: 0,
           });
         }
         const g = groupsMap.get(gKey);
         g.rows.push(r);
-        // Aggregate
-        g.total_wos += r.total_wos || 0;
-        g.closed_wos += r.closed_wos || 0;
-        g.pending_wos += r.pending_wos || 0;
-        g.overdue_wos += r.overdue_wos || 0;
-        g.home_kem_count += r.home_kem_count || 0;
-        g.port_kem_count += r.port_kem_count || 0;
-        g.total_cabinets += r.total_cabinets || 0;
-        g.completed_cabinets += r.completed_cabinets || 0;
-        g.pending_cabinets += r.pending_cabinets || 0;
-        g.overdue_cabinets += r.overdue_cabinets || 0;
+
+        // Dynamic aggregation for all non-rate columns
+        const colKeysSet = new Set(columns.map((c) => c.key));
+        columns.forEach((col) => {
+          if (!col.isRate && typeof r[col.key] === 'number') {
+            g[col.key] = (g[col.key] || 0) + r[col.key];
+          }
+        });
+
+        // Extra THC fields for rates if not in columns
+        ['total_wos', 'closed_wos', 'pending_wos', 'overdue_wos', 'home_kem_count', 'port_kem_count', 'total_cabinets', 'completed_cabinets', 'pending_cabinets', 'overdue_cabinets'].forEach((k) => {
+          if (!colKeysSet.has(k) && typeof r[k] === 'number') {
+            g[k] = (g[k] || 0) + r[k];
+          }
+        });
       });
 
       const groups = Array.from(groupsMap.values()).map((g) => {
@@ -221,17 +214,18 @@ export function useTableState({
           subtitle: '',
           rows: otherRows.sort(sortComparator),
           isOther: true,
-          total_wos: otherRows.reduce((acc, r) => acc + (r.total_wos || 0), 0),
-          closed_wos: otherRows.reduce((acc, r) => acc + (r.closed_wos || 0), 0),
-          pending_wos: otherRows.reduce((acc, r) => acc + (r.pending_wos || 0), 0),
-          overdue_wos: otherRows.reduce((acc, r) => acc + (r.overdue_wos || 0), 0),
-          home_kem_count: otherRows.reduce((acc, r) => acc + (r.home_kem_count || 0), 0),
-          port_kem_count: otherRows.reduce((acc, r) => acc + (r.port_kem_count || 0), 0),
-          total_cabinets: otherRows.reduce((acc, r) => acc + (r.total_cabinets || 0), 0),
-          completed_cabinets: otherRows.reduce((acc, r) => acc + (r.completed_cabinets || 0), 0),
-          pending_cabinets: otherRows.reduce((acc, r) => acc + (r.pending_cabinets || 0), 0),
-          overdue_cabinets: otherRows.reduce((acc, r) => acc + (r.overdue_cabinets || 0), 0),
         };
+        const colKeysSet = new Set(columns.map((c) => c.key));
+        columns.forEach((col) => {
+          if (!col.isRate) {
+            otherGroup[col.key] = otherRows.reduce((acc, r) => acc + (typeof r[col.key] === 'number' ? r[col.key] : 0), 0);
+          }
+        });
+        ['total_wos', 'closed_wos', 'pending_wos', 'overdue_wos', 'home_kem_count', 'port_kem_count', 'total_cabinets', 'completed_cabinets', 'pending_cabinets', 'overdue_cabinets'].forEach((k) => {
+          if (!colKeysSet.has(k)) {
+            otherGroup[k] = otherRows.reduce((acc, r) => acc + (typeof r[k] === 'number' ? r[k] : 0), 0);
+          }
+        });
         otherGroup.wo_rate = otherGroup.total_wos > 0 ? Number(((otherGroup.closed_wos / otherGroup.total_wos) * 100).toFixed(1)) : 0;
         otherGroup.cabinet_rate = otherGroup.total_cabinets > 0 ? Number(((otherGroup.completed_cabinets / otherGroup.total_cabinets) * 100).toFixed(1)) : 0;
         groups.push(otherGroup);
@@ -265,30 +259,25 @@ export function useTableState({
             subtitle: gSub,
             rows: [],
             isOther: false,
-            total_wos: 0,
-            closed_wos: 0,
-            pending_wos: 0,
-            overdue_wos: 0,
-            home_kem_count: 0,
-            port_kem_count: 0,
-            total_cabinets: 0,
-            completed_cabinets: 0,
-            pending_cabinets: 0,
-            overdue_cabinets: 0,
           });
         }
         const g = groupsMap.get(gKey);
         g.rows.push(r);
-        g.total_wos += r.total_wos || 0;
-        g.closed_wos += r.closed_wos || 0;
-        g.pending_wos += r.pending_wos || 0;
-        g.overdue_wos += r.overdue_wos || 0;
-        g.home_kem_count += r.home_kem_count || 0;
-        g.port_kem_count += r.port_kem_count || 0;
-        g.total_cabinets += r.total_cabinets || 0;
-        g.completed_cabinets += r.completed_cabinets || 0;
-        g.pending_cabinets += r.pending_cabinets || 0;
-        g.overdue_cabinets += r.overdue_cabinets || 0;
+
+        // Dynamic aggregation for all non-rate columns
+        const colKeysSet = new Set(columns.map((c) => c.key));
+        columns.forEach((col) => {
+          if (!col.isRate && typeof r[col.key] === 'number') {
+            g[col.key] = (g[col.key] || 0) + r[col.key];
+          }
+        });
+
+        // Extra THC fields for rates if not in columns
+        ['total_wos', 'closed_wos', 'pending_wos', 'overdue_wos', 'home_kem_count', 'port_kem_count', 'total_cabinets', 'completed_cabinets', 'pending_cabinets', 'overdue_cabinets'].forEach((k) => {
+          if (!colKeysSet.has(k) && typeof r[k] === 'number') {
+            g[k] = (g[k] || 0) + r[k];
+          }
+        });
       });
 
       const groups = Array.from(groupsMap.values()).map((g) => {
@@ -312,17 +301,18 @@ export function useTableState({
           subtitle: '',
           rows: otherRows.sort(sortComparator),
           isOther: true,
-          total_wos: otherRows.reduce((acc, r) => acc + (r.total_wos || 0), 0),
-          closed_wos: otherRows.reduce((acc, r) => acc + (r.closed_wos || 0), 0),
-          pending_wos: otherRows.reduce((acc, r) => acc + (r.pending_wos || 0), 0),
-          overdue_wos: otherRows.reduce((acc, r) => acc + (r.overdue_wos || 0), 0),
-          home_kem_count: otherRows.reduce((acc, r) => acc + (r.home_kem_count || 0), 0),
-          port_kem_count: otherRows.reduce((acc, r) => acc + (r.port_kem_count || 0), 0),
-          total_cabinets: otherRows.reduce((acc, r) => acc + (r.total_cabinets || 0), 0),
-          completed_cabinets: otherRows.reduce((acc, r) => acc + (r.completed_cabinets || 0), 0),
-          pending_cabinets: otherRows.reduce((acc, r) => acc + (r.pending_cabinets || 0), 0),
-          overdue_cabinets: otherRows.reduce((acc, r) => acc + (r.overdue_cabinets || 0), 0),
         };
+        const colKeysSet = new Set(columns.map((c) => c.key));
+        columns.forEach((col) => {
+          if (!col.isRate) {
+            otherGroup[col.key] = otherRows.reduce((acc, r) => acc + (typeof r[col.key] === 'number' ? r[col.key] : 0), 0);
+          }
+        });
+        ['total_wos', 'closed_wos', 'pending_wos', 'overdue_wos', 'home_kem_count', 'port_kem_count', 'total_cabinets', 'completed_cabinets', 'pending_cabinets', 'overdue_cabinets'].forEach((k) => {
+          if (!colKeysSet.has(k)) {
+            otherGroup[k] = otherRows.reduce((acc, r) => acc + (typeof r[k] === 'number' ? r[k] : 0), 0);
+          }
+        });
         otherGroup.wo_rate = otherGroup.total_wos > 0 ? Number(((otherGroup.closed_wos / otherGroup.total_wos) * 100).toFixed(1)) : 0;
         otherGroup.cabinet_rate = otherGroup.total_cabinets > 0 ? Number(((otherGroup.completed_cabinets / otherGroup.total_cabinets) * 100).toFixed(1)) : 0;
         groups.push(otherGroup);

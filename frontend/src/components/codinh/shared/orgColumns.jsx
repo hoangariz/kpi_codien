@@ -124,6 +124,8 @@ export function getOrgColumns(level, { onCrossFilter, orgMetadata = {} } = {}) {
                   id: row.team_id,
                   name: row.ten_doi,
                   code: row.ma_doi,
+                  clusterName: row.ten_cum,
+                  clusterId: row.cluster_id,
                 })
               }
               className="font-semibold text-brand-primary hover:underline"

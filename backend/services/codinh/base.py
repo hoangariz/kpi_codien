@@ -189,11 +189,16 @@ class BaseReport:
                 TaskCodinh.thoi_diem_tao,
                 TaskCodinh.thoi_diem_yeu_cau_ket_thuc
             )
+            close_date = func.coalesce(
+                TaskCodinh.thoi_diem_ft_hoan_thanh,
+                TaskCodinh.thoi_diem_cd_dong
+            )
+            seven_days_ago = datetime.utcnow() - timedelta(days=7)
             q = q.filter(
                 or_(
-                    start_date == None,
-                    start_date >= month_start,
-                    ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES)
+                    ~TaskCodinh.trang_thai.in_(CLOSED_STATUSES),
+                    and_(close_date != None, or_(close_date >= month_start, close_date >= seven_days_ago)),
+                    and_(close_date == None, or_(start_date == None, start_date >= month_start))
                 )
             )
 

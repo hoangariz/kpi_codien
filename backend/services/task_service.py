@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
-from sqlalchemy import desc, asc, or_, and_, func
+from sqlalchemy import desc, asc, or_, and_, func, case
 from sqlalchemy.orm import Session, joinedload
 
 from backend.models import Task, TaskHistory, TaskNote, Employee, Group, SystemModel, Unit, Station, TaskCodinh
@@ -28,19 +28,40 @@ def get_tasks_paginated(
     query = db.query(Task)
 
     filters = []
+    search_terms = []
+    order_cases = []
 
-    if search:
-        # Detect multiple WO codes (comma-separated)
-        if ',' in search:
-            wo_codes = [s.strip() for s in search.split(',') if s.strip()]
-            if wo_codes:
-                filters.append(Task.ma_cong_viec.in_(wo_codes))
-        else:
-            search_pattern = f"%{search.strip()}%"
+    if search and search.strip():
+        # Detect multiple search terms (split by newline, comma, semicolon)
+        search_terms = [s.strip() for s in re.split(r'[\r\n,;]+', search) if s.strip()]
+
+        if len(search_terms) > 1:
+            term_conditions = []
+            for idx, term in enumerate(search_terms):
+                t_clean = term.strip()
+                t_pat = f"%{t_clean}%"
+                cond = or_(
+                    Task.ma_cong_viec == t_clean,
+                    Task.ma_cong_viec.ilike(t_pat),
+                    Task.thue_bao == t_clean,
+                    Task.thue_bao.ilike(t_pat),
+                    Task.station.has(Station.code.ilike(t_pat)),
+                    Task.employee_assigned.has(Employee.name.ilike(t_pat)),
+                    Task.noi_dung_cong_viec.ilike(t_pat),
+                    Task.ghi_chu.ilike(t_pat),
+                )
+                term_conditions.append(cond)
+                order_cases.append((cond, idx))
+            filters.append(or_(*term_conditions))
+        elif len(search_terms) == 1:
+            t_clean = search_terms[0]
+            search_pattern = f"%{t_clean}%"
             filters.append(
                 or_(
+                    Task.ma_cong_viec == t_clean,
                     Task.ma_cong_viec.ilike(search_pattern),
                     Task.noi_dung_cong_viec.ilike(search_pattern),
+                    Task.thue_bao == t_clean,
                     Task.thue_bao.ilike(search_pattern),
                     Task.ghi_chu.ilike(search_pattern),
                     Task.station.has(Station.code.ilike(search_pattern)),
@@ -121,14 +142,41 @@ def get_tasks_paginated(
 
     # Sorting
     sort_column = getattr(Task, sort_by, Task.thoi_diem_tao)
-    if sort_order.lower() == "asc":
-        query = query.order_by(asc(sort_column))
+    if len(search_terms) > 1 and order_cases:
+        term_order_case = case(*order_cases, else_=len(search_terms))
+        if sort_order.lower() == "asc":
+            query = query.order_by(term_order_case.asc(), asc(sort_column))
+        else:
+            query = query.order_by(term_order_case.asc(), desc(sort_column))
     else:
-        query = query.order_by(desc(sort_column))
+        if sort_order.lower() == "asc":
+            query = query.order_by(asc(sort_column))
+        else:
+            query = query.order_by(desc(sort_column))
 
     # Pagination
     offset = (page - 1) * page_size
     items_raw = query.offset(offset).limit(page_size).all()
+
+    # If multi-line/multi-term search, ensure items strictly follow the search term order
+    if len(search_terms) > 1:
+        def get_term_order(task_obj):
+            m_code = (task_obj.ma_cong_viec or "").lower()
+            tb = (task_obj.thue_bao or "").lower()
+            st = (task_obj.station.code if task_obj.station else "").lower()
+            nd = (task_obj.noi_dung_cong_viec or "").lower()
+            gh = (task_obj.ghi_chu or "").lower()
+            emp = (task_obj.employee_assigned.name if task_obj.employee_assigned else "").lower()
+            for i, term in enumerate(search_terms):
+                t_low = term.lower()
+                if (t_low == m_code or t_low in m_code or 
+                    t_low == tb or t_low in tb or 
+                    t_low in st or t_low in nd or 
+                    t_low in gh or t_low in emp):
+                    return i
+            return len(search_terms)
+
+        items_raw.sort(key=get_term_order)
 
     # Pre-fetch counts of notes and history for these tasks
     task_keys = [t.ma_cong_viec for t in items_raw]

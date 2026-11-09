@@ -12,6 +12,7 @@ from backend.models.task_qlctkt import TaskQlctkt
 from backend.models.import_log import ImportLog
 from backend.services.codinh.base import BaseReport
 from backend.services.codinh.org import get_org_lookup, get_org_version
+from backend.services.codinh.normalize import normalize_key
 from backend.services.codinh.importer_qlctkt import get_qlctkt_version
 from backend.services.codinh.importer import _get_setting
 
@@ -445,9 +446,20 @@ class TonTkTheoNgayReport(BaseReport):
                 TaskQlctkt.nv_key == "",
                 ~TaskQlctkt.nv_key.in_(valid_ht_keys)
             ))
-        elif ft_low == "employee" and target_name:
-            t_norm = target_name.strip()
-            q = q.filter(TaskQlctkt.nv_key == t_norm)
+        elif ft_low == "employee":
+            emp_key = normalize_key(target_name) if target_name else None
+            if not emp_key and filter_id:
+                for k, u in users_by_ho_ten.items():
+                    if str(u.get("employee_id")) == str(filter_id) or str(u.get("id")) == str(filter_id):
+                        emp_key = k
+                        break
+            if emp_key:
+                q = q.filter(or_(
+                    TaskQlctkt.nv_key == emp_key,
+                    func.lower(TaskQlctkt.nv_thuc_hien) == func.lower(target_name) if target_name else False
+                ))
+            elif target_name:
+                q = q.filter(func.lower(TaskQlctkt.nv_thuc_hien) == func.lower(target_name.strip()))
         elif ft_low in ("team", "doi") and (filter_id or target_name):
             team_ht_keys = [k for k, u in users_by_ho_ten.items() if str(u.get("team_id")) == str(filter_id) or u.get("ten_doi") == target_name]
             q = q.filter(TaskQlctkt.nv_key.in_(team_ht_keys))
@@ -521,6 +533,7 @@ class TonTkTheoNgayReport(BaseReport):
             "metric": metric,
             "date": selected_date,
             "total": total_count,
+            "total_items": total_count,
             "page": page,
             "page_size": page_size,
             "items": items,
