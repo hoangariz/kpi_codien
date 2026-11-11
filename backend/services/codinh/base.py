@@ -48,6 +48,11 @@ def clear_codinh_stats_cache():
     except Exception:
         pass
     try:
+        from backend.services.codinh.reports.bao_hong_thc import clear_bao_hong_thc_cache
+        clear_bao_hong_thc_cache()
+    except Exception:
+        pass
+    try:
         from backend.services.codinh.registry import clear_reports_cards_cache
         clear_reports_cards_cache()
     except Exception:

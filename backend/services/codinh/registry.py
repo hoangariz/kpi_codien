@@ -14,6 +14,7 @@ from backend.services.codinh.reports.port_kem import PortKemReport
 from backend.services.codinh.reports.qlctkt_trien_khai import QlctktTrienKhaiReport
 from backend.services.codinh.reports.tong_hop_su_co import TongHopSuCoReport
 from backend.services.codinh.reports.ton_tk_theo_ngay import TonTkTheoNgayReport
+from backend.services.codinh.reports.bao_hong_thc import BaoHongThcReport
 
 _cards_cache: Dict[str, Any] = {}
 _cards_cache_lock = threading.Lock()
@@ -30,6 +31,7 @@ REPORTS: Dict[str, BaseReport] = {
     "qlctkt_trien_khai": QlctktTrienKhaiReport(),
     "tong_hop_su_co": TongHopSuCoReport(),
     "ton_tk_theo_ngay": TonTkTheoNgayReport(),
+    "bao_hong_thc": BaoHongThcReport(),
 }
 
 # Legacy category id map for backward compatibility
@@ -64,6 +66,8 @@ def get_report(key_or_id: Optional[Union[str, int]] = None) -> BaseReport:
     lower_key = str_key.lower()
     for k, rep in REPORTS.items():
         if k.lower() == lower_key:
+            return rep
+        if ("bao_hong" in lower_key or "bao_hong_thc" in lower_key) and k == "bao_hong_thc":
             return rep
         if "port" in lower_key and k == "port_kem":
             return rep
@@ -126,6 +130,10 @@ def _compute_single_card(rep_key: str, target_month: Optional[str]) -> Dict[str,
             "qua_han": summ.get("qua_han", 0),
             "nghiem_thu_n": summ.get("nghiem_thu_n", 0),
             "huy": summ.get("huy", 0),
+            "ton_pda": summ.get("ton_pda", 0),
+            "qua_han_pda": summ.get("qua_han_pda", 0),
+            "ton_thay_hop": summ.get("ton_thay_hop", 0),
+            "qua_han_thay_hop": summ.get("qua_han_thay_hop", 0),
             "selected_date": stats.get("selected_date"),
         }
     except Exception as ex:
