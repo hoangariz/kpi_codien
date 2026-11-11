@@ -3,6 +3,7 @@ import PortKemReport, { getPortKemCardKpis, PORT_KEM_COLUMNS } from './reports/P
 import QlctktTrienKhaiReport, { getQlctktCardKpis, buildQlctktColumns } from './reports/QlctktTrienKhaiReport';
 import TongHopSuCoReport, { getTongHopSuCoCardKpis, buildTongHopSuCoColumns } from './reports/TongHopSuCoReport';
 import TonTkTheoNgayReport, { getTonTkTheoNgayCardKpis, buildTonTkTheoNgayColumns } from './reports/TonTkTheoNgayReport';
+import BaoHongThcReport, { getBaoHongThcCardKpis, BAO_HONG_THC_COLUMNS } from './reports/BaoHongThcReport';
 
 /**
  * Registry ánh xạ giữa mã báo cáo (report key) và Component giao diện tương ứng.
@@ -22,6 +23,14 @@ export const REPORT_REGISTRY = {
     component: PortKemReport,
     getCardKpis: getPortKemCardKpis,
     columns: PORT_KEM_COLUMNS,
+    timeType: 'month',
+  },
+  bao_hong_thc: {
+    key: 'bao_hong_thc',
+    title: 'Báo hỏng Tủ hộp cáp (THC)',
+    component: BaoHongThcReport,
+    getCardKpis: getBaoHongThcCardKpis,
+    columns: BAO_HONG_THC_COLUMNS,
     timeType: 'month',
   },
   qlctkt_trien_khai: {
@@ -59,6 +68,9 @@ export function getReportConfig(keyOrId) {
   const str = String(keyOrId).toLowerCase().trim();
   if (REPORT_REGISTRY[str]) {
     return REPORT_REGISTRY[str];
+  }
+  if (str.includes('bao_hong') || str.includes('báo hỏng')) {
+    return REPORT_REGISTRY.bao_hong_thc;
   }
   if (str === '13' || str.includes('thc') || str.includes('hộp cáp')) {
     return REPORT_REGISTRY.thc;

@@ -114,6 +114,19 @@ function getMetricLabel(metric) {
     case 'overdue_cabinets':
     case 'tu_qua_han':
       return 'Tủ THC Quá Hạn';
+    // Báo hỏng THC Metrics
+    case 'ton_pda':
+      return 'Tồn PDA';
+    case 'qua_han_pda':
+      return 'Quá Hạn PDA';
+    case 'ton_thay_hop':
+    case 'ton_thay_the_hop':
+    case 'thay_thu_ton':
+      return 'Tồn Thay Thế Hộp';
+    case 'qua_han_thay_hop':
+    case 'qua_han_thay_the_hop':
+    case 'thay_thu_qua_han':
+      return 'Quá Hạn Thay Thế Hộp';
     // QLCTKT Metrics
     case 'cap_nhat_ho_so':
       return 'Cập Nhật Hồ Sơ';

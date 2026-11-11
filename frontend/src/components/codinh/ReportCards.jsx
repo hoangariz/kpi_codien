@@ -4,6 +4,7 @@ import { CheckCircle2, FileSpreadsheet } from 'lucide-react';
 const DEFAULT_REPORTS = [
   { key: 'thc', title: 'Bảo Dưỡng Tủ Hộp Cáp (THC)' },
   { key: 'port_kem', title: 'ĐH Port Kém' },
+  { key: 'bao_hong_thc', title: 'Báo hỏng Tủ hộp cáp (THC)' },
   { key: 'qlctkt_trien_khai', title: 'Tổng Hợp TK' },
   { key: 'tong_hop_su_co', title: 'Tổng Hợp Sự Cố' },
   { key: 'ton_tk_theo_ngay', title: 'Tồn TK theo ngày' },
@@ -30,6 +31,7 @@ export default function ReportCards({
         {displayReports.map((rep) => {
           const isSelected = selectedReportKey === rep.key;
           const isThc = rep.key === 'thc';
+          const isBaoHongThc = rep.key === 'bao_hong_thc';
           const isQlctkt = rep.key === 'qlctkt_trien_khai';
           const isTongHopSuCo = rep.key === 'tong_hop_su_co';
           const isTonTkTheoNgay = rep.key === 'ton_tk_theo_ngay';
@@ -273,6 +275,68 @@ export default function ReportCards({
                     </span>
                     <strong style={{ fontSize: '0.84rem', color: (rep.overdue_cabinets || 0) > 0 ? '#ef4444' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                       {(rep.overdue_cabinets || 0).toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+              ) : isBaoHongThc ? (
+                /* MINI KPI CHO BÁO HỎNG THC (5 CHỈ SỐ: % ĐÓNG, TỒN VIỆC, QUÁ HẠN, TỒN PDA, TỒN THAY HỘP) */
+                <div
+                  className="card-kpi-summary-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
+                    gap: '4px',
+                    padding: '8px 4px',
+                    borderRadius: 'var(--radius-md)',
+                    background: isSelected ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-tertiary)',
+                    border: '1px solid',
+                    borderColor: isSelected ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
+                    textAlign: 'center',
+                    marginTop: '8px',
+                  }}
+                >
+                  <div title="Tỷ lệ hoàn thành đóng công việc">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--brand-primary)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      % ĐÓNG
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {rep.wo_rate || 0}%
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc tồn chưa hoàn thành">
+                    <span style={{ fontSize: '0.62rem', color: 'var(--warning-dark)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      TỒN VIỆC
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                      {(rep.pending_wos || 0).toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc bị quá hạn">
+                    <span style={{ fontSize: '0.62rem', color: (rep.overdue_wos || 0) > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      QUÁ HẠN
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: (rep.overdue_wos || 0) > 0 ? 'var(--danger-dark)' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      {(rep.overdue_wos || 0).toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc PDA còn tồn chưa xong">
+                    <span style={{ fontSize: '0.62rem', color: '#9333ea', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      TỒN PDA
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: '#9333ea', fontFamily: 'var(--font-mono)' }}>
+                      {(rep.ton_pda || 0).toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div title="Số công việc thay thế hộp còn tồn chưa xong">
+                    <span style={{ fontSize: '0.62rem', color: '#ea580c', display: 'block', fontWeight: 700, marginBottom: '2px' }}>
+                      THAY HỘP
+                    </span>
+                    <strong style={{ fontSize: '0.84rem', color: '#ea580c', fontFamily: 'var(--font-mono)' }}>
+                      {(rep.ton_thay_hop || 0).toLocaleString()}
                     </strong>
                   </div>
                 </div>

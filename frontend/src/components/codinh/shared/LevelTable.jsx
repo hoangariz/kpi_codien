@@ -780,6 +780,112 @@ export default function LevelTable({
               </strong>
             </div>
           </>
+        ) : reportKey === 'bao_hong_thc' ? (
+          /* Báo hỏng THC Mini Strip */
+          <>
+            <div
+              onClick={() => triggerDrilldown('total')}
+              className="cell-clickable"
+              style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Tổng WO"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Tổng WO</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.total_wos ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('closed')}
+              className="cell-clickable"
+              style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Đã Đóng"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--success-dark)', display: 'block' }}>Đã Đóng</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--success-dark)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.closed_wos ?? 0}
+              </strong>
+            </div>
+
+            <div style={{ background: 'var(--bg-tertiary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>% Đóng</span>
+              <strong style={{ fontSize: '1.15rem', color: (activeSummary.wo_rate || 0) >= 80 ? 'var(--success-dark)' : 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.wo_rate ?? 0}%
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('pending')}
+              className="cell-clickable"
+              style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Tồn Việc"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--warning-dark)', display: 'block' }}>Tồn Việc</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--warning-dark)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.pending_wos ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('overdue')}
+              className="cell-clickable"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Quá Hạn"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', display: 'block' }}>Quá Hạn</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.overdue_wos ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('ton_pda')}
+              className="cell-clickable"
+              style={{ background: 'rgba(147, 51, 234, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Tồn PDA"
+            >
+              <span style={{ fontSize: '0.68rem', color: '#9333ea', display: 'block', fontWeight: 700 }}>Tồn PDA</span>
+              <strong style={{ fontSize: '1.15rem', color: '#9333ea', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.ton_pda ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('qua_han_pda')}
+              className="cell-clickable"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Quá Hạn PDA"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', display: 'block', fontWeight: 700 }}>Quá Hạn PDA</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.qua_han_pda ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('ton_thay_hop')}
+              className="cell-clickable"
+              style={{ background: 'rgba(234, 88, 12, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Tồn Thay Hộp"
+            >
+              <span style={{ fontSize: '0.68rem', color: '#ea580c', display: 'block', fontWeight: 700 }}>Tồn Thay Hộp</span>
+              <strong style={{ fontSize: '1.15rem', color: '#ea580c', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.ton_thay_hop ?? 0}
+              </strong>
+            </div>
+
+            <div
+              onClick={() => triggerDrilldown('qua_han_thay_hop')}
+              className="cell-clickable"
+              style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title="Nhấn để xem chi tiết Quá Hạn Thay Hộp"
+            >
+              <span style={{ fontSize: '0.68rem', color: 'var(--danger-dark)', display: 'block', fontWeight: 700 }}>Quá Hạn Thay Hộp</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--danger-dark)', fontFamily: 'var(--font-mono)' }}>
+                {activeSummary.qua_han_thay_hop ?? 0}
+              </strong>
+            </div>
+          </>
         ) : (
           /* THC Mini Strip */
           <>
