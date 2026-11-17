@@ -172,7 +172,7 @@ def import_qlctkt_from_excel(
     col_ghi_chu = find_col("ghi chú đầu mối", "ghi_chu_dau_moi", "ghi chú")
     col_tich_hen = find_col("tích hẹn", "tich_hen")
     col_trang_thai_gpon = find_col("trạng thái đường dây gpon", "trạng thái đường dây", "đường dây gpon", "trang_thai_gpon")
-    col_cmtask = find_col("cmtasktypename", "cmtasktype", "cm_task_type_name", "cm_task_type")
+    col_cmtask = find_col("cmtasktypename", "cmtasktype", "cm_task_type_name", "cm_task_type", "cmtask", "cm_task", "loại task", "loai task")
     col_ngay_tich_huy = find_col("ngày tích hủy", "ngay tich huy", "thời gian tích hủy", "thoi gian tich huy", "ngay_tich_huy")
 
     # Identify all columns related to cancellation reason & checkbox
@@ -323,7 +323,17 @@ def import_qlctkt_from_excel(
         is_tich_hen_ok = ("ok" in words_th)
 
         raw_cmtask = str(row[col_cmtask]).strip() if col_cmtask and pd.notna(row[col_cmtask]) else ""
-        is_cskh_2022 = bool(normalize_key(raw_cmtask) == "cskh_2022")
+        norm_cmtask = normalize_key(raw_cmtask)
+        raw_loai_yc = str(row[col_loai_yc]).strip() if col_loai_yc and pd.notna(row[col_loai_yc]) else ""
+        norm_loai_yc = normalize_key(raw_loai_yc)
+
+        # Cờ loại trừ CSKH (CSKH_2022 và CSKH_TAMMI) khỏi các báo cáo CĐBR
+        is_cskh_2022 = bool(
+            ("cskh" in norm_cmtask and ("2022" in norm_cmtask or "tammi" in norm_cmtask))
+            or norm_cmtask in ("cskh_2022", "cskh_tammi")
+            or ("cskh" in norm_loai_yc and ("2022" in norm_loai_yc or "tammi" in norm_loai_yc))
+            or norm_loai_yc in ("cskh_2022", "cskh_tammi")
+        )
 
         task_dict = {
             "task_id": tid_str,
@@ -464,6 +474,7 @@ def import_qlctkt_from_excel(
         "unmatched_employees": [{"name": k, "count": v} for k, v in unmatched_counter.items()],
         "unmatched_total_rows": sum(unmatched_counter.values()),
         "mismatched_cluster_count": mismatched_cluster_count,
+        "cskh_count": sum(1 for t in task_objects if t.get("is_cskh_2022")),
         "cskh_2022_count": sum(1 for t in task_objects if t.get("is_cskh_2022")),
         "data_updated_at": now_vn_str,
         "duration_seconds": round(t_end - t_start, 2),

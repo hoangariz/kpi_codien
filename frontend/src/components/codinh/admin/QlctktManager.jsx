@@ -312,9 +312,9 @@ export default function QlctktManager() {
               </div>
 
               <div style={{ background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.72rem', color: '#8b5cf6', display: 'block' }}>Loại CSKH_2022</span>
+                <span style={{ fontSize: '0.72rem', color: '#8b5cf6', display: 'block' }}>Loại CSKH (2022 / TAMMI)</span>
                 <strong style={{ fontSize: '1.15rem', color: '#8b5cf6', fontFamily: 'var(--font-mono)' }}>
-                  {uploadResult.cskh_2022_count ?? 0}
+                  {(uploadResult.cskh_count ?? uploadResult.cskh_2022_count ?? 0).toLocaleString()}
                 </strong>
               </div>
 

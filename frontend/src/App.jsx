@@ -9,6 +9,7 @@ import KpiFtPage from './pages/KpiFtPage';
 import CodinhPage from './pages/CodinhPage';
 import AdminCodinhPage from './pages/AdminCodinhPage';
 import ThuHoiThietBiPage from './pages/ThuHoiThietBiPage';
+import KhacPage from './pages/KhacPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +66,7 @@ export default function App() {
       if (path.includes('/codinh') || hash.includes('codinh')) return 'codinh';
       if (path.includes('/admin') || hash.includes('admin')) return 'admin';
       if (path.includes('/search') || hash.includes('search')) return 'search';
+      if (path.includes('/khac') || hash.includes('khac')) return 'khac';
       if (path.includes('/kpi') || hash.includes('kpi')) return 'kpi';
     } catch (e) {
       console.error(e);
@@ -100,6 +102,10 @@ export default function App() {
       if (!window.location.pathname.includes('/search')) {
         window.history.pushState({}, '', '/search');
       }
+    } else if (tab === 'khac') {
+      if (!window.location.pathname.includes('/khac')) {
+        window.history.pushState({}, '', '/khac');
+      }
     } else if (tab === 'kpi') {
       if (!window.location.pathname.includes('/kpi')) {
         window.history.pushState({}, '', '/kpi');
@@ -125,6 +131,8 @@ export default function App() {
         setActiveTab('admin');
       } else if (path.includes('/search') || hash.includes('search')) {
         setActiveTab('search');
+      } else if (path.includes('/khac') || hash.includes('khac')) {
+        setActiveTab('khac');
       } else if (path.includes('/kpi') || hash.includes('kpi')) {
         setActiveTab('kpi');
       } else {
@@ -172,6 +180,8 @@ export default function App() {
                 <AdminPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
               ) : activeTab === 'search' ? (
                 <SearchPage onNavigateToDashboard={() => handleTabChange('dashboard')} />
+              ) : activeTab === 'khac' ? (
+                <KhacPage onNavigate={handleTabChange} />
               ) : activeTab === 'kpi' ? (
                 <KpiFtPage />
               ) : (

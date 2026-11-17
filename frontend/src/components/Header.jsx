@@ -9,7 +9,8 @@ import {
   RefreshCw,
   Calendar,
   Award,
-  Sparkles
+  Sparkles,
+  Grid
 } from 'lucide-react';
 
 export default function Header({
@@ -74,15 +75,15 @@ export default function Header({
             <span className="nav-text-mobile">Tra Cứu</span>
           </button>
 
-          {/* KPI FT Tab */}
+          {/* Khác / Link Hub Tab */}
           <button
-            className={`header-nav-btn ${activeTab === 'kpi' ? 'active' : ''}`}
-            onClick={() => setActiveTab('kpi')}
-            title="Bảng đánh giá hệ số KPI FT theo All-WO-HTH"
+            className={`header-nav-btn ${activeTab === 'khac' ? 'active' : ''}`}
+            onClick={() => setActiveTab('khac')}
+            title="Liên kết & Tiện ích khác (KPI FT, Công cụ nội bộ)"
           >
-            <Award size={16} />
-            <span className="nav-text-desktop">KPI FT</span>
-            <span className="nav-text-mobile">KPI FT</span>
+            <Grid size={16} />
+            <span className="nav-text-desktop">Khác</span>
+            <span className="nav-text-mobile">Khác</span>
           </button>
         </nav>
       </div>

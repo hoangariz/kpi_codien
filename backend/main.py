@@ -17,7 +17,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from backend.config import APP_TITLE, APP_VERSION
 from backend.database import engine, Base
@@ -62,12 +62,27 @@ def auto_migrate_db():
             "ALTER TABLE device_recalls ADD COLUMN dien_thoai_lh VARCHAR(50)",
             "ALTER TABLE device_recalls ADD COLUMN user_thanh_ly VARCHAR(50)",
             "ALTER TABLE device_recalls ADD COLUMN tinh VARCHAR(50)",
+            "ALTER TABLE quick_links ADD COLUMN created_by VARCHAR(100)",
         ]:
             try:
                 conn.execute(text(col_def))
                 conn.commit()
             except Exception:
                 pass
+
+        try:
+            conn.execute(text("""
+                UPDATE qlctkt_tasks SET is_cskh_2022 = 1 
+                WHERE is_cskh_2022 = 0 AND (
+                    lower(coalesce(cmtasktypename, '')) LIKE '%cskh%2022%'
+                    OR lower(coalesce(cmtasktypename, '')) LIKE '%cskh%tammi%'
+                    OR lower(coalesce(loai_yeu_cau, '')) LIKE '%cskh%2022%'
+                    OR lower(coalesce(loai_yeu_cau, '')) LIKE '%cskh%tammi%'
+                )
+            """))
+            conn.commit()
+        except Exception:
+            pass
 
         try:
             hth_exists = conn.execute(text("SELECT id FROM fixed_wo_reports WHERE name = 'All-Wo-HTH' OR report_type = 'all_wo_hth'")).fetchone()
@@ -429,6 +444,7 @@ from backend.api.router_report_categories import router as reports_router
 from backend.api.router_fixed_wo import router as fixed_wo_router
 from backend.api.router_codinh import router as codinh_router, cleanup_stale_codinh_upload_sessions
 from backend.api.router_device_recall import router as device_recall_router
+from backend.api.router_quick_links import router as quick_links_router
 
 # Cleanup stale upload sessions older than 24h at startup
 try:
@@ -469,6 +485,29 @@ app.include_router(reports_router)
 app.include_router(fixed_wo_router)
 app.include_router(codinh_router)
 app.include_router(device_recall_router, prefix="/api/device-recall", tags=["Thu Hồi Thiết Bị"])
+app.include_router(quick_links_router)
+
+
+@app.get("/s/{slug}")
+def redirect_short_link(slug: str):
+    """Chuyển hướng từ custom short link /s/{slug} tới link đích."""
+    from backend.database import SessionLocal
+    from backend.models.quick_link import QuickLink
+
+    db = SessionLocal()
+    try:
+        clean_slug = slug.strip().lower()
+        link = db.query(QuickLink).filter(QuickLink.slug == clean_slug, QuickLink.is_active == True).first()
+        if link:
+            link.click_count = (link.click_count or 0) + 1
+            db.commit()
+            target_url = link.url.strip()
+            return RedirectResponse(url=target_url, status_code=307)
+    except Exception as e:
+        print(f"Short link redirect error: {e}")
+    finally:
+        db.close()
+    return RedirectResponse(url="/khac", status_code=307)
 
 
 @app.get("/api/health")
