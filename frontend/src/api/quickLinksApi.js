@@ -26,6 +26,14 @@ export const quickLinksApi = {
       return null;
     }
   },
+  toggleActive: async (id, isActive) => {
+    const res = await api.put(`/quick-links/${id}`, { is_active: isActive });
+    return res.data;
+  },
+  resolveSlug: async (slug) => {
+    const res = await api.get(`/quick-links/resolve/${slug}`);
+    return res.data;
+  },
 };
 
 export default quickLinksApi;

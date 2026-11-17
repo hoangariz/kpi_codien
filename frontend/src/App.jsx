@@ -10,6 +10,7 @@ import CodinhPage from './pages/CodinhPage';
 import AdminCodinhPage from './pages/AdminCodinhPage';
 import ThuHoiThietBiPage from './pages/ThuHoiThietBiPage';
 import KhacPage from './pages/KhacPage';
+import quickLinksApi from './api/quickLinksApi';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +77,16 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [theme, setTheme] = useState(() => localStorage.getItem('vcc_theme') || 'light');
+  const [redirectingSlug, setRedirectingSlug] = useState(() => {
+    try {
+      const path = window.location.pathname;
+      if (path.startsWith('/s/') || path === '/s') {
+        const slug = path.replace(/^\/s\/?/, '').split('/')[0].split('?')[0].trim();
+        return slug || null;
+      }
+    } catch (e) {}
+    return null;
+  });
 
   const handleTabChange = (tab) => {
     if (tab === 'codinh') {
@@ -118,9 +129,50 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!redirectingSlug) return;
+    let isMounted = true;
+    quickLinksApi
+      .resolveSlug(redirectingSlug)
+      .then((res) => {
+        if (!isMounted) return;
+        if (res && res.url) {
+          const target = (res.url || '').trim();
+          if (target.startsWith('/')) {
+            const tab = target.replace(/^\//, '').toLowerCase();
+            handleTabChange(tab);
+            setRedirectingSlug(null);
+          } else {
+            window.location.replace(target);
+          }
+        } else {
+          alert('Liên kết rút gọn không tồn tại hoặc đã bị ẩn.');
+          handleTabChange('khac');
+          setRedirectingSlug(null);
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('Lỗi phân giải link rút gọn:', err);
+        alert(`Không tìm thấy hoặc liên kết rút gọn /s/${redirectingSlug} đang bị ẩn.`);
+        handleTabChange('khac');
+        setRedirectingSlug(null);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [redirectingSlug]);
+
+  useEffect(() => {
     const handleUrlChange = () => {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+      if (path.startsWith('/s/')) {
+        const slug = path.replace(/^\/s\/?/, '').split('/')[0].split('?')[0].trim();
+        if (slug) {
+          setRedirectingSlug(slug);
+          return;
+        }
+      }
       if (path.includes('/thuhoithietbi') || hash.includes('thuhoithietbi')) {
         setActiveTab('thuhoithietbi');
       } else if (path.includes('/admincodinh') || hash.includes('admincodinh')) {
@@ -155,6 +207,50 @@ export default function App() {
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
+
+  if (redirectingSlug) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          background: 'var(--bg-primary, #f8fafc)',
+          color: 'var(--text-primary, #1e293b)',
+          gap: '14px'
+        }}
+      >
+        <div
+          style={{
+            width: '38px',
+            height: '38px',
+            border: '3px solid #cbd5e1',
+            borderTopColor: '#2563eb',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }}
+        />
+        <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+          Đang chuyển hướng liên kết rút gọn{' '}
+          <code
+            style={{
+              color: '#2563eb',
+              background: 'rgba(37, 99, 235, 0.08)',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}
+          >
+            /s/{redirectingSlug}
+          </code>
+          ...
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

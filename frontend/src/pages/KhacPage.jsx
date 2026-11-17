@@ -20,7 +20,9 @@ import {
   User,
   LayoutList,
   LayoutGrid,
-  Info
+  Info,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import quickLinksApi from '../api/quickLinksApi';
 
@@ -206,6 +208,19 @@ export default function KhacPage({ onNavigate }) {
       fetchLinks();
     } catch (err) {
       alert(err.response?.data?.detail || 'Lỗi khi xóa liên kết!');
+    }
+  };
+
+  const handleToggleActive = async (link, e) => {
+    e.stopPropagation();
+    try {
+      const nextStatus = !link.is_active;
+      await quickLinksApi.toggleActive(link.id, nextStatus);
+      setLinks((prev) =>
+        prev.map((item) => (item.id === link.id ? { ...item, is_active: nextStatus } : item))
+      );
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Lỗi khi cập nhật trạng thái ẩn/hiện!');
     }
   };
 
@@ -409,11 +424,10 @@ export default function KhacPage({ onNavigate }) {
                 <div className="row-content-box">
                   <div className="row-title-line">
                     <span className="row-title">{link.title}</span>
-                    {isInternal ? (
-                      <span className="pill-type internal">Nội bộ</span>
-                    ) : (
-                      <span className="pill-type external">
-                        Ngoài <ExternalLink size={10} style={{ marginLeft: 2 }} />
+                    {!link.is_active && (
+                      <span className="pill-badge pill-hidden" title="Liên kết này đang ẩn với người dùng">
+                        <EyeOff size={11} style={{ marginRight: 3 }} />
+                        Đang ẩn
                       </span>
                     )}
                   </div>
@@ -471,6 +485,14 @@ export default function KhacPage({ onNavigate }) {
                     <div className="row-admin-btns no-nav">
                       <button
                         type="button"
+                        className={`btn-row-action ${!link.is_active ? 'btn-action-hidden' : ''}`}
+                        onClick={(e) => handleToggleActive(link, e)}
+                        title={link.is_active ? 'Ẩn liên kết này (người dùng sẽ không thấy)' : 'Hiện lại liên kết này'}
+                      >
+                        {link.is_active ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                      <button
+                        type="button"
                         className="btn-row-action"
                         onClick={(e) => handleOpenEdit(link, e)}
                         title="Chỉnh sửa liên kết"
@@ -522,15 +544,16 @@ export default function KhacPage({ onNavigate }) {
                     {getLinkIcon(link.icon, 18)}
                   </div>
                   <div className="card-badges">
+                    {!link.is_active && (
+                      <span className="pill-badge pill-hidden" title="Đang ẩn với người dùng">
+                        <EyeOff size={10} style={{ marginRight: 2 }} />
+                        Ẩn
+                      </span>
+                    )}
                     {link.created_by && (
                       <span className="pill-author">
                         <User size={10} /> {link.created_by}
                       </span>
-                    )}
-                    {isInternal ? (
-                      <span className="pill-type internal">Nội bộ</span>
-                    ) : (
-                      <span className="pill-type external">Ngoài</span>
                     )}
                   </div>
                 </div>
@@ -556,6 +579,14 @@ export default function KhacPage({ onNavigate }) {
 
                   {isAdmin && (
                     <div className="row-admin-btns no-nav">
+                      <button
+                        type="button"
+                        className={`btn-row-action ${!link.is_active ? 'btn-action-hidden' : ''}`}
+                        onClick={(e) => handleToggleActive(link, e)}
+                        title={link.is_active ? 'Ẩn liên kết' : 'Hiện liên kết'}
+                      >
+                        {link.is_active ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
                       <button
                         type="button"
                         className="btn-row-action"
@@ -782,13 +813,18 @@ export default function KhacPage({ onNavigate }) {
                 </div>
 
                 <div className="form-item-checkbox">
-                  <label className="checkbox-wrap">
+                  <label className="checkbox-wrap" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
                     />
-                    <span>Kích hoạt liên kết này (hiển thị cho mọi người)</span>
+                    <span style={{ fontSize: '0.86rem', fontWeight: 600, color: formData.is_active ? 'var(--text-primary)' : '#dc2626' }}>
+                      {formData.is_active
+                        ? '✅ Đang hiển thị công khai (Mọi người đều nhìn thấy)'
+                        : '🔒 Đang ẩn (Chỉ quản trị viên mới thấy để quản lý)'}
+                    </span>
                   </label>
                 </div>
               </div>
@@ -1114,8 +1150,11 @@ export default function KhacPage({ onNavigate }) {
           background: var(--bg-primary);
         }
 
-        .compact-list-row.row-inactive {
-          opacity: 0.5;
+        .compact-list-row.row-inactive,
+        .compact-grid-card.row-inactive {
+          opacity: 0.65;
+          border-style: dashed;
+          background: var(--bg-tertiary);
         }
 
         .row-accent {
@@ -1161,24 +1200,21 @@ export default function KhacPage({ onNavigate }) {
           text-overflow: ellipsis;
         }
 
-        .pill-type {
+        .pill-badge.pill-hidden {
+          background: rgba(239, 68, 68, 0.12);
+          color: #dc2626;
+          border: 1px solid rgba(239, 68, 68, 0.28);
           font-size: 0.68rem;
           font-weight: 700;
           padding: 1px 6px;
-          border-radius: 3px;
+          border-radius: 4px;
           display: inline-flex;
           align-items: center;
-          text-transform: uppercase;
         }
 
-        .pill-type.internal {
-          background: rgba(37, 99, 235, 0.1);
-          color: #2563eb;
-        }
-
-        .pill-type.external {
-          background: rgba(107, 114, 128, 0.12);
-          color: var(--text-secondary);
+        .btn-action-hidden {
+          color: #dc2626 !important;
+          background: rgba(239, 68, 68, 0.1) !important;
         }
 
         .row-sub-line {
