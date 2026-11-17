@@ -57,6 +57,33 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+const SYSTEM_TABS = ['thuhoithietbi', 'admincodinh', 'codinh', 'admin', 'search', 'khac', 'kpi'];
+
+const getPotentialSlug = (pathname) => {
+  try {
+    if (!pathname || pathname === '/') return null;
+    let clean = pathname.replace(/^\/+/, '').replace(/\/+$/, '').toLowerCase();
+    if (!clean) return null;
+
+    if (clean.startsWith('s/')) {
+      return clean.replace(/^s\//, '').split('/')[0].split('?')[0].trim() || null;
+    }
+
+    const firstSegment = clean.split('/')[0].split('?')[0].trim();
+    if (
+      SYSTEM_TABS.includes(firstSegment) ||
+      ['api', 'assets', 'favicon.ico'].includes(firstSegment) ||
+      firstSegment.includes('.')
+    ) {
+      return null;
+    }
+
+    return firstSegment || null;
+  } catch (e) {
+    return null;
+  }
+};
+
 export default function App() {
   const getInitialTab = () => {
     try {
@@ -78,14 +105,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [theme, setTheme] = useState(() => localStorage.getItem('vcc_theme') || 'light');
   const [redirectingSlug, setRedirectingSlug] = useState(() => {
-    try {
-      const path = window.location.pathname;
-      if (path.startsWith('/s/') || path === '/s') {
-        const slug = path.replace(/^\/s\/?/, '').split('/')[0].split('?')[0].trim();
-        return slug || null;
-      }
-    } catch (e) {}
-    return null;
+    return getPotentialSlug(window.location.pathname);
   });
 
   const handleTabChange = (tab) => {
@@ -145,7 +165,7 @@ export default function App() {
             window.location.replace(target);
           }
         } else {
-          alert('Liên kết rút gọn không tồn tại hoặc đã bị ẩn.');
+          alert(`Liên kết rút gọn /${redirectingSlug} không tồn tại hoặc đã bị ẩn.`);
           handleTabChange('khac');
           setRedirectingSlug(null);
         }
@@ -153,7 +173,7 @@ export default function App() {
       .catch((err) => {
         if (!isMounted) return;
         console.error('Lỗi phân giải link rút gọn:', err);
-        alert(`Không tìm thấy hoặc liên kết rút gọn /s/${redirectingSlug} đang bị ẩn.`);
+        alert(`Không tìm thấy hoặc liên kết /${redirectingSlug} đang bị ẩn.`);
         handleTabChange('khac');
         setRedirectingSlug(null);
       });
@@ -164,15 +184,14 @@ export default function App() {
 
   useEffect(() => {
     const handleUrlChange = () => {
+      const potentialSlug = getPotentialSlug(window.location.pathname);
+      if (potentialSlug) {
+        setRedirectingSlug(potentialSlug);
+        return;
+      }
+
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (path.startsWith('/s/')) {
-        const slug = path.replace(/^\/s\/?/, '').split('/')[0].split('?')[0].trim();
-        if (slug) {
-          setRedirectingSlug(slug);
-          return;
-        }
-      }
       if (path.includes('/thuhoithietbi') || hash.includes('thuhoithietbi')) {
         setActiveTab('thuhoithietbi');
       } else if (path.includes('/admincodinh') || hash.includes('admincodinh')) {
@@ -234,7 +253,7 @@ export default function App() {
           }}
         />
         <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-          Đang chuyển hướng liên kết rút gọn{' '}
+          Đang chuyển hướng liên kết{' '}
           <code
             style={{
               color: '#2563eb',
@@ -243,7 +262,7 @@ export default function App() {
               borderRadius: '4px'
             }}
           >
-            /s/{redirectingSlug}
+            /{redirectingSlug}
           </code>
           ...
         </div>
