@@ -35,6 +35,32 @@ UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024
 _executor: Optional[ProcessPoolExecutor] = None
 _executor_lock = threading.Lock()
 _parts_lock = threading.Lock()
+_active_jobs: dict = {}
+_jobs_lock = threading.Lock()
+
+
+def kill_executor_workers(executor: Optional[ProcessPoolExecutor]):
+    """Dừng và kill triệt để toàn bộ worker process con trong ProcessPoolExecutor để giải phóng CPU/RAM."""
+    if not executor:
+        return
+    try:
+        processes = getattr(executor, "_processes", {})
+        if isinstance(processes, dict):
+            for pid, process in list(processes.items()):
+                try:
+                    process.terminate()
+                except Exception:
+                    pass
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"Lỗi khi kill worker processes: {e}")
+    try:
+        executor.shutdown(wait=False, cancel_futures=True)
+    except Exception:
+        pass
 
 
 def get_executor() -> ProcessPoolExecutor:
@@ -51,14 +77,23 @@ def get_executor() -> ProcessPoolExecutor:
 
 
 def submit_import_job(import_id: int, file_path: str, filter_spm: bool = True):
-    """Submit import job to ProcessPoolExecutor with recovery and status update callback."""
+    """Submit import job to ProcessPoolExecutor with recovery, active tracking, and status update callback."""
     global _executor
     for attempt in range(2):
         try:
             executor = get_executor()
             future = executor.submit(run_import_job, import_id, file_path, filter_spm)
 
+            with _jobs_lock:
+                _active_jobs[import_id] = {
+                    "future": future,
+                    "file_path": file_path,
+                    "submitted_at": time.time(),
+                }
+
             def on_done(fut):
+                with _jobs_lock:
+                    _active_jobs.pop(import_id, None)
                 try:
                     fut.result()
                 except Exception as exc:
@@ -81,13 +116,129 @@ def submit_import_job(import_id: int, file_path: str, filter_spm: bool = True):
         except BrokenProcessPool:
             with _executor_lock:
                 if _executor:
-                    try:
-                        _executor.shutdown(wait=False, cancel_futures=True)
-                    except Exception:
-                        pass
+                    kill_executor_workers(_executor)
                 _executor = None
             if attempt == 1:
                 raise
+
+
+def cancel_and_cleanup_job(
+    import_id: int,
+    db: Session,
+    reason: str = "Tiến trình đã bị dừng/hủy theo yêu cầu.",
+    delete_file: bool = False
+) -> dict:
+    """
+    Dừng và hủy ngay lập tức tiến trình import (kill child process trong OS),
+    xóa các file tạm (.progress, .parts, .meta), và cập nhật trạng thái ImportLog sang FAILED.
+    """
+    global _executor
+    with _jobs_lock:
+        job_info = _active_jobs.pop(import_id, None)
+
+    killed_process = False
+    cancelled_future = False
+
+    if job_info:
+        fut = job_info.get("future")
+        if fut and not fut.done():
+            cancelled_future = fut.cancel()
+            if not cancelled_future:
+                # Task đang chạy trong process con -> kill process con ngay lập tức!
+                with _executor_lock:
+                    if _executor is not None:
+                        kill_executor_workers(_executor)
+                        _executor = None
+                        killed_process = True
+
+    log = db.query(ImportLog).filter(
+        ImportLog.id == import_id,
+        or_(ImportLog.domain == "main", ImportLog.domain.is_(None))
+    ).first()
+
+    if log:
+        if log.status in ("PENDING", "PROCESSING", "UPLOADING"):
+            # Nếu log đang là PROCESSING mà job_info không có (ví dụ sau restart), vẫn reset executor để đảm bảo
+            if not killed_process and log.status == "PROCESSING":
+                with _executor_lock:
+                    if _executor is not None:
+                        kill_executor_workers(_executor)
+                        _executor = None
+                        killed_process = True
+
+            log.status = "FAILED"
+            log.error_message = reason
+            db.commit()
+
+        # Xóa các file tạm (.progress, .progress.tmp, .parts, .meta)
+        if log.stored_filename:
+            fpath = UPLOAD_DIR / log.stored_filename
+            temp_paths = [
+                Path(f"{fpath}.progress"),
+                Path(f"{fpath}.progress.tmp"),
+                Path(f"{fpath}.parts"),
+                UPLOAD_DIR / f"session_{import_id}.meta",
+            ]
+            if delete_file:
+                temp_paths.append(fpath)
+
+            for p in temp_paths:
+                if p.exists():
+                    try:
+                        p.unlink()
+                    except Exception as e:
+                        logger.warning(f"Lỗi khi xóa file tạm {p}: {e}")
+
+    return {
+        "status": "ok",
+        "import_id": import_id,
+        "cancelled_future": cancelled_future,
+        "killed_process": killed_process,
+        "message": "Đã dừng tiến trình và dọn dẹp file tạm thành công"
+    }
+
+
+def recover_orphan_import_jobs(db: Optional[Session] = None):
+    """
+    Quét và tự động chuyển các ImportLog bị bỏ rơi (PENDING / PROCESSING) do server khởi động lại
+    hoặc crash OOM sang FAILED, dọn sạch file tạm.
+    """
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+    try:
+        orphan_logs = db.query(ImportLog).filter(
+            ImportLog.status.in_(["PENDING", "PROCESSING"])
+        ).all()
+        for log in orphan_logs:
+            log.status = "FAILED"
+            log.error_message = "Tiến trình bị gián đoạn do máy chủ khởi động lại hoặc thiếu bộ nhớ (OOM)."
+            if log.stored_filename:
+                fpath = UPLOAD_DIR / log.stored_filename
+                for p in (
+                    Path(f"{fpath}.progress"),
+                    Path(f"{fpath}.progress.tmp"),
+                    Path(f"{fpath}.parts"),
+                    UPLOAD_DIR / f"session_{log.id}.meta"
+                ):
+                    if p.exists():
+                        try:
+                            p.unlink()
+                        except Exception:
+                            pass
+        if orphan_logs:
+            db.commit()
+            logger.info(f"[Recovery] Đã dọn dẹp và khôi phục {len(orphan_logs)} tiến trình import bị gián đoạn.")
+    except Exception as e:
+        logger.error(f"[Recovery] Lỗi khi dọn dẹp orphan imports: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        if should_close:
+            db.close()
 
 
 def _sanitize_and_validate_filename(original_name: str) -> tuple[str, str, str]:
@@ -667,10 +818,37 @@ def activate_import_file(
     }
 
 
+@router.post("/{import_id}/cancel")
+def cancel_import_endpoint(
+    import_id: int,
+    delete_file: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    Dừng và hủy ngay lập tức tiến trình nạp file (kill child process, giải phóng CPU/RAM, xóa file tạm).
+    delete_file=True: xóa luôn cả file upload vật lý.
+    """
+    import_log = db.query(ImportLog).filter(
+        ImportLog.id == import_id,
+        or_(ImportLog.domain == "main", ImportLog.domain.is_(None))
+    ).first()
+    if not import_log:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi import này")
+
+    result = cancel_and_cleanup_job(
+        import_id=import_id,
+        db=db,
+        reason="Đã dừng tiến trình nạp theo yêu cầu của người dùng.",
+        delete_file=delete_file
+    )
+    return result
+
+
 @router.delete("/{import_id}")
 def delete_import_file(import_id: int, db: Session = Depends(get_db)):
     """
-    Delete an uploaded file from disk and remove its ImportLog record to free up storage.
+    Xóa vĩnh viễn file và bản ghi ImportLog để giải phóng dung lượng đĩa.
+    Nếu file đang trong quá trình nạp hoặc chờ nạp (PENDING/PROCESSING), lập tức kill tiến trình trước!
     """
     import_log = db.query(ImportLog).filter(
         ImportLog.id == import_id,
@@ -682,24 +860,36 @@ def delete_import_file(import_id: int, db: Session = Depends(get_db)):
     file_name = import_log.file_name
     is_active = import_log.is_active
 
-    # 1. Delete physical file from disk if exists, along with .parts and .progress files
+    # 1. Nếu đang nạp hoặc chờ nạp, dừng và kill tiến trình trước!
+    if import_log.status in ("PENDING", "PROCESSING", "UPLOADING"):
+        cancel_and_cleanup_job(
+            import_id=import_id,
+            db=db,
+            reason="Tiến trình bị dừng do người dùng đã xóa file.",
+            delete_file=True
+        )
+
+    # 2. Xóa file vật lý khỏi đĩa nếu còn tồn tại
     if import_log.stored_filename:
         file_path = UPLOAD_DIR / import_log.stored_filename
-        parts_path = Path(f"{file_path}.parts")
-        prog_path = Path(f"{file_path}.progress")
-        prog_tmp = Path(f"{file_path}.progress.tmp")
-        for p in (file_path, parts_path, prog_path, prog_tmp):
+        for p in (
+            file_path,
+            Path(f"{file_path}.parts"),
+            Path(f"{file_path}.progress"),
+            Path(f"{file_path}.progress.tmp"),
+            UPLOAD_DIR / f"session_{import_id}.meta",
+        ):
             if p.exists() and p.is_file():
                 try:
                     p.unlink()
                 except Exception as e:
-                    print(f"Warning deleting file {p}: {e}")
+                    logger.warning(f"Lỗi khi xóa file {p}: {e}")
 
-    # 2. If the active file was deleted, clean DB tasks as well
+    # 3. If the active file was deleted, clean DB tasks as well
     if is_active == 1:
         clear_task_tables(db)
 
-    # 3. Delete record from ImportLog
+    # 4. Delete record from ImportLog
     db.delete(import_log)
     db.commit()
 

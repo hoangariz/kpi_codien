@@ -9,6 +9,7 @@ import {
   Edit2,
   Trash2,
   Upload,
+  Download,
   RefreshCw,
   ChevronDown,
   ChevronRight,
@@ -35,6 +36,19 @@ export default function OrgManager() {
   const [moveTeamModal, setMoveTeamModal] = useState({ open: false, team: null });
   const [confirmExcelModal, setConfirmExcelModal] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  const handleExportExcel = async () => {
+    try {
+      setExportingExcel(true);
+      await codinhApi.exportOrgExcel();
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Lỗi xuất file Excel: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
 
   // Form errors
   const [formError, setFormError] = useState('');
@@ -373,6 +387,25 @@ export default function OrgManager() {
           >
             <Plus size={14} />
             <span>Thêm Cụm</span>
+          </button>
+
+          {/* Export Excel */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            className="btn btn-outline"
+            style={{
+              fontSize: '0.8rem',
+              padding: '6px 12px',
+              borderColor: '#10b981',
+              color: '#10b981',
+              gap: '6px',
+            }}
+            title="Xuất danh sách nhân viên ra file Excel chuẩn (có thể chỉnh sửa rồi nạp lại)"
+          >
+            {exportingExcel ? <RefreshCw size={14} className="spin" /> : <Download size={14} />}
+            <span>{exportingExcel ? 'Đang xuất...' : 'Xuất Excel'}</span>
           </button>
 
           {/* Import Excel */}

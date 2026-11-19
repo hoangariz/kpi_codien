@@ -31,8 +31,11 @@ def _init_qlctkt_entry(key_name: str, extra: Optional[Dict[str, Any]] = None) ->
         "cap_nhat_ho_so": 0,
         "nghiem_thu_n": 0,
         "dd_nghiem_thu_n": 0,
+        "nghiem_thu_ftth_thang": 0,
         "dau_noi_n": 0,
         "nsld": 0.0,
+        "tk_vtci_ngay_n": 0,
+        "tk_vtci_thang_n": 0,
         "ton_duong_day": 0,
         "ton_duong_day_th": 0,
         "ton_ldtb": 0,
@@ -41,6 +44,7 @@ def _init_qlctkt_entry(key_name: str, extra: Optional[Dict[str, Any]] = None) ->
         "ton_lt2": 0,
         "ton_lt3": 0,
         "ton_gt3": 0,
+        "ton_vtci_ftth": 0,
         "tong_ton": 0,
         "qua_han": 0,
         "huy": 0,
@@ -55,7 +59,10 @@ def _bump_qlctkt_entry(target: Dict[str, Any], source: Dict[str, Any]):
         "cap_nhat_ho_so",
         "nghiem_thu_n",
         "dd_nghiem_thu_n",
+        "nghiem_thu_ftth_thang",
         "dau_noi_n",
+        "tk_vtci_ngay_n",
+        "tk_vtci_thang_n",
         "ton_duong_day",
         "ton_duong_day_th",
         "ton_ldtb",
@@ -64,6 +71,7 @@ def _bump_qlctkt_entry(target: Dict[str, Any], source: Dict[str, Any]):
         "ton_lt2",
         "ton_lt3",
         "ton_gt3",
+        "ton_vtci_ftth",
         "tong_ton",
         "qua_han",
         "huy",
@@ -180,6 +188,8 @@ class QlctktTrienKhaiReport(BaseReport):
             else:
                 selected_date = available_dates[0] if available_dates else today_str
 
+        selected_month = selected_date[:7] if selected_date and len(selected_date) >= 7 else now.strftime("%Y-%m")
+
         # 5-minute round bucket for cache key
         now_minute_bucket = (now.minute // 5) * 5
         time_bucket = f"{now.strftime('%Y%m%d%H')}{now_minute_bucket:02d}"
@@ -202,17 +212,22 @@ class QlctktTrienKhaiReport(BaseReport):
             age_hours_expr = (func.julianday(now_str) - func.julianday(TaskQlctkt.ngay_tao)) * 24.0
             date_tao_expr = func.strftime("%Y-%m-%d", TaskQlctkt.ngay_tao)
             date_kt_tt_expr = func.strftime("%Y-%m-%d", TaskQlctkt.ngay_ket_thuc_thuc_te)
+            month_kt_tt_expr = func.strftime("%Y-%m", TaskQlctkt.ngay_ket_thuc_thuc_te)
         else:
             age_hours_expr = func.timestampdiff(text("SECOND"), TaskQlctkt.ngay_tao, func.str_to_date(now_str, "%Y-%m-%d %H:%i:%s")) / 3600.0
             date_tao_expr = func.date_format(TaskQlctkt.ngay_tao, "%Y-%m-%d")
             date_kt_tt_expr = func.date_format(TaskQlctkt.ngay_ket_thuc_thuc_te, "%Y-%m-%d")
+            month_kt_tt_expr = func.date_format(TaskQlctkt.ngay_ket_thuc_thuc_te, "%Y-%m")
 
         query = db.query(
             TaskQlctkt.nv_key,
             func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Cập nhật hồ sơ", "cập nhật hồ sơ"]), TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("cap_nhat_ho_so"),
             func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("nghiem_thu_n"),
             func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("dd_nghiem_thu_n"),
+            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), month_kt_tt_expr == selected_month, TaskQlctkt.is_duong_day_moi == True, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("nghiem_thu_ftth_thang"),
             func.sum(case((and_(date_tao_expr == selected_date, TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("dau_noi_n"),
+            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True, func.lower(TaskQlctkt.dia_chi_lap_dat).like("%vtc%"), TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("tk_vtci_ngay_n"),
+            func.sum(case((and_(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), month_kt_tt_expr == selected_month, TaskQlctkt.is_duong_day_moi == True, func.lower(TaskQlctkt.dia_chi_lap_dat).like("%vtc%"), TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("tk_vtci_thang_n"),
             func.sum(case((and_(cond_ton, TaskQlctkt.is_duong_day_moi == True), 1), else_=0)).label("ton_duong_day"),
             func.sum(case((and_(cond_ton, TaskQlctkt.is_duong_day_moi == True, TaskQlctkt.is_tich_hen_ok == True), 1), else_=0)).label("ton_duong_day_th"),
             func.sum(case((and_(cond_ton, or_(TaskQlctkt.is_duong_day_moi == False, TaskQlctkt.is_duong_day_moi == None)), 1), else_=0)).label("ton_ldtb"),
@@ -221,6 +236,7 @@ class QlctktTrienKhaiReport(BaseReport):
             func.sum(case((and_(cond_ton, age_hours_expr >= 24.0, age_hours_expr < 48.0), 1), else_=0)).label("ton_lt2"),
             func.sum(case((and_(cond_ton, age_hours_expr >= 48.0, age_hours_expr < 72.0), 1), else_=0)).label("ton_lt3"),
             func.sum(case((and_(cond_ton, age_hours_expr >= 72.0), 1), else_=0)).label("ton_gt3"),
+            func.sum(case((and_(cond_ton, func.lower(TaskQlctkt.dia_chi_lap_dat).like("%vtc%"), func.lower(func.trim(TaskQlctkt.loai_yeu_cau)) == "triển khai", func.lower(func.trim(TaskQlctkt.dich_vu)) == "ftth"), 1), else_=0)).label("ton_vtci_ftth"),
             func.sum(case((cond_ton, 1), else_=0)).label("tong_ton"),
             func.sum(case((and_(cond_ton, TaskQlctkt.so_gio_ton.isnot(None), TaskQlctkt.so_gio_ton > 0), 1), else_=0)).label("qua_han"),
             func.sum(case((and_(TaskQlctkt.is_huy == True, ~func.trim(func.coalesce(TaskQlctkt.tien_do, "")).in_(["Kết thúc", "kết thúc"]), TaskQlctkt.is_cskh_2022 == False), 1), else_=0)).label("huy"),
@@ -326,18 +342,22 @@ class QlctktTrienKhaiReport(BaseReport):
                 "cap_nhat_ho_so": int(r[1] or 0),
                 "nghiem_thu_n": int(r[2] or 0),
                 "dd_nghiem_thu_n": int(r[3] or 0),
-                "dau_noi_n": int(r[4] or 0),
-                "ton_duong_day": int(r[5] or 0),
-                "ton_duong_day_th": int(r[6] or 0),
-                "ton_ldtb": int(r[7] or 0),
-                "ton_ldtb_th": int(r[8] or 0),
-                "ton_lt1": int(r[9] or 0),
-                "ton_lt2": int(r[10] or 0),
-                "ton_lt3": int(r[11] or 0),
-                "ton_gt3": int(r[12] or 0),
-                "tong_ton": int(r[13] or 0),
-                "qua_han": int(r[14] or 0),
-                "huy": int(r[15] or 0),
+                "nghiem_thu_ftth_thang": int(r[4] or 0),
+                "dau_noi_n": int(r[5] or 0),
+                "tk_vtci_ngay_n": int(r[6] or 0),
+                "tk_vtci_thang_n": int(r[7] or 0),
+                "ton_duong_day": int(r[8] or 0),
+                "ton_duong_day_th": int(r[9] or 0),
+                "ton_ldtb": int(r[10] or 0),
+                "ton_ldtb_th": int(r[11] or 0),
+                "ton_lt1": int(r[12] or 0),
+                "ton_lt2": int(r[13] or 0),
+                "ton_lt3": int(r[14] or 0),
+                "ton_gt3": int(r[15] or 0),
+                "ton_vtci_ftth": int(r[16] or 0),
+                "tong_ton": int(r[17] or 0),
+                "qua_han": int(r[18] or 0),
+                "huy": int(r[19] or 0),
             }
 
             _bump_qlctkt_entry(summary, metrics)
@@ -451,16 +471,19 @@ class QlctktTrienKhaiReport(BaseReport):
 
         norm_d = normalize_target_date(target_date or target_month)
         selected_date = norm_d or now.strftime("%Y-%m-%d")
+        selected_month = selected_date[:7] if selected_date and len(selected_date) >= 7 else now.strftime("%Y-%m")
 
         now_str = now.strftime("%Y-%m-%d %H:%M:%S")
         if is_sqlite:
             age_hours_expr = (func.julianday(now_str) - func.julianday(TaskQlctkt.ngay_tao)) * 24.0
             date_tao_expr = func.strftime("%Y-%m-%d", TaskQlctkt.ngay_tao)
             date_kt_tt_expr = func.strftime("%Y-%m-%d", TaskQlctkt.ngay_ket_thuc_thuc_te)
+            month_kt_tt_expr = func.strftime("%Y-%m", TaskQlctkt.ngay_ket_thuc_thuc_te)
         else:
             age_hours_expr = func.timestampdiff(text("SECOND"), TaskQlctkt.ngay_tao, func.str_to_date(now_str, "%Y-%m-%d %H:%i:%s")) / 3600.0
             date_tao_expr = func.date_format(TaskQlctkt.ngay_tao, "%Y-%m-%d")
             date_kt_tt_expr = func.date_format(TaskQlctkt.ngay_ket_thuc_thuc_te, "%Y-%m-%d")
+            month_kt_tt_expr = func.date_format(TaskQlctkt.ngay_ket_thuc_thuc_te, "%Y-%m")
 
         cond_ton = and_(
             ~func.trim(func.coalesce(TaskQlctkt.tien_do, "")).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ", "Hủy", "huỷ"]),
@@ -478,8 +501,14 @@ class QlctktTrienKhaiReport(BaseReport):
             q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date)
         elif m_low == "dd_nghiem_thu_n":
             q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True)
+        elif m_low == "nghiem_thu_ftth_thang":
+            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), month_kt_tt_expr == selected_month, TaskQlctkt.is_duong_day_moi == True)
         elif m_low == "dau_noi_n":
             q = q.filter(date_tao_expr == selected_date)
+        elif m_low == "tk_vtci_ngay_n":
+            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), date_kt_tt_expr == selected_date, TaskQlctkt.is_duong_day_moi == True, func.lower(TaskQlctkt.dia_chi_lap_dat).like("%vtc%"))
+        elif m_low == "tk_vtci_thang_n":
+            q = q.filter(func.trim(TaskQlctkt.tien_do).in_(["Kết thúc", "kết thúc", "Cập nhật hồ sơ", "cập nhật hồ sơ"]), month_kt_tt_expr == selected_month, TaskQlctkt.is_duong_day_moi == True, func.lower(TaskQlctkt.dia_chi_lap_dat).like("%vtc%"))
         elif m_low == "ton_duong_day":
             q = q.filter(cond_ton, TaskQlctkt.is_duong_day_moi == True)
         elif m_low == "ton_duong_day_th":
@@ -496,6 +525,8 @@ class QlctktTrienKhaiReport(BaseReport):
             q = q.filter(cond_ton, age_hours_expr >= 48.0, age_hours_expr < 72.0)
         elif m_low == "ton_gt3":
             q = q.filter(cond_ton, age_hours_expr >= 72.0)
+        elif m_low == "ton_vtci_ftth":
+            q = q.filter(cond_ton, func.lower(TaskQlctkt.dia_chi_lap_dat).like("%vtc%"), func.lower(func.trim(TaskQlctkt.loai_yeu_cau)) == "triển khai", func.lower(func.trim(TaskQlctkt.dich_vu)) == "ftth")
         elif m_low in ("tong_ton", "ton", "total"):
             q = q.filter(cond_ton)
         elif m_low == "qua_han":

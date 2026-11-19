@@ -151,7 +151,7 @@ export default function KhacPage({ onNavigate }) {
     let textToCopy = '';
     const origin = window.location.origin;
     if (link.slug) {
-      textToCopy = `${origin}/${link.slug}`;
+      textToCopy = `${origin}/s/${link.slug}`;
     } else if (link.url.startsWith('/')) {
       textToCopy = `${origin}${link.url}`;
     } else {
@@ -162,19 +162,6 @@ export default function KhacPage({ onNavigate }) {
       setCopiedId(link.id);
       setTimeout(() => setCopiedId(null), 2000);
     });
-  };
-
-  const handleSlugChange = (rawVal) => {
-    let val = (rawVal || '').trim().toLowerCase();
-    // Bỏ origin nếu dán cả url đầy đủ (vd: https://vcc.id.vn/uctt)
-    val = val.replace(/^https?:\/\/[^\/]+\/?/, '');
-    // Bỏ tiền tố s/ nếu có
-    val = val.replace(/^s\//, '');
-    // Bỏ dấu gạch chéo đầu
-    val = val.replace(/^\/+/, '');
-    // Chỉ giữ lại chữ cái, số, gạch nối, gạch dưới
-    val = val.replace(/[^a-z0-9-_]/g, '');
-    setFormData((prev) => ({ ...prev, slug: val }));
   };
 
   // Open edit / create modal
@@ -246,14 +233,6 @@ export default function KhacPage({ onNavigate }) {
     if (!formData.url.trim()) {
       setFormError('Vui lòng nhập đường link (URL)!');
       return;
-    }
-
-    if (formData.slug) {
-      const reserved = ['thuhoithietbi', 'admincodinh', 'codinh', 'admin', 'search', 'khac', 'kpi', 'dashboard', 'api', 'assets'];
-      if (reserved.includes(formData.slug.toLowerCase())) {
-        setFormError(`Tên rút gọn '${formData.slug}' trùng với trang hệ thống, vui lòng chọn tên khác (ví dụ: uctt, tailieu, bckpi)!`);
-        return;
-      }
     }
 
     try {
@@ -476,14 +455,14 @@ export default function KhacPage({ onNavigate }) {
                       type="button"
                       className="btn-compact-copy no-nav"
                       onClick={(e) => handleCopyLink(link, e)}
-                      title={`Sao chép link rút gọn: ${window.location.origin}/${link.slug}`}
+                      title={`Sao chép link rút gọn: /s/${link.slug}`}
                     >
                       {copiedId === link.id ? (
                         <Check size={13} className="text-success" />
                       ) : (
                         <Copy size={13} />
                       )}
-                      <span className="slug-tag">/{link.slug}</span>
+                      <span className="slug-tag">/s/{link.slug}</span>
                     </button>
                   ) : (
                     <button
@@ -595,7 +574,7 @@ export default function KhacPage({ onNavigate }) {
                     ) : (
                       <Copy size={12} />
                     )}
-                    <span>{link.slug ? `/${link.slug}` : 'Chép link'}</span>
+                    <span>{link.slug ? `/s/${link.slug}` : 'Chép link'}</span>
                   </button>
 
                   {isAdmin && (
@@ -745,29 +724,22 @@ export default function KhacPage({ onNavigate }) {
 
                 <div className="form-item-grid-2">
                   <div className="form-item">
-                    <label className="field-label">Link rút gọn (Custom slug):</label>
+                    <label className="field-label">Custom Link (Slug rút gọn):</label>
                     <div className="slug-input-wrapper">
-                      <span className="slug-prefix">{window.location.host}/</span>
+                      <span className="slug-prefix">/s/</span>
                       <input
                         type="text"
                         className="field-input slug-input"
-                        placeholder="uctt, tailieu..."
+                        placeholder="kpi-ft, tailieu..."
                         value={formData.slug}
-                        onChange={(e) => handleSlugChange(e.target.value)}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            slug: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '')
+                          })
+                        }
                       />
                     </div>
-                    <span className="field-subnote">
-                      {formData.slug ? (
-                        <>
-                          Liên kết rút gọn:{' '}
-                          <strong style={{ color: 'var(--brand-primary)' }}>
-                            {window.location.origin}/{formData.slug}
-                          </strong>
-                        </>
-                      ) : (
-                        'Nhập từ khóa ngắn để tạo link rút gọn trực tiếp'
-                      )}
-                    </span>
                   </div>
 
                   <div className="form-item">

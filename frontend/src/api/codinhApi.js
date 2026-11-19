@@ -450,6 +450,24 @@ export const codinhApi = {
     return res.data;
   },
 
+  exportOrgExcel: async () => {
+    const res = await api.get('/codinh/org/export', {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'danhsachnhanvien_codinh.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    return true;
+  },
+
   getUnmatchedUsernames: async () => {
     const res = await api.get('/codinh/org/unmatched');
     return res.data;

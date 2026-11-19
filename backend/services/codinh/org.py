@@ -475,3 +475,106 @@ def get_unmatched_qlctkt_names(db: Session) -> List[Dict[str, Any]]:
             })
     return unmatched
 
+
+def export_org_to_excel(db: Session):
+    """
+    Xuất danh sách nhân sự CĐBR hiện tại ra file Excel (.xlsx) chuẩn định dạng
+    7 cột theo file mẫu để có thể tải về và import lại trực tiếp qua seed_org_from_excel.
+    """
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    query = (
+        db.query(CodinhEmployee, CodinhTeam, CodinhCluster)
+        .join(CodinhTeam, CodinhEmployee.team_id == CodinhTeam.id)
+        .join(CodinhCluster, CodinhTeam.cluster_id == CodinhCluster.id)
+        .order_by(
+            CodinhCluster.sort_order,
+            CodinhCluster.id,
+            CodinhTeam.sort_order,
+            CodinhTeam.id,
+            desc(CodinhEmployee.la_doi_truong),
+            CodinhEmployee.sort_order,
+            CodinhEmployee.id,
+        )
+        .all()
+    )
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "DanhSachNhanVien"
+
+    headers = [
+        "Username",
+        "Chức vụ\n1: đội trưởng\n0: nhân viên",
+        "Họ tên",
+        "Tên đội",
+        "Viết tắt đội",
+        "Tên Cụm/Nhóm",
+        "Viết tắt cụm/nhóm"
+    ]
+    ws.append(headers)
+
+    header_font = Font(name="Calibri", size=11, bold=True, color="1F2937")
+    header_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+
+    ws.row_dimensions[1].height = 32
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    data_font = Font(name="Calibri", size=11, color="000000")
+    for row_idx, (emp, team, cluster) in enumerate(query, start=2):
+        row_vals = [
+            emp.username or "",
+            1 if emp.la_doi_truong else 0,
+            emp.ho_ten or "",
+            team.ten_doi or "",
+            team.ma_doi or "",
+            cluster.ten_cum or "",
+            cluster.ma_cum or "",
+        ]
+        ws.append(row_vals)
+        ws.row_dimensions[row_idx].height = 22
+        for col_idx in range(1, len(row_vals) + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = data_font
+            cell.border = thin_border
+            if col_idx in (1, 2, 5, 7):
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    col_widths = {
+        1: 18,
+        2: 25,
+        3: 28,
+        4: 26,
+        5: 18,
+        6: 30,
+        7: 20,
+    }
+    for col_idx, width in col_widths.items():
+        col_letter = get_column_letter(col_idx)
+        ws.column_dimensions[col_letter].width = width
+
+    ws.views.sheetView[0].showGridLines = True
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+

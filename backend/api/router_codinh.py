@@ -16,6 +16,7 @@ import shutil
 import traceback
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request, status
+from fastapi.responses import StreamingResponse
 from starlette.requests import ClientDisconnect
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
@@ -52,6 +53,7 @@ from backend.services.codinh_service import (
     list_reports,
     get_reports_summary_cards,
     get_org_tree,
+    export_org_to_excel,
     seed_org_from_excel,
     get_unmatched_usernames,
     set_team_leader,
@@ -931,6 +933,24 @@ async def import_org(
                 temp_path.unlink()
             except Exception:
                 pass
+
+
+@router.get("/org/export")
+def export_org(db: Session = Depends(get_db)):
+    """
+    Xuất danh sách nhân sự CĐBR hiện tại ra file Excel (.xlsx) chuẩn 7 cột
+    để người dùng tải về chỉnh sửa và có thể import lại trực tiếp.
+    """
+    buf = export_org_to_excel(db)
+    filename = "danhsachnhanvien_codinh.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 @router.get("/org/unmatched")

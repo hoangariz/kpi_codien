@@ -31,42 +31,8 @@ export const quickLinksApi = {
     return res.data;
   },
   resolveSlug: async (slug) => {
-    if (!slug) return null;
-    let clean = slug.trim().toLowerCase();
-    if (clean.startsWith('s/')) {
-      clean = clean.replace(/^s\//, '').trim();
-    }
-    // 1. Thử gọi API resolve chuyên dụng
-    try {
-      const res = await api.get(`/quick-links/resolve/${clean}`);
-      if (res.data && res.data.url) {
-        return res.data;
-      }
-    } catch (e) {
-      // Backend có thể chưa cập nhật endpoint mới, chuyển sang fallback
-    }
-
-    // 2. Dự phòng trực tiếp: Lấy danh sách liên kết từ API có sẵn và đối soát slug
-    try {
-      const res = await api.get('/quick-links?all_status=false');
-      const list = res.data || [];
-      const matched = list.find((item) => (item.slug || '').toLowerCase() === clean);
-      if (matched && matched.url) {
-        // Tăng click count trong nền
-        api.post(`/quick-links/${matched.id}/click`).catch(() => {});
-        return {
-          success: true,
-          id: matched.id,
-          title: matched.title,
-          url: matched.url,
-          slug: matched.slug,
-        };
-      }
-    } catch (e) {
-      console.error('Lỗi khi đối soát danh sách liên kết:', e);
-    }
-
-    return null;
+    const res = await api.get(`/quick-links/resolve/${slug}`);
+    return res.data;
   },
 };
 

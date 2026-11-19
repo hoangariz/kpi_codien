@@ -436,7 +436,11 @@ except Exception as _ex:
 
 from backend.api.router_tasks import router as tasks_router
 from backend.api.router_stats import router as stats_router
-from backend.api.router_imports import router as imports_router, cleanup_stale_upload_sessions
+from backend.api.router_imports import (
+    router as imports_router,
+    cleanup_stale_upload_sessions,
+    recover_orphan_import_jobs,
+)
 from backend.api.router_meta import router as meta_router
 from backend.api.router_settings import router as settings_router
 from backend.api.router_tracking import router as tracking_router
@@ -456,6 +460,11 @@ try:
     cleanup_stale_codinh_upload_sessions()
 except Exception as _ex:
     print(f"Startup CĐBR upload cleanup notice: {_ex}")
+
+try:
+    recover_orphan_import_jobs()
+except Exception as _ex:
+    print(f"Startup orphan import recovery notice: {_ex}")
 
 app = FastAPI(
     title=APP_TITLE,
@@ -489,6 +498,7 @@ app.include_router(quick_links_router)
 
 
 @app.get("/s/{slug}")
+@app.get("/s/{slug}/")
 def redirect_short_link(slug: str):
     """Chuyển hướng từ custom short link /s/{slug} tới link đích."""
     from backend.database import SessionLocal
@@ -528,4 +538,34 @@ if DIST_DIR.exists() and (DIST_DIR / "index.html").exists():
         target = DIST_DIR / full_path
         if target.is_file():
             return FileResponse(target)
+
+        # Check if full_path is a custom short link slug
+        clean_slug = full_path.strip("/").lower()
+        if clean_slug.startswith("s/"):
+            clean_slug = clean_slug[2:].strip("/")
+
+        RESERVED_PATHS = {
+            "thuhoithietbi", "admincodinh", "codinh", "admin", "search",
+            "khac", "kpi", "dashboard", "docs", "openapi.json", "favicon.ico"
+        }
+        if (
+            clean_slug
+            and clean_slug not in RESERVED_PATHS
+            and not clean_slug.endswith((".js", ".css", ".png", ".jpg", ".svg", ".json", ".ico", ".map"))
+        ):
+            from backend.database import SessionLocal
+            from backend.models.quick_link import QuickLink
+            db = SessionLocal()
+            try:
+                link = db.query(QuickLink).filter(QuickLink.slug == clean_slug, QuickLink.is_active == True).first()
+                if link and link.url:
+                    link.click_count = (link.click_count or 0) + 1
+                    db.commit()
+                    target_url = link.url.strip()
+                    return RedirectResponse(url=target_url, status_code=307)
+            except Exception as e:
+                print(f"Error checking slug '{clean_slug}': {e}")
+            finally:
+                db.close()
+
         return FileResponse(DIST_DIR / "index.html")

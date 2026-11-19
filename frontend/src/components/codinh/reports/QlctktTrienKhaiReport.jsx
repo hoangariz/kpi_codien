@@ -22,16 +22,19 @@ export function getQlctktCardKpis(summary = {}) {
  */
 export function buildQlctktColumns(selectedDate) {
   let dayStr = 'n';
+  let monthStr = 'n';
   if (selectedDate) {
     if (selectedDate.includes('-')) {
       const parts = selectedDate.split('-');
       if (parts.length === 3) {
         dayStr = parseInt(parts[2], 10) || parts[2];
+        monthStr = parseInt(parts[1], 10) || parts[1];
       }
     } else if (selectedDate.includes('/')) {
       const parts = selectedDate.split('/');
       if (parts.length === 3) {
         dayStr = parseInt(parts[0], 10) || parts[0];
+        monthStr = parseInt(parts[1], 10) || parts[1];
       }
     }
   }
@@ -113,6 +116,24 @@ export function buildQlctktColumns(selectedDate) {
       tooltip: `Số lượng đường dây mới nghiệm thu trong ngày ${dayStr} (Tiến độ = Kết thúc hoặc Cập nhật hồ sơ)`,
     },
     {
+      key: 'nghiem_thu_ftth_thang',
+      label: `Nghiệm thu FTTH tháng ${monthStr}`,
+      align: 'right',
+      width: '60px',
+      variant: 'success',
+      drilldownMetric: 'nghiem_thu_ftth_thang',
+      sortable: true,
+      headerStyle: {
+        ...baseThStyle,
+        width: '60px',
+        minWidth: '54px',
+        maxWidth: '66px',
+        background: 'rgba(16, 185, 129, 0.14)',
+        color: 'var(--success-dark)',
+      },
+      tooltip: `Số lượng đường dây mới nghiệm thu trong tháng ${monthStr} (Tiến độ = Kết thúc hoặc Cập nhật hồ sơ)`,
+    },
+    {
       key: 'dau_noi_n',
       label: `Đấu nối trong ngày ${dayStr}`,
       align: 'right',
@@ -144,6 +165,40 @@ export function buildQlctktColumns(selectedDate) {
         background: 'rgba(16, 185, 129, 0.06)',
         color: 'var(--success-dark)',
       },
+    },
+    {
+      key: 'tk_vtci_ngay_n',
+      label: `TK VTCI ngày ${dayStr}`,
+      align: 'right',
+      width: '54px',
+      drilldownMetric: 'tk_vtci_ngay_n',
+      sortable: true,
+      headerStyle: {
+        ...baseThStyle,
+        width: '54px',
+        minWidth: '48px',
+        maxWidth: '60px',
+        background: 'rgba(139, 92, 246, 0.08)',
+        color: '#7c3aed',
+      },
+      tooltip: `Triển khai VTCI đường dây mới nghiệm thu trong ngày ${dayStr} (Địa chỉ lắp đặt chứa VTC, Tiến độ = Kết thúc hoặc Cập nhật hồ sơ)`,
+    },
+    {
+      key: 'tk_vtci_thang_n',
+      label: `TK VTCI tháng ${monthStr}`,
+      align: 'right',
+      width: '56px',
+      drilldownMetric: 'tk_vtci_thang_n',
+      sortable: true,
+      headerStyle: {
+        ...baseThStyle,
+        width: '56px',
+        minWidth: '50px',
+        maxWidth: '62px',
+        background: 'rgba(139, 92, 246, 0.14)',
+        color: '#6d28d9',
+      },
+      tooltip: `Triển khai VTCI đường dây mới nghiệm thu trong tháng ${monthStr} (Địa chỉ lắp đặt chứa VTC, Tiến độ = Kết thúc hoặc Cập nhật hồ sơ)`,
     },
     // Nhóm 9 cột "Tồn triển khai"
     {
@@ -210,6 +265,7 @@ export function buildQlctktColumns(selectedDate) {
         background: 'rgba(245, 158, 11, 0.08)',
       },
     },
+    /* Tạm thời ẩn các cột <1 ngày, <2 ngày, <3 ngày, >3 ngày theo yêu cầu
     {
       key: 'ton_lt1',
       label: '<1 ngày',
@@ -273,6 +329,24 @@ export function buildQlctktColumns(selectedDate) {
         maxWidth: '50px',
         background: 'rgba(245, 158, 11, 0.08)',
       },
+    },
+    */
+    {
+      key: 'ton_vtci_ftth',
+      label: 'Tồn VTCI FTTH',
+      align: 'right',
+      width: '54px',
+      drilldownMetric: 'ton_vtci_ftth',
+      sortable: true,
+      headerStyle: {
+        ...baseThStyle,
+        width: '54px',
+        minWidth: '48px',
+        maxWidth: '60px',
+        background: 'rgba(245, 158, 11, 0.14)',
+        color: 'var(--warning-dark)',
+      },
+      tooltip: 'Tồn việc có Địa chỉ lắp đặt chứa VTC, Loại yêu cầu = Triển khai và Dịch vụ = FTTH',
     },
     {
       key: 'tong_ton',
@@ -360,10 +434,11 @@ export default function QlctktTrienKhaiReport({
         'ton_duong_day_th',
         'ton_ldtb',
         'ton_ldtb_th',
-        'ton_lt1',
-        'ton_lt2',
-        'ton_lt3',
-        'ton_gt3',
+        // 'ton_lt1',
+        // 'ton_lt2',
+        // 'ton_lt3',
+        // 'ton_gt3',
+        'ton_vtci_ftth',
         'tong_ton',
       ],
       groupStyle: {

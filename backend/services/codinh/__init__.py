@@ -11,6 +11,7 @@ from backend.services.codinh.registry import (
 )
 from backend.services.codinh.org import (
     seed_org_from_excel,
+    export_org_to_excel,
     get_org_lookup,
     get_org_tree,
     get_unmatched_usernames,
@@ -136,6 +137,7 @@ __all__ = [
     "list_reports",
     "get_reports_summary_cards",
     "seed_org_from_excel",
+    "export_org_to_excel",
     "get_org_lookup",
     "get_org_tree",
     "get_unmatched_usernames",

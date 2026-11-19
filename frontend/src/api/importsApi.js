@@ -345,6 +345,12 @@ export const importsApi = {
     const res = await api.delete(`/imports/${importId}`);
     return res.data;
   },
+  cancelImport: async (importId, deleteFile = false) => {
+    const res = await api.post(`/imports/${importId}/cancel`, null, {
+      params: { delete_file: deleteFile },
+    });
+    return res.data;
+  },
 };
 
 

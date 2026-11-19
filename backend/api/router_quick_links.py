@@ -164,3 +164,23 @@ def increment_click(link_id: int, db: Session = Depends(get_db)):
         return {"success": True, "click_count": link.click_count}
     return {"success": False}
 
+
+@router.get("/resolve/{slug}")
+def resolve_quick_link(slug: str, db: Session = Depends(get_db)):
+    """Tra cứu link đích từ slug rút gọn kèm tăng lượt click."""
+    clean_slug = slug.strip().lower()
+    link = db.query(QuickLink).filter(QuickLink.slug == clean_slug, QuickLink.is_active == True).first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Không tìm thấy liên kết rút gọn hoặc liên kết đã bị ẩn")
+    link.click_count = (link.click_count or 0) + 1
+    db.commit()
+    return {
+        "success": True,
+        "id": link.id,
+        "title": link.title,
+        "url": link.url,
+        "slug": link.slug,
+        "click_count": link.click_count
+    }
+
+

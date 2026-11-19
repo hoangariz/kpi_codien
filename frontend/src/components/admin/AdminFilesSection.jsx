@@ -11,7 +11,9 @@ import {
   AlertCircle, 
   RotateCcw, 
   HardDrive, 
-  Trash2 
+  Trash2,
+  StopCircle,
+  XCircle 
 } from 'lucide-react';
 import { importsApi } from '../../api/importsApi';
 import { statsApi } from '../../api/statsApi';
@@ -124,6 +126,26 @@ export default function AdminFilesSection() {
     } catch (err) {
       setUploading(false);
       alert('Lỗi kích hoạt lại file: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  // Dừng / Hủy tiến trình nạp file
+  const handleCancelImport = async (importId, fileName = '') => {
+    const ok = window.confirm(
+      `Xác nhận DỪNG và HỦY tiến trình nạp file "${fileName || '#' + importId}"?\n\nTiến trình đang chạy trên máy chủ sẽ bị kill ngay lập tức để giải phóng RAM/CPU và dọn dẹp file tạm.`
+    );
+    if (!ok) return;
+
+    try {
+      await importsApi.cancelImport(importId);
+      if (currentImportId === importId) {
+        setUploading(false);
+        setImportStatus({ status: 'FAILED', error_message: 'Đã dừng tiến trình theo yêu cầu của bạn.' });
+      }
+      refetchLogs();
+      queryClient.invalidateQueries();
+    } catch (err) {
+      alert('Lỗi dừng tiến trình: ' + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -274,6 +296,26 @@ export default function AdminFilesSection() {
             <div className="progress-bar-outer">
               <div className="progress-bar-inner" style={{ width: `${importStatus?.progress_percent || 15}%` }} />
             </div>
+            {currentImportId && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => handleCancelImport(currentImportId, importStatus?.file_name || file?.name)}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '4px 10px',
+                    borderColor: 'var(--danger)',
+                    color: 'var(--danger-dark)',
+                    gap: '5px',
+                  }}
+                  title="Dừng và hủy tiến trình nạp file này ngay lập tức"
+                >
+                  <StopCircle size={13} />
+                  <span>Dừng Nạp File</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -413,7 +455,11 @@ export default function AdminFilesSection() {
                         </span>
                       ) : isProcessing ? (
                         <span className="badge badge-info" style={{ gap: '4px', fontSize: '0.72rem' }}>
-                          <Clock size={12} className="spin" /> Đang Nạp...
+                          <Clock size={12} className="spin" /> Đang Nạp ({log.progress_percent || 0}%)...
+                        </span>
+                      ) : log.status === 'PENDING' ? (
+                        <span className="badge badge-warning" style={{ gap: '4px', fontSize: '0.72rem', color: 'var(--warning-dark)', background: 'rgba(245, 158, 11, 0.15)' }}>
+                          <Clock size={12} className="spin" /> Đang Chờ...
                         </span>
                       ) : log.status === 'FAILED' ? (
                         <span 
@@ -432,6 +478,25 @@ export default function AdminFilesSection() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        {/* Nút Dừng / Hủy nạp khi file đang chạy hoặc đang chờ */}
+                        {['PENDING', 'PROCESSING'].includes(log.status) && (
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => handleCancelImport(log.id, log.file_name)}
+                            title="Dừng tiến trình nạp file này ngay lập tức"
+                            style={{ 
+                              padding: '3px 8px', 
+                              fontSize: '0.72rem', 
+                              gap: '4px', 
+                              color: 'var(--danger-dark)',
+                              borderColor: 'rgba(239, 68, 68, 0.4)',
+                              background: 'rgba(239, 68, 68, 0.05)'
+                            }}
+                          >
+                            <StopCircle size={12} /> Dừng Nạp
+                          </button>
+                        )}
+
                         {/* Nút Thử lại khi file lỗi */}
                         {log.status === 'FAILED' && (
                           <button
