@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Settings, 
   Calendar, 
@@ -8,7 +8,10 @@ import {
   BookmarkCheck, 
   FileSpreadsheet, 
   Network,
-  Eye 
+  Eye,
+  Download,
+  Upload,
+  RefreshCw,
 } from 'lucide-react';
 
 import { settingsApi } from '../api/settingsApi';
@@ -25,11 +28,51 @@ import AdminBoardsSection from '../components/admin/AdminBoardsSection';
 import AdminFilesSection from '../components/admin/AdminFilesSection';
 
 export default function AdminPage({ onNavigateToDashboard }) {
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef(null);
+  const [exportingConfig, setExportingConfig] = useState(false);
+  const [importingConfig, setImportingConfig] = useState(false);
+
   // Settings State
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
 
   // Left Navbar Active Tab ('month' | 'categories' | 'all_wo_hth' | 'fixed_wo_reports' | 'boards' | 'files' | 'all')
   const [activeAdminNav, setActiveAdminNav] = useState('month');
+
+  const handleExportConfig = async () => {
+    try {
+      setExportingConfig(true);
+      await settingsApi.exportConfig();
+    } catch (err) {
+      alert('Lỗi xuất cấu hình: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setExportingConfig(false);
+    }
+  };
+
+  const handleImportConfigFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ok = window.confirm(
+      `Xác nhận nạp file cấu hình "${file.name}"?\n\nToàn bộ 32 danh mục báo cáo, bảng WO theo dõi, All-Wo-HTH và cấu hình tháng sẽ được khôi phục từ file này.`
+    );
+    if (!ok) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setImportingConfig(true);
+      const res = await settingsApi.importConfig(file, true);
+      alert(res.message || 'Khôi phục cấu hình thành công!');
+      queryClient.invalidateQueries();
+    } catch (err) {
+      alert('Lỗi nạp cấu hình: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setImportingConfig(false);
+      e.target.value = '';
+    }
+  };
 
   // 1. Fetch current settings
   const { data: settingsData } = useQuery({
@@ -128,16 +171,64 @@ export default function AdminPage({ onNavigateToDashboard }) {
           </p>
         </div>
 
-        <button
-          className="btn btn-outline"
-          onClick={() => {
-            if (onNavigateToDashboard) onNavigateToDashboard();
-            else window.location.href = '/';
-          }}
-          style={{ gap: '6px' }}
-        >
-          ⬅ Về Trang Tổng Quan
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportConfigFile}
+            accept=".json"
+            style={{ display: 'none' }}
+          />
+
+          {/* Nút Xuất Cấu Hình */}
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={handleExportConfig}
+            disabled={exportingConfig}
+            style={{
+              fontSize: '0.8rem',
+              padding: '6px 12px',
+              borderColor: '#10b981',
+              color: '#10b981',
+              gap: '6px',
+            }}
+            title="Xuất toàn bộ cấu hình hệ thống (32 danh mục, 2892 mã WO All-Wo-HTH, bảng theo dõi, tháng báo cáo...) ra file JSON để chuyển sang VPS mới"
+          >
+            {exportingConfig ? <RefreshCw size={14} className="spin" /> : <Download size={14} />}
+            <span>{exportingConfig ? 'Đang xuất...' : 'Xuất Cấu Hình'}</span>
+          </button>
+
+          {/* Nút Nạp Cấu Hình */}
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importingConfig}
+            style={{
+              fontSize: '0.8rem',
+              padding: '6px 12px',
+              borderColor: '#8b5cf6',
+              color: '#8b5cf6',
+              gap: '6px',
+            }}
+            title="Nạp lại toàn bộ cấu hình hệ thống từ file JSON đã xuất trước đó"
+          >
+            {importingConfig ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
+            <span>{importingConfig ? 'Đang nạp...' : 'Nạp Cấu Hình'}</span>
+          </button>
+
+          <button
+            className="btn btn-outline"
+            onClick={() => {
+              if (onNavigateToDashboard) onNavigateToDashboard();
+              else window.location.href = '/';
+            }}
+            style={{ gap: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+          >
+            ⬅ Về Trang Tổng Quan
+          </button>
+        </div>
       </div>
 
       {/* 2-Column Grid Layout: Left Navbar + Right Content */}
