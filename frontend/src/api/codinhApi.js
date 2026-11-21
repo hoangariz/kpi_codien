@@ -562,5 +562,17 @@ export const codinhApi = {
     const res = await api.get('/codinh/org/warnings');
     return res.data;
   },
+
+  // ==========================================
+  // ĐIỀU HÀNH CĐBR THEO ĐỘI (DÀNH CHO ĐỘI TRƯỞNG)
+  // ==========================================
+  getDieuhanhTeamData: async (teamId = null, date = null, month = null) => {
+    const params = {};
+    if (teamId) params.team_id = teamId;
+    if (date) params.date = date;
+    if (month) params.month = month;
+    const res = await api.get('/codinh/dieuhanh-doi', { params });
+    return res.data;
+  },
 };
 

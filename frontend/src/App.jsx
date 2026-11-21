@@ -9,6 +9,7 @@ import KpiFtPage from './pages/KpiFtPage';
 import CodinhPage from './pages/CodinhPage';
 import AdminCodinhPage from './pages/AdminCodinhPage';
 import ThuHoiThietBiPage from './pages/ThuHoiThietBiPage';
+import DieuhanhCodinhPage from './pages/DieuhanhCodinhPage';
 import KhacPage from './pages/KhacPage';
 import quickLinksApi from './api/quickLinksApi';
 
@@ -57,7 +58,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const SYSTEM_TABS = ['thuhoithietbi', 'admincodinh', 'codinh', 'admin', 'search', 'khac', 'kpi'];
+const SYSTEM_TABS = ['thuhoithietbi', 'dieuhanhcodinh', 'admincodinh', 'codinh', 'admin', 'search', 'khac', 'kpi'];
 
 const getPotentialSlug = (pathname) => {
   try {
@@ -90,6 +91,7 @@ export default function App() {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
       if (path.includes('/thuhoithietbi') || hash.includes('thuhoithietbi')) return 'thuhoithietbi';
+      if (path.includes('/dieuhanhcodinh') || hash.includes('dieuhanhcodinh')) return 'dieuhanhcodinh';
       if (path.includes('/admincodinh') || hash.includes('admincodinh')) return 'admincodinh';
       if (path.includes('/codinh') || hash.includes('codinh')) return 'codinh';
       if (path.includes('/admin') || hash.includes('admin')) return 'admin';
@@ -116,6 +118,10 @@ export default function App() {
     if (tab === 'thuhoithietbi') {
       if (!window.location.pathname.includes('/thuhoithietbi')) {
         window.history.pushState({}, '', '/thuhoithietbi');
+      }
+    } else if (tab === 'dieuhanhcodinh') {
+      if (!window.location.pathname.includes('/dieuhanhcodinh')) {
+        window.history.pushState({}, '', '/dieuhanhcodinh');
       }
     } else if (tab === 'admincodinh') {
       if (!window.location.pathname.includes('/admincodinh')) {
@@ -194,6 +200,8 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
       if (path.includes('/thuhoithietbi') || hash.includes('thuhoithietbi')) {
         setActiveTab('thuhoithietbi');
+      } else if (path.includes('/dieuhanhcodinh') || hash.includes('dieuhanhcodinh')) {
+        setActiveTab('dieuhanhcodinh');
       } else if (path.includes('/admincodinh') || hash.includes('admincodinh')) {
         setActiveTab('admincodinh');
       } else if (path.includes('/codinh') || hash.includes('codinh')) {
@@ -287,6 +295,8 @@ export default function App() {
             <div className="content-body">
               {activeTab === 'thuhoithietbi' ? (
                 <ThuHoiThietBiPage onNavigateToCodinh={() => handleTabChange('codinh')} />
+              ) : activeTab === 'dieuhanhcodinh' ? (
+                <DieuhanhCodinhPage onNavigateToCodinh={() => handleTabChange('codinh')} />
               ) : activeTab === 'admincodinh' ? (
                 <AdminCodinhPage onNavigateToCodinh={() => handleTabChange('codinh')} />
               ) : activeTab === 'codinh' ? (

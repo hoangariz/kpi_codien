@@ -331,6 +331,58 @@ export default function CodinhPage() {
         </button>
       </div>
 
+      {/* Banner Điều Hành CĐBR (Dành cho Đội Trưởng - Tối ưu Mobile) */}
+      <div
+        style={{
+          marginBottom: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid rgba(37, 99, 235, 0.3)',
+          borderRadius: '10px',
+          padding: '8px 14px',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '1.05rem' }}>📱</span>
+          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Điều Hành CĐBR (Đội Trưởng):
+          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Theo dõi tồn đọng &amp; tiến độ hoàn thành chi tiết của từng nhân viên theo Đội (Tối ưu Mobile)
+          </span>
+        </div>
+
+        <button
+          onClick={() => {
+            window.history.pushState({}, '', '/dieuhanhcodinh');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
+          className="btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            background: '#2563eb',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '5px 14px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+          }}
+        >
+          📱 Vào Trang Điều Hành Đội →
+        </button>
+      </div>
+
       {/* Banner Xem danh sách Thu Hồi Thiết Bị */}
       <div
         style={{
