@@ -546,9 +546,24 @@ class QlctktTrienKhaiReport(BaseReport):
                 TaskQlctkt.nv_key == "",
                 ~TaskQlctkt.nv_key.in_(valid_keys)
             ))
-        elif ft_low == "employee" and target_name:
-            t_norm = normalize_key(target_name)
-            q = q.filter(TaskQlctkt.nv_key == t_norm)
+        elif ft_low == "employee" and (target_name or filter_id):
+            matched_keys = set()
+            org_users = org.get("users", {})
+            if target_name:
+                t_raw = target_name.strip()
+                matched_keys.add(normalize_key(t_raw))
+                t_lower = t_raw.lower()
+                if t_lower in org_users and org_users[t_lower].get("ho_ten"):
+                    matched_keys.add(normalize_key(org_users[t_lower]["ho_ten"]))
+            if filter_id:
+                f_str = str(filter_id).strip().lower()
+                for k, u in users_by_ho_ten.items():
+                    if str(u.get("employee_id")) == f_str or str(u.get("id")) == f_str or str(u.get("username", "")).lower() == f_str:
+                        matched_keys.add(k)
+            if matched_keys:
+                q = q.filter(TaskQlctkt.nv_key.in_(list(matched_keys)))
+            else:
+                q = q.filter(TaskQlctkt.nv_key == "__NO_MATCH__")
         elif ft_low in ("team", "doi") and (filter_id or target_name):
             team_keys = [k for k, u in users_by_ho_ten.items() if str(u.get("team_id")) == str(filter_id) or u.get("ten_doi") == target_name]
             q = q.filter(TaskQlctkt.nv_key.in_(team_keys))

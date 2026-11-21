@@ -63,6 +63,7 @@ from backend.services.codinh_service import (
     ensure_org_columns_and_backfill,
     normalize_key,
 )
+from backend.services.codinh.dieuhanh import get_dieuhanh_team_data
 from backend.models.codinh_org import CodinhCluster, CodinhTeam, CodinhEmployee
 from backend.models.task_qlctkt import TaskQlctkt
 from pydantic import BaseModel
@@ -1335,3 +1336,22 @@ def test_golden(
             ],
         }
     }
+
+
+@router.get("/dieuhanh-doi")
+def api_get_dieuhanh_doi(
+    team_id: Optional[int] = Query(None, description="ID của Đội"),
+    date: Optional[str] = Query(None, description="Ngày phân tích YYYY-MM-DD"),
+    month: Optional[str] = Query(None, description="Tháng phân tích YYYY-MM"),
+    db: Session = Depends(get_db),
+):
+    """
+    Dữ liệu trang Điều Hành CĐBR cho Đội trưởng:
+    Tổng hợp việc tồn & tiến độ hoàn thành theo từng nhân viên trong Đội.
+    """
+    try:
+        return get_dieuhanh_team_data(db, team_id=team_id, target_date=date, target_month=month)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Error in api_get_dieuhanh_doi: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
